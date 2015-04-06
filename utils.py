@@ -2,6 +2,7 @@
 from __future__ import division, print_function, unicode_literals
 
 from itertools import repeat
+import re
 from sqlite3 import IntegrityError
 from unicodedata import combining, normalize
 
@@ -30,8 +31,14 @@ def iter_results(q):
             yield row
 
 
+nonalphanum_re = re.compile(r'[^a-z0-9]')
+
+
 def strip_accents(s):
     return ''.join(c for c in normalize('NFKD', s) if not combining(c))
 
 
 strip_down = lambda s: strip_accents(s).lower()
+
+
+filter_nonalnum = lambda s: nonalphanum_re.sub('', strip_down(s))

@@ -9,14 +9,14 @@ from __future__ import division, print_function, unicode_literals
 from argparse import ArgumentParser
 from datetime import date
 import re
-from sqlite3 import connect
+from sqlite3 import connect, OperationalError
 import sys
 
 from fr_calendar import (
     MOIS_REPU, MOIS_REPU_MAP, gregorian_to_republican, republican_to_gregorian
 )
 from roman import decimal_to_roman
-from utils import iter_results, strip_down
+from utils import filter_nonalnum, iter_results, strip_down
 
 
 if sys.version_info[0] == 2:
@@ -152,6 +152,14 @@ def main(db):
         UPDATE textes_versions SET page_fin_publi = NULL WHERE page_fin_publi = 0;
     """)
 
+    try:
+        db.executescript("""
+            ALTER TABLE textes_versions ADD COLUMN titrefull_s text;
+            CREATE INDEX textes_versions_titrefull_s ON textes_versions (titrefull_s);
+        """)
+    except OperationalError:
+        pass
+
     sql = db.execute
 
     q = sql("""
@@ -278,6 +286,11 @@ def main(db):
                      , nature = ?
                  WHERE rowid = ?
             """, (titre, titrefull, nature, rowid))
+        sql("""
+            UPDATE textes_versions
+               SET titrefull_s = ?
+             WHERE rowid = ?
+        """, (filter_nonalnum(titrefull), rowid))
 
 
 if __name__ == '__main__':
