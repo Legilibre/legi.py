@@ -39,7 +39,7 @@ NATURE_MAP_R = {v.upper(): k for k, v in NATURE_MAP.items()}
 
 jour_p = r'(?P<jour>1er|[0-9]{1,2})'
 mois_p = r'(?P<mois>%s)' % '|'.join(MOIS_GREG+MOIS_REPU)
-annee_p = r'(?P<annee>[12][0-9]{3}|an [IVX]+)'
+annee_p = r'(?P<annee>[0-9]{4,}|an [IVX]+)'
 nonword_re = re.compile(r'\W', re.U)
 numero_re = re.compile(r'n°(?!\s)', re.U)
 premier_du_mois = re.compile(r'\b1 %(mois_p)s %(annee_p)s' % globals())
