@@ -215,18 +215,14 @@ def main(db):
                           '      titre: "', titre, '"\n',
                           '  titrefull: "', titrefull, '"',
                           sep='')
-                nature_d = get_key('nature')
-                if nature_d:
-                    nature_d = nature_d.upper()
-                    nature_d = NATURE_MAP_R.get(nature_d, nature_d)
-                    if not nature:
-                        nature = nature_d
-                    elif nature_d != nature:
-                        if nature_d.split('_')[0] == nature.split('_')[0]:
-                            if len(nature_d) > len(nature):
-                                nature = nature_d
-                        else:
-                            print('Incohérence: nature: "', nature_d, '" (detectée) ≠ "', nature, '" (donnée)', sep='')
+                nature = get_key('nature').upper()
+                nature = NATURE_MAP_R.get(nature, nature)
+                if nature_o and nature != nature_o:
+                    if nature.split('_')[0] == nature_o.split('_')[0]:
+                        if len(nature_o) > len(nature):
+                            nature = nature_o
+                    else:
+                        print('Incohérence: nature: "', nature, '" (detectée) ≠ "', nature_o, '" (donnée)', sep='')
                 num_d = get_key('numero', ignore_not_found=True)
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
