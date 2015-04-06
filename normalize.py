@@ -56,10 +56,13 @@ titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
 titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(adjectif_p)s| n° de)' % globals(), re.U | re.I)
 
 
-def gen_titre(nature, num, date_texte, calendar):
+def gen_titre(nature, num, date_texte, calendar, autorite):
     if not nature:
         return ''
     titre = NATURE_MAP.get(nature, nature.title())
+    if autorite:
+        assert autorite == 'ROI'
+        titre += ' du Roi'
     if num:
         titre += ' n° '+num
     if date_texte and date_texte != '2999-01-01':
@@ -252,16 +255,18 @@ def main(db):
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
                 autorite_d = get_key('autorite', ignore_not_found=True)
-                if autorite_d != autorite:
-                    if not autorite and autorite_d.startswith('ministériel'):
-                        pass
-                    elif not autorite and autorite_d.lower() == 'du roi':
+                if autorite_d and strip_down(autorite_d).startswith('ministeriel'):
+                    autorite_d = None
+                elif autorite_d:
+                    if autorite_d.lower() == 'du roi':
+                        autorite_d = 'ROI'
+                    if not autorite:
                         autorite = autorite_d
                         sql("UPDATE textes_versions SET autorite = ? WHERE rowid = ?",
                             (autorite, rowid))
-                    else:
+                    elif autorite != autorite_d:
                         print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
-                titre = gen_titre(nature, num, date_texte, calendar)
+                titre = gen_titre(nature, num, date_texte, calendar, autorite)
                 len_titre = len(titre)
                 titrefull = titre + titrefull[endpos2:]
                 annexe = get_key('annexe', ignore_not_found=True)
