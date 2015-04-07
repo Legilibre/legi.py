@@ -10,17 +10,12 @@ from argparse import ArgumentParser
 from datetime import date
 import re
 from sqlite3 import connect, OperationalError
-import sys
 
 from fr_calendar import (
     MOIS_REPU, MOIS_REPU_MAP, gregorian_to_republican, republican_to_gregorian
 )
 from roman import decimal_to_roman
-from utils import filter_nonalnum, iter_results, strip_down
-
-
-if sys.version_info[0] == 2:
-    input = raw_input
+from utils import filter_nonalnum, input, iter_results, strip_down
 
 
 MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
