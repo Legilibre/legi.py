@@ -87,21 +87,23 @@ def connect_by_titrefull_s():
     conn.executescript("DROP TABLE texte_by_titrefull_s")
 
 
-def factorize_by_titrefull_s():
+def factorize_by(key):
+    col = key.replace('||', '_')
     duplicates = sql("""
-        SELECT min(nature), titrefull_s, group_concat(texte_id)
+        SELECT min(nature), {0}, group_concat(texte_id)
           FROM textes_versions
          WHERE texte_id IS NOT NULL
-      GROUP BY titrefull_s
+      GROUP BY {0}
         HAVING min(texte_id) <> max(texte_id)
-    """)
+           AND min(nature) = max(nature)
+    """.format(key))
     total = 0
     factorized = 0
     for row in iter_results(duplicates):
         ids = tuple(row[2].split(','))
-        sql("INSERT INTO textes (nature, titrefull_s) VALUES (?, ?)",
+        sql("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(col),
             (row[0], row[1]))
-        uid = one("SELECT id FROM textes ORDER BY id DESC LIMIT 1")
+        uid = one("SELECT id FROM textes WHERE {0} = ?".format(col), (row[1],))
         sql("""
             UPDATE textes_versions
                SET texte_id = %s
@@ -109,33 +111,7 @@ def factorize_by_titrefull_s():
         """ % (uid, row[2]))
         total += len(ids)
         factorized += 1
-    print('factorized %i duplicates into %i uniques based on titrefull_s' % (total, factorized))
-
-
-def factorize_by_cid_id():
-    duplicates = sql("""
-        SELECT min(nature), group_concat(texte_id)
-          FROM textes_versions
-         WHERE texte_id IS NOT NULL
-      GROUP BY cid, id
-        HAVING min(texte_id) <> max(texte_id)
-           AND min(nature) = max(nature)
-    """)
-    total = 0
-    factorized = 0
-    for row in iter_results(duplicates):
-        ids = tuple(row[1].split(','))
-        sql("INSERT INTO textes (nature) VALUES (?)",
-            (row[0],))
-        uid = one("SELECT id FROM textes ORDER BY id DESC LIMIT 1")
-        sql("""
-            UPDATE textes_versions
-               SET texte_id = %s
-             WHERE texte_id IN (%s);
-        """ % (uid, row[1]))
-        total += len(ids)
-        factorized += 1
-    print('factorized %i duplicates into %i uniques based on (cid, id)' % (total, factorized))
+    print('factorized %i duplicates into %i uniques based on %s' % (total, factorized, key))
 
 
 def main():
@@ -146,6 +122,7 @@ def main():
         , num text
         , nor char(12) unique -- only used during factorization
         , titrefull_s text unique -- only used during factorization
+        , cid_id text unique -- only used during factorization
         , UNIQUE (nature, num)
         );
     """)
@@ -218,7 +195,7 @@ def main():
     """)
     print('connected %i rows of textes_versions based on nor' % changes())
 
-    factorize_by_titrefull_s()
+    factorize_by('titrefull_s')
     connect_by_cid_id()
     connect_by_titrefull_s()
 
@@ -247,14 +224,14 @@ def main():
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % changes())
 
-    factorize_by_cid_id()
+    factorize_by('cid||id')
 
     left = one("SELECT count(*) FROM textes_versions WHERE texte_id IS NULL")
     if left != 0:
         print("Fail: %i rows haven't been connected")
     else:
         # SQLite doesn't implement DROP COLUMN so we just nullify them instead
-        sql("UPDATE textes SET nor = NULL, titrefull_s = NULL")
+        sql("UPDATE textes SET nor = NULL, titrefull_s = NULL, cid_id = NULL")
         print("done")
 
 
