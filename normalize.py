@@ -208,7 +208,7 @@ def main(db):
             d2, endpos2 = parse_titre(titrefull)
             if not d2:
                 print('Fail: regex did not match titrefull "', titrefull, '"', sep='')
-            if d1 and d2:
+            if d1 or d2:
                 def get_key(key, ignore_not_found=False):
                     g1, g2 = d1.get(key), d2.get(key)
                     if not (g1 or g2) and not ignore_not_found:
