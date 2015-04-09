@@ -162,11 +162,11 @@ def main(db):
     sql = db.execute
 
     q = sql("""
-        SELECT rowid, titre, titrefull, nature, num, date_texte, autorite
+        SELECT rowid, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
           FROM textes_versions
     """)
     for row in iter_results(q):
-        rowid, titre_o, titrefull_o, nature_o, num, date_texte, autorite = row
+        rowid, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
         titre, titrefull, nature = titre_o, titrefull_o, nature_o
         if titrefull.startswith('COUR DES COMPTESET DE FINANCEMENTS POLITIQUES '):
             titrefull = titrefull[46:]
@@ -285,11 +285,13 @@ def main(db):
                      , nature = ?
                  WHERE rowid = ?
             """, (titre, titrefull, nature, rowid))
-        sql("""
-            UPDATE textes_versions
-               SET titrefull_s = ?
-             WHERE rowid = ?
-        """, (filter_nonalnum(titrefull), rowid))
+        titrefull_s = filter_nonalnum(titrefull)
+        if titrefull_s != titrefull_s_o:
+            sql("""
+                UPDATE textes_versions
+                   SET titrefull_s = ?
+                 WHERE rowid = ?
+            """, (titrefull_s, rowid))
 
 
 if __name__ == '__main__':
