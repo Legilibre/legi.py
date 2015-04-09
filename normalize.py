@@ -42,7 +42,7 @@ spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)
 
 adjectif_p = r'(quinquennale?)'
-annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du))"
+annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi)'
 date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?' % globals()
 nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
@@ -51,10 +51,14 @@ titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
 titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(adjectif_p)s| n° de)' % globals(), re.U | re.I)
 
 
-def gen_titre(nature, num, date_texte, calendar, autorite):
+def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
     if not nature:
         return ''
-    titre = NATURE_MAP.get(nature, nature.title())
+    if annexe:
+        titre = annexe[0].upper() + annexe[1:].lower()
+        titre += NATURE_MAP.get(nature, nature).lower()
+    else:
+        titre = NATURE_MAP.get(nature, nature.title())
     if autorite:
         assert autorite == 'ROI'
         titre += ' du Roi'
@@ -267,12 +271,10 @@ def main(db):
                             (autorite, rowid))
                     elif autorite != autorite_d:
                         print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
-                titre = gen_titre(nature, num, date_texte, calendar, autorite)
+                annexe = get_key('annexe', ignore_not_found=True)
+                titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                 len_titre = len(titre)
                 titrefull = titre + titrefull[endpos2:]
-                annexe = get_key('annexe', ignore_not_found=True)
-                if annexe:
-                    titrefull += ' (annexe)'
         if titrefull[:len_titre] != titre:
             print('Incohérence: titre "', titre, '" n\'est pas un préfixe de titrefull "', titrefull[:len_titre], '..."', sep='')
         if titre != titre_o or titrefull != titrefull_o or nature != nature_o:
