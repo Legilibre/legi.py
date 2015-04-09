@@ -226,6 +226,17 @@ def main():
 
     factorize_by('cid||id')
 
+    # Clean up factorized texts
+    sql("""
+        DELETE FROM textes
+         WHERE NOT EXISTS (
+                   SELECT *
+                     FROM textes_versions
+                    WHERE texte_id = textes.id
+               )
+    """)
+    print('deleted %i unused rows from textes' % changes())
+
     left = one("SELECT count(*) FROM textes_versions WHERE texte_id IS NULL")
     if left != 0:
         print("Fail: %i rows haven't been connected")
