@@ -224,6 +224,7 @@ def main(db):
                           '      titre: "', titre, '"\n',
                           '  titrefull: "', titrefull, '"',
                           sep='')
+                annexe = get_key('annexe', ignore_not_found=True)
                 nature = get_key('nature').upper()
                 nature = NATURE_MAP_R.get(nature, nature)
                 if nature_o and nature != nature_o:
@@ -235,9 +236,10 @@ def main(db):
                 num_d = get_key('numero', ignore_not_found=True)
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
-                        num = num_d
-                        sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
-                            (num, rowid))
+                        if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
+                            num = num_d
+                            sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
+                                (num, rowid))
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                 calendar = 'gregorian'
@@ -271,7 +273,6 @@ def main(db):
                             (autorite, rowid))
                     elif autorite != autorite_d:
                         print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
-                annexe = get_key('annexe', ignore_not_found=True)
                 titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                 len_titre = len(titre)
                 titrefull = titre + titrefull[endpos2:]
