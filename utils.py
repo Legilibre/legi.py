@@ -4,12 +4,10 @@ from __future__ import division, print_function, unicode_literals
 from itertools import repeat
 import re
 from sqlite3 import IntegrityError
-import sys
 from unicodedata import combining, normalize
 
 
-if sys.version_info[0] == 2:
-    input = raw_input
+input = __builtins__.get('raw_input', input)
 
 
 def inserter(conn):
