@@ -7,6 +7,25 @@ from sqlite3 import connect, OperationalError
 from utils import input, inserter, iter_results
 
 
+def connect_by_nature_num():
+    conn.executescript("""
+        UPDATE textes_versions
+           SET texte_id = (
+                   SELECT id
+                     FROM textes t
+                    WHERE t.nature = textes_versions.nature
+                      AND t.num = textes_versions.num
+               )
+         WHERE texte_id IS NULL
+           AND EXISTS (
+                   SELECT id
+                     FROM textes t
+                    WHERE t.nature = textes_versions.nature
+                      AND t.num = textes_versions.num
+               );
+    """)
+    print('connected %i rows of textes_versions based on (nature, num)' % changes())
+
 def connect_by_nor():
     conn.executescript("""
         CREATE TEMP TABLE texte_by_nor AS
@@ -134,6 +153,8 @@ def main():
     except OperationalError:
         pass
 
+    connect_by_nature_num()
+
     conn.executescript("""
         INSERT INTO textes (nature, num)
              SELECT nature, num
@@ -145,24 +166,7 @@ def main():
     """)
     print('inserted %i rows in textes based on (nature, num)' % changes())
 
-    conn.executescript("""
-        UPDATE textes_versions
-           SET texte_id = (
-                   SELECT id
-                     FROM textes t
-                    WHERE t.nature = textes_versions.nature
-                      AND t.num = textes_versions.num
-               )
-         WHERE texte_id IS NULL
-           AND EXISTS (
-                   SELECT id
-                     FROM textes t
-                    WHERE t.nature = textes_versions.nature
-                      AND t.num = textes_versions.num
-               );
-    """)
-    print('connected %i rows of textes_versions based on (nature, num)' % changes())
-
+    connect_by_nature_num()
     connect_by_nor()
     connect_by_cid_id()
     connect_by_titrefull_s()
