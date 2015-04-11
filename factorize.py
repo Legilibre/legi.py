@@ -136,8 +136,8 @@ def factorize_by(key):
 def main():
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS textes
-        ( id integer primary key
-        , nature text
+        ( id integer primary key not null
+        , nature text not null
         , num text
         , nor char(12) unique -- only used during factorization
         , titrefull_s text unique -- only used during factorization
