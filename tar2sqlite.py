@@ -5,13 +5,12 @@ Extracts a LEGI tar archive into an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-import re
-from sqlite3 import connect
+from sqlite3 import connect, OperationalError
 
 import libarchive
 from lxml import etree
 
-from utils import inserter
+from utils import inserter, updater
 
 
 def innerHTML(e):
@@ -26,22 +25,7 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
     )
 
 
-def main(conn, archive_path):
-
-    # Define some constants
-    ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
-    SECTION_TA_TAGS = set('TITRE_TA COMMENTAIRE'.split())
-    TEXTE_VERSION_TAGS = set('VISAS SIGNATAIRES TP NOTA ABRO RECT'.split())
-    META_ARTICLE_TAGS = set('NUM ETAT DATE_DEBUT DATE_FIN TYPE'.split())
-    META_CHRONICLE_TAGS = set("""
-        NUM NUM_SEQUENCE NOR DATE_PUBLI DATE_TEXTE DERNIERE_MODIFICATION
-        ORIGINE_PUBLI PAGE_DEB_PUBLI PAGE_FIN_PUBLI
-    """.split())
-    META_VERSION_TAGS = set(
-        'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
-    )
-
-    # Create the DB
+def make_schema(conn):
     conn.executescript("""
 
         CREATE TABLE textes_versions
@@ -119,6 +103,8 @@ def main(conn, archive_path):
         -- , UNIQUE (cid, section, num, debut)
         );
 
+        CREATE INDEX sections_articles_key ON sections_articles (cid, section);
+
         CREATE TABLE liens
         ( src_cid char(20) not null
         , src_id char(20) not null
@@ -130,12 +116,62 @@ def main(conn, archive_path):
         , CHECK (length(dst_cid) > 0 OR length(dst_id) > 0 OR length(dst_titre) > 0)
         );
 
+        CREATE INDEX liens_src_key ON liens (src_cid, src_id);
+
     """)
+
+
+def suppress(TABLES_MAP, conn, liste_suppression):
+    deleted = 0
+    for path in liste_suppression:
+        parts = path.split('/')
+        assert parts[0] == 'legi'
+        if parts[13] == 'struct':
+            continue
+        text_id = parts[-1]
+        assert len(text_id) == 20
+        table = TABLES_MAP[text_id[4:8]]
+        conn.execute("""
+            DELETE FROM {0}
+             WHERE dossier = ?
+               AND cid = ?
+               AND id = ?
+        """.format(table), (parts[3], parts[11], text_id))
+        deleted += conn.execute("SELECT changes()").fetchone()[0]
+    print('deleted', deleted, 'rows')
+
+
+def main(conn, archive_path):
+
+    # Define some constants
+    ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
+    SECTION_TA_TAGS = set('TITRE_TA COMMENTAIRE'.split())
+    TEXTE_VERSION_TAGS = set('VISAS SIGNATAIRES TP NOTA ABRO RECT'.split())
+    META_ARTICLE_TAGS = set('NUM ETAT DATE_DEBUT DATE_FIN TYPE'.split())
+    META_CHRONICLE_TAGS = set("""
+        NUM NUM_SEQUENCE NOR DATE_PUBLI DATE_TEXTE DERNIERE_MODIFICATION
+        ORIGINE_PUBLI PAGE_DEB_PUBLI PAGE_FIN_PUBLI
+    """.split())
+    META_VERSION_TAGS = set(
+        'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
+    )
+    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_versions'}
+
+    # Create the DB schema if necessary
+    try:
+        conn.execute("SELECT 1 FROM textes_versions LIMIT 1")
+    except OperationalError:
+        make_schema(conn)
 
     # Define some shortcuts
     attr = etree._Element.get
     insert = inserter(conn)
+    update = updater(conn)
 
+    skipped = 0
+    inserted = 0
+    updated = 0
+    liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
         for entry in archive:
@@ -143,11 +179,29 @@ def main(conn, archive_path):
             if path[-1] == '/':
                 continue
             parts = path.split('/')
+            if parts[-1] == 'liste_suppression_legi.dat':
+                liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
+                continue
+            if parts[1] == 'legi':
+                parts = parts[1:]
             if parts[13] == 'struct':
                 continue
             dossier = parts[3]
             text_cid = parts[11]
             text_id = parts[-1][:-4]
+            mtime = entry.mtime
+
+            table = TABLES_MAP[text_id[4:8]]
+            prev_mtime = conn.execute("""
+                SELECT mtime
+                  FROM {0}
+                 WHERE dossier = ?
+                   AND cid = ?
+                   AND id = ?
+            """.format(table), (dossier, text_cid, text_id)).fetchone()
+            if prev_mtime and prev_mtime[0] >= mtime:
+                skipped += 1
+                continue
 
             for block in entry.get_blocks():
                 xml.feed(block)
@@ -167,7 +221,7 @@ def main(conn, archive_path):
             attrs = {}
             if tag == 'ARTICLE':
                 assert nature == 'Article'
-                table = 'articles'
+                assert table == 'articles'
                 contexte = root.find('CONTEXTE/TEXTE')
                 assert attr(contexte, 'cid') == text_cid
                 sections = contexte.findall('.//TITRE_TM')
@@ -176,6 +230,9 @@ def main(conn, archive_path):
                 meta_article = meta.find('META_SPEC/META_ARTICLE')
                 scrape_tags(attrs, meta_article, META_ARTICLE_TAGS)
                 scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True)
+                if prev_mtime:
+                    conn.execute("DELETE FROM liens WHERE src_cid = ? AND src_id = ?",
+                                 (text_cid, text_id))
                 for lien in root.find('LIENS'):
                     insert('liens', {
                         'src_cid': text_cid,
@@ -187,13 +244,16 @@ def main(conn, archive_path):
                         'sens': attr(lien, 'sens'),
                     })
             elif tag == 'SECTION_TA':
-                table = 'sections'
+                assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
                 contexte = root.find('CONTEXTE/TEXTE')
                 assert attr(contexte, 'cid') == text_cid
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
+                if prev_mtime:
+                    conn.execute("DELETE FROM sections_articles WHERE cid = ? AND section = ?",
+                                 (text_cid, text_id))
                 for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
                     insert('sections_articles', {
                         'section': text_id,
@@ -205,7 +265,7 @@ def main(conn, archive_path):
                         'cid': text_cid,
                     })
             elif tag == 'TEXTE_VERSION':
-                table = 'textes_versions'
+                assert table == 'textes_versions'
                 attrs['nature'] = nature
                 meta_spec = meta.find('META_SPEC')
                 meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
@@ -217,21 +277,35 @@ def main(conn, archive_path):
             else:
                 raise Exception('unexpected tag: '+tag)
 
-            attrs['dossier'] = dossier
-            attrs['cid'] = text_cid
-            attrs['id'] = text_id
-            attrs['mtime'] = entry.mtime
+            attrs['mtime'] = mtime
 
-            insert(table, attrs)
+            if prev_mtime:
+                updated += 1
+                update(table, dict(dossier=dossier, cid=text_cid, id=text_id), attrs)
+            else:
+                inserted += 1
+                attrs['dossier'] = dossier
+                attrs['cid'] = text_cid
+                attrs['id'] = text_id
+                insert(table, attrs)
+
+    print('skipped', skipped, 'old files')
+    print('inserted', inserted, 'rows')
+    print('updated', updated, 'rows')
+
+    if liste_suppression:
+        suppress(TABLES_MAP, conn, liste_suppression)
 
 
-p = ArgumentParser()
-p.add_argument('archive')
-args = p.parse_args()
+if __name__ == '__main__':
+    p = ArgumentParser()
+    p.add_argument('archive')
+    p.add_argument('db')
+    args = p.parse_args()
 
-conn = connect(re.sub(r'^(/?(?:[^/]*/)*\.?[^.]+).*', r'\1.sqlite', args.archive))
-try:
-    main(conn, args.archive)
-finally:
-    conn.commit()
-    conn.close()
+    conn = connect(args.db)
+    try:
+        with conn:
+            main(conn, args.archive)
+    except KeyboardInterrupt:
+        pass

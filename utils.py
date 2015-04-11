@@ -1,7 +1,7 @@
 # encoding: utf8
 from __future__ import division, print_function, unicode_literals
 
-from itertools import repeat
+from itertools import chain, repeat
 import re
 from sqlite3 import IntegrityError
 from unicodedata import combining, normalize
@@ -23,6 +23,30 @@ def inserter(conn):
             print(table, *attrs.items(), sep='\n    ')
             raise
     return insert
+
+
+def updater(conn):
+
+    def dict2sql(d, joiner=', '):
+        keys, values = zip(*d.items())
+        placeholders = joiner.join(k+' = ?' for k in keys)
+        return placeholders, values
+
+    def update(table, where, attrs):
+        placeholders, values = dict2sql(attrs)
+        where_placeholders, where_values = dict2sql(where, joiner=' AND ')
+        try:
+            conn.execute(
+                "UPDATE {0} SET {1} WHERE {2}".format(
+                    table, placeholders, where_placeholders
+                ),
+                values + where_values
+            )
+        except IntegrityError:
+            print(table, *chain(where.items(), attrs.items()), sep='\n    ')
+            raise
+
+    return update
 
 
 def iter_results(q):
