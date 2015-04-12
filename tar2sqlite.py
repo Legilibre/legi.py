@@ -56,7 +56,7 @@ def make_schema(conn):
         , cid char(20) not null
         , id char(20) not null
         , mtime int not null
-        , UNIQUE (dossier, cid, id)
+        , UNIQUE (cid, id)
         );
 
         CREATE INDEX textes_versions_date_texte ON textes_versions (date_texte);
@@ -73,7 +73,7 @@ def make_schema(conn):
         , cid char(20) not null -- REFERENCES textes_versions(id)
         , id char(20) not null
         , mtime int not null
-        , UNIQUE (dossier, cid, id)
+        , UNIQUE (cid, id)
         );
 
         CREATE TABLE articles
@@ -89,7 +89,7 @@ def make_schema(conn):
         , cid char(20) not null -- REFERENCES textes_versions(id)
         , id char(20) not null
         , mtime int not null
-        , UNIQUE (dossier, cid, id)
+        , UNIQUE (cid, id)
         );
 
         CREATE TABLE sections_articles
@@ -100,10 +100,9 @@ def make_schema(conn):
         , fin day
         , etat text
         , cid char(20) not null -- REFERENCES textes_versions(id)
+        , UNIQUE (cid, section, id)
         -- , UNIQUE (cid, section, num, debut)
         );
-
-        CREATE INDEX sections_articles_key ON sections_articles (cid, section);
 
         CREATE TABLE liens
         ( src_cid char(20) not null
@@ -195,10 +194,9 @@ def main(conn, archive_path):
             prev_mtime = conn.execute("""
                 SELECT mtime
                   FROM {0}
-                 WHERE dossier = ?
-                   AND cid = ?
+                 WHERE cid = ?
                    AND id = ?
-            """.format(table), (dossier, text_cid, text_id)).fetchone()
+            """.format(table), (text_cid, text_id)).fetchone()
             if prev_mtime and prev_mtime[0] >= mtime:
                 skipped += 1
                 continue
@@ -277,14 +275,14 @@ def main(conn, archive_path):
             else:
                 raise Exception('unexpected tag: '+tag)
 
+            attrs['dossier'] = dossier
             attrs['mtime'] = mtime
 
             if prev_mtime:
                 updated += 1
-                update(table, dict(dossier=dossier, cid=text_cid, id=text_id), attrs)
+                update(table, dict(cid=text_cid, id=text_id), attrs)
             else:
                 inserted += 1
-                attrs['dossier'] = dossier
                 attrs['cid'] = text_cid
                 attrs['id'] = text_id
                 insert(table, attrs)
