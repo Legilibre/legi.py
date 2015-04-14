@@ -2,13 +2,13 @@
 from __future__ import print_function, unicode_literals
 
 from argparse import ArgumentParser
-from sqlite3 import connect, OperationalError
+from sqlite3 import OperationalError
 
-from utils import input, inserter, iter_results
+from utils import connect_db, input
 
 
 def connect_by_nature_num():
-    conn.execute("""
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
@@ -24,10 +24,10 @@ def connect_by_nature_num():
                       AND t.num = textes_versions.num
                );
     """)
-    print('connected %i rows of textes_versions based on (nature, num)' % changes())
+    print('connected %i rows of textes_versions based on (nature, num)' % db.changes())
 
 def connect_by_nor():
-    conn.execute("""
+    db.run("""
         CREATE TEMP TABLE texte_by_nor AS
             SELECT nor, min(texte_id)
               FROM textes_versions
@@ -38,8 +38,8 @@ def connect_by_nor():
                AND min(num) = max(num)
                AND min(texte_id) = max(texte_id);
     """)
-    conn.execute("CREATE UNIQUE INDEX texte_by_nor_index ON texte_by_nor (nor)")
-    conn.execute("""
+    db.run("CREATE UNIQUE INDEX texte_by_nor_index ON texte_by_nor (nor)")
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -53,18 +53,18 @@ def connect_by_nor():
                     WHERE t.nor = textes_versions.nor
                );
     """)
-    print('connected %i rows of textes_versions based on nor' % changes())
-    conn.execute("DROP TABLE texte_by_nor")
+    print('connected %i rows of textes_versions based on nor' % db.changes())
+    db.run("DROP TABLE texte_by_nor")
 
 def connect_by_cid_id():
-    conn.execute("""
+    db.run("""
         CREATE TEMP TABLE texte_by_cid_id AS
             SELECT DISTINCT cid, id, texte_id
               FROM textes_versions
              WHERE texte_id IS NOT NULL;
     """)
-    conn.execute("CREATE UNIQUE INDEX texte_by_cid_id_index ON texte_by_cid_id (cid, id)")
-    conn.execute("""
+    db.run("CREATE UNIQUE INDEX texte_by_cid_id_index ON texte_by_cid_id (cid, id)")
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -80,18 +80,18 @@ def connect_by_cid_id():
                       AND t.id = textes_versions.id
                );
     """)
-    print('connected %i rows of textes_versions based on (cid, id)' % changes())
-    conn.execute("DROP TABLE texte_by_cid_id")
+    print('connected %i rows of textes_versions based on (cid, id)' % db.changes())
+    db.run("DROP TABLE texte_by_cid_id")
 
 def connect_by_titrefull_s():
-    conn.execute("""
+    db.run("""
         CREATE TEMP TABLE texte_by_titrefull_s AS
             SELECT DISTINCT titrefull_s, texte_id
               FROM textes_versions
              WHERE texte_id IS NOT NULL;
     """)
-    conn.execute("CREATE UNIQUE INDEX texte_by_titrefull_s_index ON texte_by_titrefull_s (titrefull_s)")
-    conn.execute("""
+    db.run("CREATE UNIQUE INDEX texte_by_titrefull_s_index ON texte_by_titrefull_s (titrefull_s)")
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -105,13 +105,13 @@ def connect_by_titrefull_s():
                     WHERE t.titrefull_s = textes_versions.titrefull_s
                );
     """)
-    print('connected %i rows of textes_versions based on titrefull_s' % changes())
-    conn.execute("DROP TABLE texte_by_titrefull_s")
+    print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
+    db.run("DROP TABLE texte_by_titrefull_s")
 
 
 def factorize_by(key):
     col = key.replace('||', '_')
-    duplicates = sql("""
+    duplicates = db.all("""
         SELECT min(nature), {0}, group_concat(texte_id)
           FROM textes_versions
          WHERE texte_id IS NOT NULL
@@ -121,12 +121,12 @@ def factorize_by(key):
     """.format(key))
     total = 0
     factorized = 0
-    for row in iter_results(duplicates):
+    for row in duplicates:
         ids = tuple(row[2].split(','))
-        sql("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(col),
-            (row[0], row[1]))
-        uid = one("SELECT id FROM textes WHERE {0} = ?".format(col), (row[1],))
-        sql("""
+        db.run("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(col),
+               (row[0], row[1]))
+        uid = db.one("SELECT id FROM textes WHERE {0} = ?".format(col), (row[1],))
+        db.run("""
             UPDATE textes_versions
                SET texte_id = %s
              WHERE texte_id IN (%s);
@@ -137,7 +137,7 @@ def factorize_by(key):
 
 
 def main():
-    conn.execute("""
+    db.run("""
         CREATE TABLE IF NOT EXISTS textes
         ( id integer primary key not null
         , nature text not null
@@ -149,14 +149,14 @@ def main():
         );
     """)
     try:
-        conn.execute("ALTER TABLE textes_versions ADD COLUMN texte_id integer REFERENCES textes")
-        conn.execute("CREATE INDEX textes_versions_texte_id ON textes_versions (texte_id)")
+        db.run("ALTER TABLE textes_versions ADD COLUMN texte_id integer REFERENCES textes")
+        db.run("CREATE INDEX textes_versions_texte_id ON textes_versions (texte_id)")
     except OperationalError:
         pass
 
     connect_by_nature_num()
 
-    conn.execute("""
+    db.run("""
         INSERT INTO textes (nature, num)
              SELECT nature, num
                FROM textes_versions
@@ -165,14 +165,14 @@ def main():
                 AND num IS NOT NULL
            GROUP BY nature, num;
     """)
-    print('inserted %i rows in textes based on (nature, num)' % changes())
+    print('inserted %i rows in textes based on (nature, num)' % db.changes())
 
     connect_by_nature_num()
     connect_by_nor()
     connect_by_cid_id()
     connect_by_titrefull_s()
 
-    conn.execute("""
+    db.run("""
         INSERT INTO textes (nature, nor)
             SELECT nature, nor
               FROM textes_versions
@@ -182,9 +182,9 @@ def main():
             HAVING min(nature) = max(nature)
                AND min(titrefull_s) = max(titrefull_s);
     """)
-    print('inserted %i rows in textes based on nor' % changes())
+    print('inserted %i rows in textes based on nor' % db.changes())
 
-    conn.execute("""
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
@@ -198,22 +198,22 @@ def main():
                     WHERE t.nor = textes_versions.nor
                );
     """)
-    print('connected %i rows of textes_versions based on nor' % changes())
+    print('connected %i rows of textes_versions based on nor' % db.changes())
 
     factorize_by('titrefull_s')
     connect_by_cid_id()
     connect_by_titrefull_s()
 
-    conn.execute("""
+    db.run("""
         INSERT INTO textes (nature, titrefull_s)
             SELECT nature, titrefull_s
               FROM textes_versions
              WHERE texte_id IS NULL
           GROUP BY titrefull_s;
     """)
-    print('inserted %i rows in textes based on titrefull_s' % changes())
+    print('inserted %i rows in textes based on titrefull_s' % db.changes())
 
-    conn.execute("""
+    db.run("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
@@ -227,12 +227,12 @@ def main():
                     WHERE t.titrefull_s = textes_versions.titrefull_s
                );
     """)
-    print('connected %i rows of textes_versions based on titrefull_s' % changes())
+    print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
 
     factorize_by('cid||id')
 
     # Clean up factorized texts
-    sql("""
+    db.run("""
         DELETE FROM textes
          WHERE NOT EXISTS (
                    SELECT *
@@ -240,14 +240,14 @@ def main():
                     WHERE texte_id = textes.id
                )
     """)
-    print('deleted %i unused rows from textes' % changes())
+    print('deleted %i unused rows from textes' % db.changes())
 
-    left = one("SELECT count(*) FROM textes_versions WHERE texte_id IS NULL")
+    left = db.one("SELECT count(*) FROM textes_versions WHERE texte_id IS NULL")
     if left != 0:
         print("Fail: %i rows haven't been connected")
     else:
         # SQLite doesn't implement DROP COLUMN so we just nullify them instead
-        sql("UPDATE textes SET nor = NULL, titrefull_s = NULL, cid_id = NULL")
+        db.run("UPDATE textes SET nor = NULL, titrefull_s = NULL, cid_id = NULL")
         print("done")
 
 
@@ -256,21 +256,9 @@ if __name__ == '__main__':
     p.add_argument('db')
     args = p.parse_args()
 
-    conn = connect(args.db)
-
-    sql = conn.execute
-    insert = inserter(conn)
-
-    def one(*args):
-        r = conn.execute(*args).fetchone()
-        if len(r) == 1:
-            return r[0]
-        return r
-
-    changes = lambda: one("SELECT changes()")
-
+    db = connect_db(args.db)
     try:
-        with conn:
+        with db:
             main()
             save = input('Sauvegarder les modifications? (o/n) ')
             if save.lower() != 'o':

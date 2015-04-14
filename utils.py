@@ -3,11 +3,32 @@ from __future__ import division, print_function, unicode_literals
 
 from itertools import chain, repeat
 import re
-from sqlite3 import IntegrityError
+from sqlite3 import Connection, IntegrityError
 from unicodedata import combining, normalize
 
 
 input = __builtins__.get('raw_input', input)
+
+
+class DB(Connection): pass
+
+
+def connect_db(address):
+    db = DB(address)
+    db.all = lambda *a: iter_results(db.execute(*a))
+    db.insert = inserter(db)
+    db.run = db.execute
+
+    def one(*args):
+        r = db.execute(*args).fetchone()
+        if len(r) == 1:
+            return r[0]
+        return r
+
+    db.one = one
+    db.changes = lambda: one("SELECT changes()")
+
+    return db
 
 
 def inserter(conn):
