@@ -8,7 +8,7 @@ from utils import input, inserter, iter_results
 
 
 def connect_by_nature_num():
-    conn.executescript("""
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
@@ -27,7 +27,7 @@ def connect_by_nature_num():
     print('connected %i rows of textes_versions based on (nature, num)' % changes())
 
 def connect_by_nor():
-    conn.executescript("""
+    conn.execute("""
         CREATE TEMP TABLE texte_by_nor AS
             SELECT nor, min(texte_id)
               FROM textes_versions
@@ -37,8 +37,9 @@ def connect_by_nor():
             HAVING min(nature) = max(nature)
                AND min(num) = max(num)
                AND min(texte_id) = max(texte_id);
-        CREATE UNIQUE INDEX texte_by_nor_index ON texte_by_nor (nor);
-
+    """)
+    conn.execute("CREATE UNIQUE INDEX texte_by_nor_index ON texte_by_nor (nor)")
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -53,16 +54,17 @@ def connect_by_nor():
                );
     """)
     print('connected %i rows of textes_versions based on nor' % changes())
-    conn.executescript("DROP TABLE texte_by_nor")
+    conn.execute("DROP TABLE texte_by_nor")
 
 def connect_by_cid_id():
-    conn.executescript("""
+    conn.execute("""
         CREATE TEMP TABLE texte_by_cid_id AS
             SELECT DISTINCT cid, id, texte_id
               FROM textes_versions
              WHERE texte_id IS NOT NULL;
-        CREATE UNIQUE INDEX texte_by_cid_id_index ON texte_by_cid_id (cid, id);
-
+    """)
+    conn.execute("CREATE UNIQUE INDEX texte_by_cid_id_index ON texte_by_cid_id (cid, id)")
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -79,16 +81,17 @@ def connect_by_cid_id():
                );
     """)
     print('connected %i rows of textes_versions based on (cid, id)' % changes())
-    conn.executescript("DROP TABLE texte_by_cid_id")
+    conn.execute("DROP TABLE texte_by_cid_id")
 
 def connect_by_titrefull_s():
-    conn.executescript("""
+    conn.execute("""
         CREATE TEMP TABLE texte_by_titrefull_s AS
             SELECT DISTINCT titrefull_s, texte_id
               FROM textes_versions
              WHERE texte_id IS NOT NULL;
-        CREATE UNIQUE INDEX texte_by_titrefull_s_index ON texte_by_titrefull_s (titrefull_s);
-
+    """)
+    conn.execute("CREATE UNIQUE INDEX texte_by_titrefull_s_index ON texte_by_titrefull_s (titrefull_s)")
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT texte_id
@@ -103,7 +106,7 @@ def connect_by_titrefull_s():
                );
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % changes())
-    conn.executescript("DROP TABLE texte_by_titrefull_s")
+    conn.execute("DROP TABLE texte_by_titrefull_s")
 
 
 def factorize_by(key):
@@ -134,7 +137,7 @@ def factorize_by(key):
 
 
 def main():
-    conn.executescript("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS textes
         ( id integer primary key not null
         , nature text not null
@@ -146,16 +149,14 @@ def main():
         );
     """)
     try:
-        conn.executescript("""
-            ALTER TABLE textes_versions ADD COLUMN texte_id integer REFERENCES textes;
-            CREATE INDEX textes_versions_texte_id ON textes_versions (texte_id);
-        """)
+        conn.execute("ALTER TABLE textes_versions ADD COLUMN texte_id integer REFERENCES textes")
+        conn.execute("CREATE INDEX textes_versions_texte_id ON textes_versions (texte_id)")
     except OperationalError:
         pass
 
     connect_by_nature_num()
 
-    conn.executescript("""
+    conn.execute("""
         INSERT INTO textes (nature, num)
              SELECT nature, num
                FROM textes_versions
@@ -171,7 +172,7 @@ def main():
     connect_by_cid_id()
     connect_by_titrefull_s()
 
-    conn.executescript("""
+    conn.execute("""
         INSERT INTO textes (nature, nor)
             SELECT nature, nor
               FROM textes_versions
@@ -183,7 +184,7 @@ def main():
     """)
     print('inserted %i rows in textes based on nor' % changes())
 
-    conn.executescript("""
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
@@ -203,7 +204,7 @@ def main():
     connect_by_cid_id()
     connect_by_titrefull_s()
 
-    conn.executescript("""
+    conn.execute("""
         INSERT INTO textes (nature, titrefull_s)
             SELECT nature, titrefull_s
               FROM textes_versions
@@ -212,7 +213,7 @@ def main():
     """)
     print('inserted %i rows in textes based on titrefull_s' % changes())
 
-    conn.executescript("""
+    conn.execute("""
         UPDATE textes_versions
            SET texte_id = (
                    SELECT id
