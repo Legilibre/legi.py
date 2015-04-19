@@ -29,7 +29,8 @@ def make_schema(conn):
     conn.executescript("""
 
         CREATE TABLE textes_versions
-        ( nature text
+        ( id char(20) unique not null
+        , nature text
         , titre text
         , titrefull text
         , etat text
@@ -54,9 +55,7 @@ def make_schema(conn):
         , rect text
         , dossier text not null
         , cid char(20) not null
-        , id char(20) not null
         , mtime int not null
-        , UNIQUE (cid, id)
         );
 
         CREATE INDEX textes_versions_date_texte ON textes_versions (date_texte);
@@ -66,18 +65,18 @@ def make_schema(conn):
         CREATE INDEX textes_versions_titrefull ON textes_versions (titrefull);
 
         CREATE TABLE sections
-        ( titre_ta text
+        ( id char(20) unique not null
+        , titre_ta text
         , commentaire text
         , parent char(20) -- REFERENCES sections(id)
         , dossier text not null
-        , cid char(20) not null -- REFERENCES textes_versions(id)
-        , id char(20) not null
+        , cid char(20) not null
         , mtime int not null
-        , UNIQUE (cid, id)
         );
 
         CREATE TABLE articles
-        ( section char(20) -- REFERENCES sections(id)
+        ( id char(20) unique not null
+        , section char(20) -- REFERENCES sections(id)
         , num text
         , etat text
         , date_debut day
@@ -86,10 +85,8 @@ def make_schema(conn):
         , nota text
         , bloc_textuel text
         , dossier text not null
-        , cid char(20) not null -- REFERENCES textes_versions(id)
-        , id char(20) not null
+        , cid char(20) not null
         , mtime int not null
-        , UNIQUE (cid, id)
         );
 
         CREATE TABLE sections_articles
@@ -99,14 +96,12 @@ def make_schema(conn):
         , debut day
         , fin day
         , etat text
-        , cid char(20) not null -- REFERENCES textes_versions(id)
-        , UNIQUE (cid, section, id)
-        -- , UNIQUE (cid, section, num, debut)
+        , UNIQUE (section, id)
+        -- , UNIQUE (section, num, debut)
         );
 
         CREATE TABLE liens
-        ( src_cid char(20) not null
-        , src_id char(20) not null
+        ( src_id char(20) not null
         , dst_cid char(20)
         , dst_id char(20)
         , dst_titre text
@@ -115,7 +110,7 @@ def make_schema(conn):
         , CHECK (length(dst_cid) > 0 OR length(dst_id) > 0 OR length(dst_titre) > 0)
         );
 
-        CREATE INDEX liens_src_key ON liens (src_cid, src_id);
+        CREATE INDEX liens_src_id_idx ON liens (src_id);
 
     """)
 
@@ -194,9 +189,8 @@ def main(conn, archive_path):
             prev_mtime = conn.execute("""
                 SELECT mtime
                   FROM {0}
-                 WHERE cid = ?
-                   AND id = ?
-            """.format(table), (text_cid, text_id)).fetchone()
+                 WHERE id = ?
+            """.format(table), (text_id,)).fetchone()
             if prev_mtime and prev_mtime[0] >= mtime:
                 skipped += 1
                 continue
@@ -237,8 +231,8 @@ def main(conn, archive_path):
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
                 if prev_mtime:
-                    conn.execute("DELETE FROM sections_articles WHERE cid = ? AND section = ?",
-                                 (text_cid, text_id))
+                    conn.execute("DELETE FROM sections_articles WHERE section = ?",
+                                 (text_id,))
                 for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
                     insert('sections_articles', {
                         'section': text_id,
@@ -247,7 +241,6 @@ def main(conn, archive_path):
                         'debut': attr(lien_art, 'debut'),
                         'fin': attr(lien_art, 'fin'),
                         'etat': attr(lien_art, 'etat'),
-                        'cid': text_cid,
                     })
             elif tag == 'TEXTE_VERSION':
                 assert table == 'textes_versions'
@@ -264,14 +257,12 @@ def main(conn, archive_path):
 
             if tag in ('ARTICLE', 'TEXTE_VERSION'):
                 if prev_mtime:
-                    conn.execute("DELETE FROM liens WHERE src_cid = ? AND src_id = ?",
-                                 (text_cid, text_id))
+                    conn.execute("DELETE FROM liens WHERE src_id = ?", (text_id,))
                 e = root if tag == 'ARTICLE' else meta_version
                 liens = e.find('LIENS')
                 if liens is not None:
                     for lien in liens:
                         insert('liens', {
-                            'src_cid': text_cid,
                             'src_id': text_id,
                             'dst_cid': attr(lien, 'cidtexte'),
                             'dst_id': attr(lien, 'id'),
@@ -281,14 +272,14 @@ def main(conn, archive_path):
                         })
 
             attrs['dossier'] = dossier
+            attrs['cid'] = text_cid
             attrs['mtime'] = mtime
 
             if prev_mtime:
                 updated += 1
-                update(table, dict(cid=text_cid, id=text_id), attrs)
+                update(table, dict(id=text_id), attrs)
             else:
                 inserted += 1
-                attrs['cid'] = text_cid
                 attrs['id'] = text_id
                 insert(table, attrs)
 
