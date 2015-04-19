@@ -228,19 +228,6 @@ def main(conn, archive_path):
                 meta_article = meta.find('META_SPEC/META_ARTICLE')
                 scrape_tags(attrs, meta_article, META_ARTICLE_TAGS)
                 scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True)
-                if prev_mtime:
-                    conn.execute("DELETE FROM liens WHERE src_cid = ? AND src_id = ?",
-                                 (text_cid, text_id))
-                for lien in root.find('LIENS'):
-                    insert('liens', {
-                        'src_cid': text_cid,
-                        'src_id': text_id,
-                        'dst_cid': attr(lien, 'cidtexte'),
-                        'dst_id': attr(lien, 'id'),
-                        'dst_titre': lien.text,
-                        'typelien': attr(lien, 'typelien'),
-                        'sens': attr(lien, 'sens'),
-                    })
             elif tag == 'SECTION_TA':
                 assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
@@ -274,6 +261,24 @@ def main(conn, archive_path):
                 scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True)
             else:
                 raise Exception('unexpected tag: '+tag)
+
+            if tag in ('ARTICLE', 'TEXTE_VERSION'):
+                if prev_mtime:
+                    conn.execute("DELETE FROM liens WHERE src_cid = ? AND src_id = ?",
+                                 (text_cid, text_id))
+                e = root if tag == 'ARTICLE' else meta_version
+                liens = e.find('LIENS')
+                if liens is not None:
+                    for lien in liens:
+                        insert('liens', {
+                            'src_cid': text_cid,
+                            'src_id': text_id,
+                            'dst_cid': attr(lien, 'cidtexte'),
+                            'dst_id': attr(lien, 'id'),
+                            'dst_titre': lien.text,
+                            'typelien': attr(lien, 'typelien'),
+                            'sens': attr(lien, 'sens'),
+                        })
 
             attrs['dossier'] = dossier
             attrs['mtime'] = mtime
