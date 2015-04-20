@@ -97,7 +97,6 @@ def make_schema(conn):
         , fin day
         , etat text
         , UNIQUE (section, id)
-        -- , UNIQUE (section, num, debut)
         );
 
         CREATE TABLE liens
