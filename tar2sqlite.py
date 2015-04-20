@@ -58,12 +58,6 @@ def make_schema(conn):
         , mtime int not null
         );
 
-        CREATE INDEX textes_versions_date_texte ON textes_versions (date_texte);
-        CREATE INDEX textes_versions_nature_num ON textes_versions (nature, num);
-        CREATE INDEX textes_versions_nor ON textes_versions (nor);
-        CREATE INDEX textes_versions_titre ON textes_versions (titre);
-        CREATE INDEX textes_versions_titrefull ON textes_versions (titrefull);
-
         CREATE TABLE sections
         ( id char(20) unique not null
         , titre_ta text
