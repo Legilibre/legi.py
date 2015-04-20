@@ -99,11 +99,12 @@ def make_schema(conn):
         , dst_id char(20)
         , dst_titre text
         , typelien text
-        , sens text
+        , _reversed bool -- to support incremental updates
         , CHECK (length(dst_cid) > 0 OR length(dst_id) > 0 OR length(dst_titre) > 0)
         );
 
-        CREATE INDEX liens_src_id_idx ON liens (src_id);
+        CREATE INDEX liens_src_idx ON liens (src_id) WHERE NOT _reversed;
+        CREATE INDEX liens_dst_idx ON liens (dst_id) WHERE _reversed;
 
     """)
 
@@ -143,6 +144,20 @@ def main(conn, archive_path):
         'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
     )
     TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_versions'}
+    TYPELIEN_MAP = {
+        "ABROGATION": "ABROGE",
+        "ANNULATION": "ANNULE",
+        "CODIFICATION": "CODIFIE",
+        "CONCORDANCE": "CONCORDE",
+        "CREATION": "CREE",
+        "DEPLACE": "DEPLACEMENT",
+        "DISJOINT": "DISJONCTION",
+        "MODIFICATION": "MODIFIE",
+        "PEREMPTION": "PERIME",
+        "RATIFICATION": "RATIFIE",
+        "TRANSFERE": "TRANSFERT",
+    }
+    TYPELIEN_MAP.update([(v, k) for k, v in TYPELIEN_MAP.items()])
 
     # Create the DB schema if necessary
     try:
@@ -250,18 +265,34 @@ def main(conn, archive_path):
 
             if tag in ('ARTICLE', 'TEXTE_VERSION'):
                 if prev_mtime:
-                    conn.execute("DELETE FROM liens WHERE src_id = ?", (text_id,))
+                    conn.execute("""
+                        DELETE FROM liens
+                         WHERE src_id = ? AND NOT _reversed
+                            OR dst_id = ? AND _reversed
+                    """, (text_id, text_id))
                 e = root if tag == 'ARTICLE' else meta_version
                 liens = e.find('LIENS')
                 if liens is not None:
                     for lien in liens:
+                        typelien, sens = attr(lien, 'typelien'), attr(lien, 'sens')
+                        src_id, dst_id = text_id, attr(lien, 'id')
+                        if sens == 'cible':
+                            assert dst_id
+                            src_id, dst_id = dst_id, src_id
+                            dst_cid = dst_titre = ''
+                            typelien = TYPELIEN_MAP.get(typelien, typelien+'_R')
+                            _reversed = True
+                        else:
+                            dst_cid = attr(lien, 'cidtexte')
+                            dst_titre = lien.text
+                            _reversed = False
                         insert('liens', {
-                            'src_id': text_id,
-                            'dst_cid': attr(lien, 'cidtexte'),
-                            'dst_id': attr(lien, 'id'),
-                            'dst_titre': lien.text,
-                            'typelien': attr(lien, 'typelien'),
-                            'sens': attr(lien, 'sens'),
+                            'src_id': src_id,
+                            'dst_cid': dst_cid,
+                            'dst_id': dst_id,
+                            'dst_titre': dst_titre,
+                            'typelien': typelien,
+                            '_reversed': _reversed,
                         })
 
             attrs['dossier'] = dossier
