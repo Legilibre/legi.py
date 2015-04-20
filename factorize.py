@@ -56,33 +56,6 @@ def connect_by_nor():
     print('connected %i rows of textes_versions based on nor' % db.changes())
     db.run("DROP TABLE texte_by_nor")
 
-def connect_by_cid_id():
-    db.run("""
-        CREATE TEMP TABLE texte_by_cid_id AS
-            SELECT DISTINCT cid, id, texte_id
-              FROM textes_versions
-             WHERE texte_id IS NOT NULL;
-    """)
-    db.run("CREATE UNIQUE INDEX texte_by_cid_id_index ON texte_by_cid_id (cid, id)")
-    db.run("""
-        UPDATE textes_versions
-           SET texte_id = (
-                   SELECT texte_id
-                     FROM texte_by_cid_id t
-                    WHERE t.cid = textes_versions.cid
-                      AND t.id = textes_versions.id
-               )
-         WHERE texte_id IS NULL
-           AND EXISTS (
-                   SELECT texte_id
-                     FROM texte_by_cid_id t
-                    WHERE t.cid = textes_versions.cid
-                      AND t.id = textes_versions.id
-               );
-    """)
-    print('connected %i rows of textes_versions based on (cid, id)' % db.changes())
-    db.run("DROP TABLE texte_by_cid_id")
-
 def connect_by_titrefull_s():
     db.run("""
         CREATE TEMP TABLE texte_by_titrefull_s AS
@@ -110,7 +83,6 @@ def connect_by_titrefull_s():
 
 
 def factorize_by(key):
-    col = key.replace('||', '_')
     duplicates = db.all("""
         SELECT min(nature), {0}, group_concat(texte_id)
           FROM textes_versions
@@ -123,9 +95,9 @@ def factorize_by(key):
     factorized = 0
     for row in duplicates:
         ids = tuple(row[2].split(','))
-        db.run("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(col),
+        db.run("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(key),
                (row[0], row[1]))
-        uid = db.one("SELECT id FROM textes WHERE {0} = ?".format(col), (row[1],))
+        uid = db.one("SELECT id FROM textes WHERE {0} = ?".format(key), (row[1],))
         db.run("""
             UPDATE textes_versions
                SET texte_id = %s
@@ -144,7 +116,6 @@ def main():
         , num text
         , nor char(12) unique -- only used during factorization
         , titrefull_s text unique -- only used during factorization
-        , cid_id text unique -- only used during factorization
         , UNIQUE (nature, num)
         );
     """)
@@ -169,7 +140,6 @@ def main():
 
     connect_by_nature_num()
     connect_by_nor()
-    connect_by_cid_id()
     connect_by_titrefull_s()
 
     db.run("""
@@ -201,7 +171,6 @@ def main():
     print('connected %i rows of textes_versions based on nor' % db.changes())
 
     factorize_by('titrefull_s')
-    connect_by_cid_id()
     connect_by_titrefull_s()
 
     db.run("""
@@ -229,8 +198,6 @@ def main():
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
 
-    factorize_by('cid||id')
-
     # Clean up factorized texts
     db.run("""
         DELETE FROM textes
@@ -247,7 +214,7 @@ def main():
         print("Fail: %i rows haven't been connected")
     else:
         # SQLite doesn't implement DROP COLUMN so we just nullify them instead
-        db.run("UPDATE textes SET nor = NULL, titrefull_s = NULL, cid_id = NULL")
+        db.run("UPDATE textes SET nor = NULL, titrefull_s = NULL")
         print("done")
 
 
