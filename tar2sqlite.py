@@ -5,12 +5,12 @@ Extracts a LEGI tar archive into an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-from sqlite3 import connect, OperationalError
+from sqlite3 import OperationalError
 
 import libarchive
 from lxml import etree
 
-from utils import inserter, updater
+from utils import connect_db
 
 
 def innerHTML(e):
@@ -25,8 +25,8 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
     )
 
 
-def make_schema(conn):
-    conn.executescript("""
+def make_schema(db):
+    db.executescript("""
 
         CREATE TABLE textes_versions
         ( id char(20) unique not null
@@ -109,7 +109,7 @@ def make_schema(conn):
     """)
 
 
-def suppress(TABLES_MAP, conn, liste_suppression):
+def suppress(TABLES_MAP, db, liste_suppression):
     deleted = 0
     for path in liste_suppression:
         parts = path.split('/')
@@ -119,17 +119,17 @@ def suppress(TABLES_MAP, conn, liste_suppression):
         text_id = parts[-1]
         assert len(text_id) == 20
         table = TABLES_MAP[text_id[4:8]]
-        conn.execute("""
+        db.run("""
             DELETE FROM {0}
              WHERE dossier = ?
                AND cid = ?
                AND id = ?
         """.format(table), (parts[3], parts[11], text_id))
-        deleted += conn.execute("SELECT changes()").fetchone()[0]
+        deleted += db.changes()
     print('deleted', deleted, 'rows')
 
 
-def main(conn, archive_path):
+def main(db, archive_path):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -161,14 +161,14 @@ def main(conn, archive_path):
 
     # Create the DB schema if necessary
     try:
-        conn.execute("SELECT 1 FROM textes_versions LIMIT 1")
+        db.run("SELECT 1 FROM textes_versions LIMIT 1")
     except OperationalError:
-        make_schema(conn)
+        make_schema(db)
 
     # Define some shortcuts
     attr = etree._Element.get
-    insert = inserter(conn)
-    update = updater(conn)
+    insert = db.insert
+    update = db.update
 
     skipped = 0
     inserted = 0
@@ -194,12 +194,12 @@ def main(conn, archive_path):
             mtime = entry.mtime
 
             table = TABLES_MAP[text_id[4:8]]
-            prev_mtime = conn.execute("""
+            prev_mtime = db.one("""
                 SELECT mtime
                   FROM {0}
                  WHERE id = ?
-            """.format(table), (text_id,)).fetchone()
-            if prev_mtime and prev_mtime[0] >= mtime:
+            """.format(table), (text_id,)) or 0
+            if prev_mtime >= mtime:
                 skipped += 1
                 continue
 
@@ -239,8 +239,8 @@ def main(conn, archive_path):
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
                 if prev_mtime:
-                    conn.execute("DELETE FROM sections_articles WHERE section = ?",
-                                 (text_id,))
+                    db.run("DELETE FROM sections_articles WHERE section = ?",
+                           (text_id,))
                 for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
                     insert('sections_articles', {
                         'section': text_id,
@@ -265,7 +265,7 @@ def main(conn, archive_path):
 
             if tag in ('ARTICLE', 'TEXTE_VERSION'):
                 if prev_mtime:
-                    conn.execute("""
+                    db.run("""
                         DELETE FROM liens
                          WHERE src_id = ? AND NOT _reversed
                             OR dst_id = ? AND _reversed
@@ -312,7 +312,7 @@ def main(conn, archive_path):
     print('updated', updated, 'rows')
 
     if liste_suppression:
-        suppress(TABLES_MAP, conn, liste_suppression)
+        suppress(TABLES_MAP, db, liste_suppression)
 
 
 if __name__ == '__main__':
@@ -321,9 +321,9 @@ if __name__ == '__main__':
     p.add_argument('db')
     args = p.parse_args()
 
-    conn = connect(args.db)
+    db = connect_db(args.db)
     try:
-        with conn:
-            main(conn, args.archive)
+        with db:
+            main(db, args.archive)
     except KeyboardInterrupt:
         pass

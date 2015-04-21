@@ -17,11 +17,12 @@ def connect_db(address):
     db = DB(address)
     db.all = lambda *a: iter_results(db.execute(*a))
     db.insert = inserter(db)
+    db.update = updater(db)
     db.run = db.execute
 
     def one(*args):
         r = db.execute(*args).fetchone()
-        if len(r) == 1:
+        if r and len(r) == 1:
             return r[0]
         return r
 
