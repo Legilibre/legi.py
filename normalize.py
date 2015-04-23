@@ -171,9 +171,10 @@ def main(db):
         if titrefull.startswith('COUR DES COMPTESET DE FINANCEMENTS POLITIQUES '):
             titrefull = titrefull[46:]
         len_titre = len(titre)
-        if titrefull[len_titre:][:1] != ' ' and titrefull[:len_titre] == titre:
-            # Add missing space
-            titrefull = titre + ' ' + titrefull[len_titre:]
+        if len(titrefull) > len_titre:
+            if titrefull[len_titre:][:1] != ' ' and titrefull[:len_titre] == titre:
+                # Add missing space
+                titrefull = titre + ' ' + titrefull[len_titre:]
         titre, titrefull = normalize_title(titre), normalize_title(titrefull)
         if titre.endswith(' du'):
             titre = titre[:-3]
