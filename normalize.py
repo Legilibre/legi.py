@@ -41,14 +41,14 @@ premier_du_mois = re.compile(r'\b1 %(mois_p)s %(annee_p)s' % globals())
 spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)
 
-adjectif_p = r'(quinquennale?)'
+ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi)'
 date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?' % globals()
 nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(adjectif_p)s| n° de)' % globals(), re.U | re.I)
+titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
