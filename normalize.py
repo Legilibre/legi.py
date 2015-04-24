@@ -15,7 +15,7 @@ from fr_calendar import (
     MOIS_REPU, MOIS_REPU_MAP, gregorian_to_republican, republican_to_gregorian
 )
 from roman import decimal_to_roman
-from utils import filter_nonalnum, input, iter_results, strip_down
+from utils import filter_nonalnum, input, iter_results, strip_down, strip_prefix
 
 
 MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
@@ -251,6 +251,7 @@ def main(db):
                     jour = int(jour.lower().replace('1er', '1'))
                     if mois in MOIS_REPU_MAP:
                         calendar = 'republican'
+                        annee = strip_prefix(annee, 'an ')
                         d = republican_to_gregorian(annee, mois, jour)
                     else:
                         mois = MOIS_GREG_MAP[strip_down(mois)]

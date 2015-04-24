@@ -29,4 +29,6 @@ def roman_to_decimal(s):
         while s[i:i+l] == numeral:
             r += value
             i += l
+    if i != len(s):
+        raise ValueError('"%s" is not a valid roman number' % s)
     return r

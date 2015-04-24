@@ -91,3 +91,10 @@ strip_down = lambda s: strip_accents(s).lower()
 
 
 filter_nonalnum = lambda s: nonalphanum_re.sub('', strip_down(s))
+
+
+def strip_prefix(s, prefix):
+    i = len(prefix)
+    if s[:i] == prefix:
+        return s[i:]
+    return s
