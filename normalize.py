@@ -241,9 +241,10 @@ def main(db):
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
                         if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
-                            num = num_d
-                            sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
-                                (num, rowid))
+                            if '-' in num_d:
+                                num = num_d
+                                sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
+                                    (num, rowid))
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                 calendar = 'gregorian'
