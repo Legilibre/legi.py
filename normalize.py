@@ -9,13 +9,13 @@ from __future__ import division, print_function, unicode_literals
 from argparse import ArgumentParser
 from datetime import date
 import re
-from sqlite3 import connect, OperationalError
+from sqlite3 import OperationalError
 
 from fr_calendar import (
     MOIS_REPU, MOIS_REPU_MAP, gregorian_to_republican, republican_to_gregorian
 )
 from roman import decimal_to_roman
-from utils import filter_nonalnum, input, iter_results, strip_down, strip_prefix
+from utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
 
 
 MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
@@ -161,11 +161,11 @@ def main(db):
 
     sql = db.execute
 
-    q = sql("""
+    q = db.all("""
         SELECT rowid, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
           FROM textes_versions
     """)
-    for row in iter_results(q):
+    for row in q:
         rowid, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
         titre, titrefull, nature = titre_o, titrefull_o, nature_o
         if titrefull.startswith('COUR DES COMPTESET DE FINANCEMENTS POLITIQUES '):
@@ -302,10 +302,10 @@ if __name__ == '__main__':
     p.add_argument('db')
     args = p.parse_args()
 
-    conn = connect(args.db)
+    db = connect_db(args.db)
     try:
-        with conn:
-            main(conn)
+        with db:
+            main(db)
             save = input('Sauvegarder les modifications? (o/n) ')
             if save.lower() != 'o':
                 raise KeyboardInterrupt
