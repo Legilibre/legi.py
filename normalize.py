@@ -44,7 +44,7 @@ word_re = re.compile(r'\w{2,}', re.U)
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi)'
-date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?' % globals()
+date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
