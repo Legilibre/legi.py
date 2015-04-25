@@ -18,6 +18,10 @@ from roman import decimal_to_roman
 from utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
 
 
+AUTORITE_MAP = {
+    "CONSEIL D'ETAT": "du Conseil d'État",
+    "ROI": "du Roi",
+}
 MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
 MOIS_GREG_MAP = {strip_down(m): i for i, m in enumerate(MOIS_GREG, 1)}
 NATURE_MAP = {
@@ -43,7 +47,7 @@ word_re = re.compile(r'\w{2,}', re.U)
 
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
-autorite_p = r'(?P<autorite>ministériel(le)?|du Roi)'
+autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
@@ -60,8 +64,7 @@ def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
     else:
         titre = NATURE_MAP.get(nature, nature.title())
     if autorite:
-        assert autorite == 'ROI'
-        titre += ' du Roi'
+        titre += ' ' + AUTORITE_MAP[autorite]
     if num:
         titre += ' n° '+num
     if date_texte and date_texte != '2999-01-01':
@@ -264,17 +267,16 @@ def main(db):
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
                 autorite_d = get_key('autorite', ignore_not_found=True)
-                if autorite_d and strip_down(autorite_d).startswith('ministeriel'):
-                    autorite_d = None
-                elif autorite_d:
-                    if autorite_d.lower() == 'du roi':
-                        autorite_d = 'ROI'
-                    if not autorite:
-                        autorite = autorite_d
-                        sql("UPDATE textes_versions SET autorite = ? WHERE rowid = ?",
-                            (autorite, rowid))
-                    elif autorite != autorite_d:
-                        print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
+                if autorite_d:
+                    autorite_d = strip_down(autorite_d)
+                    if not autorite_d.startswith('ministeriel'):
+                        autorite_d = strip_prefix(autorite_d, 'du ').upper()
+                        if not autorite:
+                            autorite = autorite_d
+                            sql("UPDATE textes_versions SET autorite = ? WHERE rowid = ?",
+                                (autorite, rowid))
+                        elif autorite != autorite_d:
+                            print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
                 titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                 len_titre = len(titre)
                 titrefull = titre + titrefull[endpos2:]
