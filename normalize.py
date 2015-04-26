@@ -97,8 +97,6 @@ def normalize_title(title):
         if first_word.isupper():
             first_word = first_word.title()
             title = first_word + title[first_space:]
-        if first_word[-1] == 's':
-            title = first_word[:-1] + title[first_space:]
     title = title.replace('constitutionel', 'constitutionnel')
     return title
 
