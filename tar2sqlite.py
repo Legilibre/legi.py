@@ -10,7 +10,7 @@ from sqlite3 import OperationalError
 import libarchive
 from lxml import etree
 
-from utils import connect_db
+from utils import connect_db, reconstruct_path
 
 
 def innerHTML(e):
@@ -126,10 +126,10 @@ def suppress(TABLES_MAP, db, liste_suppression):
                AND id = ?
         """.format(table), (parts[3], parts[11], text_id))
         deleted += db.changes()
-    print('deleted', deleted, 'rows')
+    print('deleted', deleted, 'rows based on liste_suppression_legi.dat')
 
 
-def main(db, archive_path):
+def main(db, archive_path, old_files_log):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -143,6 +143,11 @@ def main(db, archive_path):
     META_VERSION_TAGS = set(
         'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
     )
+    SOUS_DOSSIER_MAP = {
+        'articles': 'article',
+        'sections': 'section_ta',
+        'textes_versions': 'texte/version',
+    }
     TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_versions'}
     TYPELIEN_MAP = {
         "ABROGATION": "ABROGE",
@@ -170,9 +175,7 @@ def main(db, archive_path):
     insert = db.insert
     update = db.update
 
-    skipped = 0
-    inserted = 0
-    updated = 0
+    old_files_count = 0
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
@@ -185,6 +188,7 @@ def main(db, archive_path):
                 liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
                 continue
             if parts[1] == 'legi':
+                path = path[len(parts[0])+1:]
                 parts = parts[1:]
             if parts[13] == 'struct':
                 continue
@@ -194,14 +198,27 @@ def main(db, archive_path):
             mtime = entry.mtime
 
             table = TABLES_MAP[text_id[4:8]]
-            prev_mtime = db.one("""
-                SELECT mtime
+            prev_row = db.one("""
+                SELECT mtime, dossier, cid
                   FROM {0}
                  WHERE id = ?
-            """.format(table), (text_id,)) or 0
-            if prev_mtime >= mtime:
-                skipped += 1
-                continue
+            """.format(table), (text_id,))
+            if prev_row:
+                prev_mtime, prev_dossier, prev_cid = prev_row
+                if prev_mtime == mtime:
+                    continue
+                old_files_count += 1
+                if prev_mtime > mtime:
+                    print(path, file=old_files_log)
+                    continue
+                else:
+                    prev_path = reconstruct_path(
+                        prev_dossier,
+                        prev_cid,
+                        SOUS_DOSSIER_MAP[table],
+                        text_id,
+                    )
+                    print(prev_path, file=old_files_log)
 
             for block in entry.get_blocks():
                 xml.feed(block)
@@ -238,7 +255,7 @@ def main(db, archive_path):
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
-                if prev_mtime:
+                if prev_row:
                     db.run("DELETE FROM sections_articles WHERE section = ?",
                            (text_id,))
                 for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
@@ -264,7 +281,7 @@ def main(db, archive_path):
                 raise Exception('unexpected tag: '+tag)
 
             if tag in ('ARTICLE', 'TEXTE_VERSION'):
-                if prev_mtime:
+                if prev_row:
                     db.run("""
                         DELETE FROM liens
                          WHERE src_id = ? AND NOT _reversed
@@ -299,17 +316,13 @@ def main(db, archive_path):
             attrs['cid'] = text_cid
             attrs['mtime'] = mtime
 
-            if prev_mtime:
-                updated += 1
+            if prev_row:
                 update(table, dict(id=text_id), attrs)
             else:
-                inserted += 1
                 attrs['id'] = text_id
                 insert(table, attrs)
 
-    print('skipped', skipped, 'old files')
-    print('inserted', inserted, 'rows')
-    print('updated', updated, 'rows')
+    print('detected', old_files_count, 'old files, logged into', old_files_log.name)
 
     if liste_suppression:
         suppress(TABLES_MAP, db, liste_suppression)
@@ -321,9 +334,10 @@ if __name__ == '__main__':
     p.add_argument('db')
     args = p.parse_args()
 
+    old_files_log = open(args.db+'.old_files.dat', 'a')
     db = connect_db(args.db)
     try:
         with db:
-            main(db, args.archive)
+            main(db, args.archive, old_files_log)
     except KeyboardInterrupt:
         pass

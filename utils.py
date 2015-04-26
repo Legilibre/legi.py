@@ -98,3 +98,15 @@ def strip_prefix(s, prefix):
     if s[:i] == prefix:
         return s[i:]
     return s
+
+
+def id_to_path(i):
+    return '/'.join((i[0:4], i[4:8], i[8:10], i[10:12], i[12:14], i[14:16], i[16:18], i))
+
+
+def reconstruct_path(dossier, cid, sous_dossier, id):
+    x = 'en' if dossier.endswith('_en_vigueur') else 'non'
+    prefix = 'legi/global/code_et_TNC_%s_vigueur' % x
+    if id[4:8] != 'TEXT':
+        id = id_to_path(id)
+    return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
