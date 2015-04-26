@@ -103,7 +103,7 @@ def normalize_title(title):
     return title
 
 
-def parse_titre(titre):
+def parse_titre(anomaly, titre):
     m = titre1_re.match(titre)
     if not m:
         return {}, 0
@@ -134,6 +134,7 @@ def parse_titre(titre):
                     continue
             print('Incohérence: ', k, ': "', d[k], '" ≠ "', v, '"\n'
                   '       dans: "', titre, '"', sep='')
+            anomaly[0] = True
             duplicates.add(k)
             d.pop(k)
 
@@ -206,10 +207,11 @@ def main(db):
         if upper_words_percentage(titre) > 0.2:
             print('Échec: titre "', titre, '" contient beaucoup de mots en majuscule', sep='')
         if nature != 'CODE':
-            d1, endpos1 = parse_titre(titre)
+            anomaly = [False]
+            d1, endpos1 = parse_titre(anomaly, titre)
             if not d1 and titre != 'Annexe' or d1 and endpos1 < len_titre:
                 print('Fail: regex did not fully match titre "', titre, '"', sep='')
-            d2, endpos2 = parse_titre(titrefull)
+            d2, endpos2 = parse_titre(anomaly, titrefull)
             if not d2:
                 print('Fail: regex did not match titrefull "', titrefull, '"', sep='')
             if d1 or d2:
@@ -217,6 +219,7 @@ def main(db):
                     g1, g2 = d1.get(key), d2.get(key)
                     if not (g1 or g2) and not ignore_not_found:
                         print('Échec: ', key, ' trouvé ni dans "', titre, '" (titre) ni dans "', titrefull, '" (titrefull)', sep='')
+                        anomaly[0] = True
                         return
                     if g1 is None or g2 is None:
                         return g1 if g2 is None else g2
@@ -228,15 +231,19 @@ def main(db):
                           '      titre: "', titre, '"\n',
                           '  titrefull: "', titrefull, '"',
                           sep='')
+                    anomaly[0] = True
                 annexe = get_key('annexe', ignore_not_found=True)
-                nature = get_key('nature').upper()
-                nature = NATURE_MAP_R.get(nature, nature)
-                if nature_o and nature != nature_o:
-                    if nature.split('_')[0] == nature_o.split('_')[0]:
-                        if len(nature_o) > len(nature):
-                            nature = nature_o
+                nature_d = get_key('nature').upper()
+                nature_d = NATURE_MAP_R.get(nature_d, nature_d)
+                if nature_d and nature_d != nature:
+                    if not nature:
+                        nature = nature_d
+                    elif nature_d.split('_')[0] == nature.split('_')[0]:
+                        if len(nature_d) > len(nature):
+                            nature = nature_d
                     else:
-                        print('Incohérence: nature: "', nature, '" (detectée) ≠ "', nature_o, '" (donnée)', sep='')
+                        print('Incohérence: nature: "', nature_d, '" (detectée) ≠ "', nature, '" (donnée)', sep='')
+                        anomaly[0] = True
                 num_d = get_key('numero', ignore_not_found=True)
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
@@ -247,6 +254,7 @@ def main(db):
                                     (num, rowid))
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
+                        anomaly[0] = True
                 calendar = 'gregorian'
                 jour = get_key('jour')
                 mois = get_key('mois')
@@ -267,6 +275,7 @@ def main(db):
                             (date_texte, rowid))
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
+                        anomaly[0] = True
                 autorite_d = get_key('autorite', ignore_not_found=True)
                 if autorite_d:
                     autorite_d = strip_down(autorite_d)
@@ -278,11 +287,11 @@ def main(db):
                                 (autorite, rowid))
                         elif autorite != autorite_d:
                             print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
-                titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
-                len_titre = len(titre)
-                titrefull = titre + titrefull[endpos2:]
-        if titrefull[:len_titre] != titre:
-            print('Incohérence: titre "', titre, '" n\'est pas un préfixe de titrefull "', titrefull[:len_titre], '..."', sep='')
+                            anomaly[0] = True
+                if not anomaly[0]:
+                    titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
+                    len_titre = len(titre)
+                    titrefull = titre + titrefull[endpos2:]
         if titre != titre_o or titrefull != titrefull_o or nature != nature_o:
             sql("""
                 UPDATE textes_versions
