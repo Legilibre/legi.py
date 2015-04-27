@@ -19,9 +19,11 @@ puis les autres petites archives, s'il y en a:
     for f in legi_*.tar.gz; do python tar2sqlite.py $f legi.sqlite; done
 
 Maintenant que vous avez les données dans une base SQLite vous pouvez exécuter
-d'autres scripts mais pour le moment le seul qui soit réellement utile est
-`anomalies.py` qui est conçu pour détecter les incohérences dans les données
-afin de les signaler à la DILA.
+d'autres scripts, mais pour le moment le seul qui soit réellement utile est
+`anomalies.py`. Il est conçu pour détecter les incohérences dans les données
+afin de les signaler à la DILA. Il s'utilise comme ça:
+
+    python anomalies.py legi.sqlite
 
 ## Licence
 
