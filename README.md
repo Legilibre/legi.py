@@ -22,6 +22,10 @@ d'autres scripts mais pour le moment le seul qui soit réellement utile est
 `anomalies.py` qui est conçu pour détecter les incohérences dans les données
 afin de les signaler à la DILA.
 
+## Licence
+
+GPLv3 (or any later version)
+
 ## Historique du projet
 
 Fin juin 2014 la [base de données LEGI][legi] contenant toutes les lois
