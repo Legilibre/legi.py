@@ -6,7 +6,8 @@ sont tous compatibles avec python 2 et 3.
 
 ## Utilisation
 
-La première étape est de [télécharger les archives LEGI][legi-ftp].
+La première étape est de télécharger les archives LEGI depuis
+`ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/`.
 
 La deuxième étape est la conversion des archives en base SQLite avec le script
 `tar2sqlite.py`. D'abord la première grosse archive:
@@ -44,7 +45,6 @@ ce qui m'a poussé à réouvrir, nettoyer et publier mon code.
 
 
 [libarchive]: http://libarchive.org/
-[legi-ftp]: ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/
 [legi]: https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/
 [tweet]: https://twitter.com/Changaco/statuses/484674913954172929
 [korben]: http://korben.info/10-etapes-pour-pirater-la-france.html
