@@ -32,6 +32,15 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
 def make_schema(db):
     db.executescript("""
 
+        CREATE TABLE textes_structs
+        ( id char(20) unique not null
+        , versions text
+        , struct text
+        , dossier text not null
+        , cid char(20) not null
+        , mtime int not null
+        );
+
         CREATE TABLE textes_versions
         ( id char(20) unique not null
         , nature text
@@ -113,16 +122,14 @@ def make_schema(db):
     """)
 
 
-def suppress(TABLES_MAP, db, liste_suppression):
+def suppress(get_table, db, liste_suppression):
     deleted = 0
     for path in liste_suppression:
         parts = path.split('/')
         assert parts[0] == 'legi'
-        if parts[13] == 'struct':
-            continue
         text_id = parts[-1]
         assert len(text_id) == 20
-        table = TABLES_MAP[text_id[4:8]]
+        table = get_table(parts)
         db.run("""
             DELETE FROM {0}
              WHERE dossier = ?
@@ -138,6 +145,7 @@ def main(db, archive_path, old_files_log):
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
     SECTION_TA_TAGS = set('TITRE_TA COMMENTAIRE'.split())
+    TEXTELR_TAGS = set('VERSIONS STRUCT'.split())
     TEXTE_VERSION_TAGS = set('VISAS SIGNATAIRES TP NOTA ABRO RECT'.split())
     META_ARTICLE_TAGS = set('NUM ETAT DATE_DEBUT DATE_FIN TYPE'.split())
     META_CHRONICLE_TAGS = set("""
@@ -150,9 +158,10 @@ def main(db, archive_path, old_files_log):
     SOUS_DOSSIER_MAP = {
         'articles': 'article',
         'sections': 'section_ta',
+        'textes_structs': 'texte/struct',
         'textes_versions': 'texte/version',
     }
-    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_versions'}
+    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_'}
     TYPELIEN_MAP = {
         "ABROGATION": "ABROGE",
         "ANNULATION": "ANNULE",
@@ -179,6 +188,12 @@ def main(db, archive_path, old_files_log):
     insert = db.insert
     update = db.update
 
+    def get_table(parts):
+        table = TABLES_MAP[parts[-1][4:8]]
+        if table == 'textes_':
+            table += parts[13] + 's'
+        return table
+
     old_files_count = 0
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
@@ -194,14 +209,12 @@ def main(db, archive_path, old_files_log):
             if parts[1] == 'legi':
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
-            if parts[13] == 'struct':
-                continue
             dossier = parts[3]
             text_cid = parts[11]
             text_id = parts[-1][:-4]
             mtime = entry.mtime
 
-            table = TABLES_MAP[text_id[4:8]]
+            table = get_table(parts)
             prev_row = db.one("""
                 SELECT mtime, dossier, cid
                   FROM {0}
@@ -272,6 +285,9 @@ def main(db, archive_path, old_files_log):
                         'fin': attr(lien_art, 'fin'),
                         'etat': attr(lien_art, 'etat'),
                     })
+            elif tag == 'TEXTELR':
+                assert table == 'textes_structs'
+                scrape_tags(attrs, root, TEXTELR_TAGS)
             elif tag == 'TEXTE_VERSION':
                 assert table == 'textes_versions'
                 attrs['nature'] = nature
@@ -330,7 +346,7 @@ def main(db, archive_path, old_files_log):
     print('detected', old_files_count, 'old files, logged into', old_files_log.name)
 
     if liste_suppression:
-        suppress(TABLES_MAP, db, liste_suppression)
+        suppress(get_table, db, liste_suppression)
 
 
 if __name__ == '__main__':
