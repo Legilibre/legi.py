@@ -211,18 +211,19 @@ def main(db, archive_path, old_files_log):
                 prev_mtime, prev_dossier, prev_cid = prev_row
                 if prev_mtime == mtime:
                     continue
-                old_files_count += 1
-                if prev_mtime > mtime:
-                    print(path, file=old_files_log)
-                    continue
-                else:
-                    prev_path = reconstruct_path(
-                        prev_dossier,
-                        prev_cid,
-                        SOUS_DOSSIER_MAP[table],
-                        text_id,
-                    )
-                    print(prev_path, file=old_files_log)
+                if prev_dossier != dossier or prev_cid != text_cid:
+                    old_files_count += 1
+                    if prev_mtime > mtime:
+                        print(path, file=old_files_log)
+                        continue
+                    else:
+                        prev_path = reconstruct_path(
+                            prev_dossier,
+                            prev_cid,
+                            SOUS_DOSSIER_MAP[table],
+                            text_id,
+                        )
+                        print(prev_path, file=old_files_log)
 
             for block in entry.get_blocks():
                 xml.feed(block)
