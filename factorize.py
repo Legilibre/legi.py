@@ -10,6 +10,8 @@ from __future__ import print_function, unicode_literals
 from argparse import ArgumentParser
 from sqlite3 import OperationalError
 
+from lxml import etree
+
 from utils import connect_db, input
 
 
@@ -203,6 +205,23 @@ def main():
                );
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
+
+    xml = etree.XMLParser(remove_blank_text=True)
+    q = db.all("""
+        SELECT s.id, s.versions, v.texte_id
+          FROM textes_structs s
+          JOIN textes_versions v ON v.id = s.id
+    """)
+    for version_id, versions, texte_id in q:
+        xml.feed('<VERSIONS>')
+        xml.feed(versions)
+        xml.feed('</VERSIONS>')
+        root = xml.close()
+        for lien in root.findall('LIEN_TXT'):
+            dup_texte_id = db.one("""
+                SELECT texte_id FROM textes_versions WHERE id = ? AND texte_id <> ?
+            """, (lien.get('id'), texte_id))
+            assert not dup_texte_id
 
     # Clean up factorized texts
     db.run("""
