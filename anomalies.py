@@ -139,16 +139,17 @@ def anomalies_sections(db):
             '" et l\'état "', etat, '"')
 
     q = db.all("""
-        SELECT DISTINCT s.dossier, s.cid, s.id, a.id, sa.etat, a.etat
+        SELECT DISTINCT s.dossier, s.cid, s.id, a.dossier, a.cid, a.id, sa.etat, a.etat
           FROM sections_articles sa
           JOIN articles a ON a.id = sa.id AND a.etat <> sa.etat
           JOIN sections s ON s.id = sa.section
     """.format(date.today().isoformat()))
     for row in q:
-        dossier, cid, id, a_id, sa_etat, a_etat = row
+        dossier, cid, id, a_dossier, a_cid, a_id, sa_etat, a_etat = row
         path = reconstruct_path(dossier, cid, 'section_ta', id)
+        a_path = reconstruct_path(a_dossier, a_cid, 'article', a_id)
         err(path, 'l\'état "', sa_etat, '" ne correspond pas à l\'état "', a_etat,
-            '" dans le fichier de l\'article "', a_id, '"')
+            '" dans le fichier ', a_path)
 
 
 def anomalies_textes_versions(db):
