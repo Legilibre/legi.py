@@ -136,7 +136,20 @@ def suppress(get_table, db, liste_suppression):
                AND cid = ?
                AND id = ?
         """.format(table), (parts[3], parts[11], text_id))
-        deleted += db.changes()
+        changes = db.changes()
+        if changes:
+            deleted += changes
+            if table in ('articles', 'textes_versions'):
+                db.run("""
+                    DELETE FROM liens
+                     WHERE src_id = ? AND NOT _reversed
+                        OR dst_id = ? AND _reversed
+                """, (text_id, text_id))
+                deleted += db.changes()
+            elif table == 'sections':
+                db.run("DELETE FROM sections_articles WHERE section = ?",
+                       (text_id,))
+                deleted += db.changes()
     print('deleted', deleted, 'rows based on liste_suppression_legi.dat')
 
 
