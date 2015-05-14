@@ -4,6 +4,11 @@ Les scripts ici présents nécessitent [`libarchive`][libarchive] ainsi que les
 modules python listés dans `requirements.txt`. Les scripts et leurs dépendances
 sont tous compatibles avec python 2 et 3.
 
+### Ubuntu
+
+    sudo apt-get install libarchive13 python-lxml python-pip
+    sudo pip install -r requirements.txt
+
 ## Utilisation
 
 La première étape est de télécharger les archives LEGI depuis
