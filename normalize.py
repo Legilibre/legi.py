@@ -1,9 +1,5 @@
 # encoding: utf8
 
-# This file is part of a program licensed under the terms of the GNU
-# General Public License version 3 (or at your option any later version)
-# as published by the Free Software Foundation: http://www.gnu.org/licenses/
-
 """
 Normalizes LEGI data stored in an SQLite DB
 """

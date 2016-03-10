@@ -32,7 +32,7 @@ afin de les signaler à la DILA. Il s'utilise comme ça:
 
 ## Licence
 
-GPLv3 (or any later version)
+[CC0 Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/)
 
 ## Historique du projet
 
