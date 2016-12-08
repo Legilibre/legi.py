@@ -2,14 +2,18 @@
 
 from __future__ import division, print_function, unicode_literals
 
-import __builtin__
+try:
+    import builtins
+except ImportError:
+    import __builtin__ as builtins
+
 from itertools import chain, repeat
 import re
 from sqlite3 import Connection, IntegrityError
 from unicodedata import combining, normalize
 
 
-input = getattr(__builtin__, 'raw_input', input)
+input = getattr(builtins, 'raw_input', input)
 
 
 class DB(Connection): pass
