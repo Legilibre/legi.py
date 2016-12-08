@@ -12,7 +12,10 @@ sont tous compatibles avec python 2 et 3.
 ## Utilisation
 
 La première étape est de télécharger les archives LEGI depuis
-`ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/`.
+`ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/`:
+
+    wget 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/Freemium_legi_global_*.tar.gz'
+    wget 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/legi_*.tar.gz'
 
 La deuxième étape est la conversion des archives en base SQLite avec le script
 `tar2sqlite.py`. D'abord la première grosse archive:
