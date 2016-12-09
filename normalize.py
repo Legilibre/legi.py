@@ -49,8 +49,8 @@ autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
-titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
+titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
+titre2_re = re.compile(r' ?(%(autorite_p)s|\(?%(date_p)s\)?|%(numero_p)s|%(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
