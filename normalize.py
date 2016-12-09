@@ -33,7 +33,7 @@ NATURE_MAP = {
     "LOI_CONSTIT": "Loi constitutionnelle",
     "LOI_ORGANIQUE": "Loi organique",
 }
-NATURE_MAP_R = {v.upper(): k for k, v in NATURE_MAP.items()}
+NATURE_MAP_R = {strip_down(v): k for k, v in NATURE_MAP.items()}
 
 
 jour_p = r'(?P<jour>1er|[0-9]{1,2})'
@@ -49,7 +49,7 @@ ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?( (?P=annee))?' % globals()
-nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
+nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
 titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
@@ -231,8 +231,8 @@ def main(db):
                           sep='')
                     anomaly[0] = True
                 annexe = get_key('annexe', ignore_not_found=True)
-                nature_d = get_key('nature').upper()
-                nature_d = NATURE_MAP_R.get(nature_d, nature_d)
+                nature_d = strip_down(get_key('nature'))
+                nature_d = NATURE_MAP_R.get(nature_d, nature_d).upper()
                 if nature_d and nature_d != nature:
                     if not nature:
                         nature = nature_d
