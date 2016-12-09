@@ -7,6 +7,7 @@ Normalizes LEGI data stored in an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
+import json
 import re
 from sqlite3 import OperationalError
 
@@ -168,6 +169,12 @@ def main(db):
         pass
 
     sql = db.execute
+    update_counts = {}
+    def count_update(k):
+        try:
+            update_counts[k] += 1
+        except KeyError:
+            update_counts[k] = 1
 
     q = db.all("""
         SELECT rowid, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
@@ -258,6 +265,7 @@ def main(db):
                                 num = num_d
                                 sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
                                     (num, rowid))
+                                count_update('num')
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                         anomaly[0] = True
@@ -268,6 +276,7 @@ def main(db):
                         date_texte = date_texte_d
                         sql("UPDATE textes_versions SET date_texte = ? WHERE rowid = ?",
                             (date_texte, rowid))
+                        count_update('date_texte')
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
                         anomaly[0] = True
@@ -280,6 +289,7 @@ def main(db):
                             autorite = autorite_d
                             sql("UPDATE textes_versions SET autorite = ? WHERE rowid = ?",
                                 (autorite, rowid))
+                            count_update('autorite')
                         elif autorite != autorite_d:
                             print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
                             anomaly[0] = True
@@ -287,7 +297,10 @@ def main(db):
                     titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
                     titrefull = titre + titrefull[endpos2:]
-        if titre != titre_o or titrefull != titrefull_o or nature != nature_o:
+        bad_titre = titre != titre_o
+        bad_titrefull = titrefull != titrefull_o
+        bad_nature = nature != nature_o
+        if bad_titre or bad_titrefull or bad_nature:
             sql("""
                 UPDATE textes_versions
                    SET titre = ?
@@ -295,6 +308,12 @@ def main(db):
                      , nature = ?
                  WHERE rowid = ?
             """, (titre, titrefull, nature, rowid))
+            if bad_titre:
+                count_update('titre')
+            if bad_titrefull:
+                count_update('titrefull')
+            if bad_nature:
+                count_update('nature')
         titrefull_s = filter_nonalnum(titrefull)
         if titrefull_s != titrefull_s_o:
             sql("""
@@ -302,6 +321,9 @@ def main(db):
                    SET titrefull_s = ?
                  WHERE rowid = ?
             """, (titrefull_s, rowid))
+
+    print('Done. Updated %i values: %s' %
+          (sum(update_counts.values()), json.dumps(update_counts, indent=4)))
 
 
 if __name__ == '__main__':
