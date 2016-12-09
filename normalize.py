@@ -7,12 +7,11 @@ Normalizes LEGI data stored in an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-from datetime import date
 import re
 from sqlite3 import OperationalError
 
 from fr_calendar import (
-    MOIS_REPU, MOIS_REPU_MAP, gregorian_to_republican, republican_to_gregorian
+    MOIS_GREG, MOIS_REPU, gregorian_to_republican, convert_date_to_iso,
 )
 from roman import decimal_to_roman
 from utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
@@ -22,8 +21,6 @@ AUTORITE_MAP = {
     "CONSEIL D'ETAT": "du Conseil d'État",
     "ROI": "du Roi",
 }
-MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
-MOIS_GREG_MAP = {strip_down(m): i for i, m in enumerate(MOIS_GREG, 1)}
 NATURE_MAP = {
     "ARRETE": "Arrêté",
     "DECISION": "Décision",
@@ -48,11 +45,11 @@ word_re = re.compile(r'\w{2,}', re.U)
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?( (?P=annee))?' % globals()
+date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
+titre2_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
@@ -112,13 +109,18 @@ def parse_titre(anomaly, titre):
         m = titre2_re.match(titre, pos)
         if not m:
             return d, pos
-        for k, v in m.groupdict().items():
+        groups = m.groupdict()
+        if 'date' in groups:
+            groups['date'], groups['calendar'] = convert_date_to_iso(
+                groups.pop('jour'),
+                groups.pop('mois'),
+                groups.pop('annee'),
+            )
+        for k, v in groups.items():
             if v is None or k in duplicates:
                 continue
             if k == 'numero':
                 v = v.replace('–', '-')
-            elif k == 'jour':
-                v = v.lower().replace('1er', '1')
             if k not in d:
                 d[k] = v
                 continue
@@ -130,6 +132,8 @@ def parse_titre(anomaly, titre):
                 if a == x or a == y:
                     d[k] = b
                     continue
+            if k == 'calendar':
+                continue
             print('Incohérence: ', k, ': "', d[k], '" ≠ "', v, '"\n'
                   '       dans: "', titre, '"', sep='')
             anomaly[0] = True
@@ -253,20 +257,9 @@ def main(db):
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                         anomaly[0] = True
-                calendar = 'gregorian'
-                jour = get_key('jour')
-                mois = get_key('mois')
-                annee = get_key('annee')
-                if jour and mois and annee:
-                    jour = int(jour.lower().replace('1er', '1'))
-                    if mois in MOIS_REPU_MAP:
-                        calendar = 'republican'
-                        annee = strip_prefix(annee, 'an ')
-                        d = republican_to_gregorian(annee, mois, jour)
-                    else:
-                        mois = MOIS_GREG_MAP[strip_down(mois)]
-                        d = date(int(annee), mois, jour)
-                    date_texte_d = d.isoformat()
+                date_texte_d = get_key('date')
+                calendar = get_key('calendar')
+                if date_texte_d:
                     if not date_texte or date_texte == '2999-01-01':
                         date_texte = date_texte_d
                         sql("UPDATE textes_versions SET date_texte = ? WHERE rowid = ?",

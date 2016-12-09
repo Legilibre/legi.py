@@ -9,9 +9,11 @@ from __future__ import division, print_function, unicode_literals
 from datetime import date, timedelta
 
 from roman import roman_to_decimal
-from utils import strip_down
+from utils import strip_down, strip_prefix
 
 
+MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
+MOIS_GREG_MAP = {strip_down(m): i for i, m in enumerate(MOIS_GREG, 1)}
 MOIS_REPU = 'vendémiaire brumaire frimaire nivôse pluviôse ventôse germinal floréal prairial messidor thermidor fructidor'.split()
 MOIS_REPU_MAP = {strip_down(m): i for i, m in enumerate(MOIS_REPU, 1)}
 REPUBLICAN_START_DATE = date(1792, 9, 22)
@@ -47,3 +49,15 @@ def republican_to_gregorian(year, month, day):
         day = SANSCULOTTIDES_MAP[strip_down(day)]
     d = (year - 1) * 365 + (month - 1) * 30 + day - 1 + year // 4
     return REPUBLICAN_START_DATE + timedelta(days=d)
+
+
+def convert_date_to_iso(jour, mois, annee):
+    if not jour or not mois or not annee:
+        return None, 'gregorian'
+    jour = int(jour.lower().replace('1er', '1'))
+    if mois in MOIS_REPU_MAP:
+        annee = strip_prefix(annee, 'an ')
+        return republican_to_gregorian(annee, mois, jour).isoformat(), 'republican'
+    else:
+        mois = MOIS_GREG_MAP[strip_down(mois)]
+        return date(int(annee), mois, jour).isoformat(), 'gregorian'

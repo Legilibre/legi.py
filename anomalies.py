@@ -7,14 +7,10 @@ from datetime import date
 import re
 import sys
 
-from fr_calendar import (
-    MOIS_REPU, MOIS_REPU_MAP, republican_to_gregorian
-)
-from utils import connect_db, reconstruct_path, strip_down, strip_prefix
+from fr_calendar import MOIS_GREG, MOIS_REPU, convert_date_to_iso
+from utils import connect_db, reconstruct_path, strip_down
 
 
-MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()
-MOIS_GREG_MAP = {strip_down(m): i for i, m in enumerate(MOIS_GREG, 1)}
 NATURE_MAP = {
     "ARRETE": "Arrêté",
     "DECISION": "Décision",
@@ -37,11 +33,11 @@ word_re = re.compile(r'\w{2,}', re.U)
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?( (?P=annee))?' % globals()
+date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r'( %(autorite_p)s| %(date_p)s| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
+titre2_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def normalize_title(path, col, title):
@@ -65,13 +61,18 @@ def parse_titre(path, col, titre):
         m = titre2_re.match(titre, pos)
         if not m:
             return d, pos
-        for k, v in m.groupdict().items():
+        groups = m.groupdict()
+        if 'date' in groups:
+            groups['date'], groups['calendar'] = convert_date_to_iso(
+                groups.pop('jour'),
+                groups.pop('mois'),
+                groups.pop('annee'),
+            )
+        for k, v in groups.items():
             if v is None or k in duplicates:
                 continue
             if k == 'numero':
                 v = v.replace('–', '-')
-            elif k == 'jour':
-                v = v.lower().replace('1er', '1')
             if k not in d:
                 d[k] = v
                 continue
@@ -83,6 +84,8 @@ def parse_titre(path, col, titre):
                 if a == x or a == y:
                     d[k] = b
                     continue
+            if k == 'calendar':
+                continue
             err(path, k, ': "', d[k], '" ≠ "', v, '" dans ', col)
             duplicates.add(k)
             d.pop(k)
@@ -216,20 +219,10 @@ def anomalies_textes_versions(db):
                 if num and num == date_texte:
                     err(path, 'num est égal à date_texte: "', num, '"')
                     num = ''
-                jour = get_key('jour')
-                mois = get_key('mois')
-                annee = get_key('annee')
-                if jour and mois and annee:
-                    jour = int(jour.lower().replace('1er', '1'))
-                    if mois in MOIS_REPU_MAP:
-                        annee = strip_prefix(annee, 'an ')
-                        d = republican_to_gregorian(annee, mois, jour)
-                    else:
-                        mois = MOIS_GREG_MAP[strip_down(mois)]
-                        d = date(int(annee), mois, jour)
-                    date_texte_d = d.isoformat()
-                    if date_texte_d != date_texte:
-                        err(path, 'date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)')
+                date_texte_d = get_key('date')
+                if date_texte_d and date_texte_d != date_texte:
+                    err(path, 'date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)')
+                get_key('calendar')
 
 
 def main(db):
