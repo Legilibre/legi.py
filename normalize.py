@@ -66,15 +66,17 @@ def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
         titre += ' n° '+num
     if date_texte and date_texte != '2999-01-01':
         year, month, day = map(int, date_texte.split('-'))
+        gregorian = '%s %s %s' % (day, MOIS_GREG[month-1], year)
         if calendar == 'republican':
             year, month, day = gregorian_to_republican(year, month, day)
             titre += ' du %s' % day
             if month:
                 titre += ' ' + month
             titre += ' an ' + decimal_to_roman(year)
+            titre += ' (%s)' % gregorian
         else:
             assert calendar == 'gregorian'
-            titre += ' du %s %s %s' % (day, MOIS_GREG[month-1], year)
+            titre += ' du %s' % gregorian
         titre = titre.replace(' 1 ', ' 1er ')
     return titre
 
@@ -229,6 +231,8 @@ def main(db):
                         return g1
                     if key == 'nature' and g1.split()[0] == g2.split()[0]:
                         return g1 if len(g1) > len(g2) else g2
+                    if key == 'calendar':
+                        return 'republican'
                     print('Incohérence: ', key,  ': "', g1, '" ≠ "', g2, '"\n',
                           '      titre: "', titre, '"\n',
                           '  titrefull: "', titrefull, '"',
