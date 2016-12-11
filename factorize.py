@@ -231,7 +231,7 @@ def main():
 
     left = db.one("SELECT count(*) FROM textes_versions WHERE texte_id IS NULL")
     if left != 0:
-        print("Fail: %i rows haven't been connected")
+        print("Fail: %i rows haven't been connected" % left)
     else:
         # SQLite doesn't implement DROP COLUMN so we just nullify them instead
         db.run("UPDATE textes SET nor = NULL, titrefull_s = NULL")
