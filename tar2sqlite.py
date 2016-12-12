@@ -31,7 +31,6 @@ def make_schema(db):
         CREATE TABLE textes_structs
         ( id char(20) unique not null
         , versions text
-        , struct text
         , dossier text not null
         , cid char(20) not null
         , mtime int not null
@@ -66,6 +65,15 @@ def make_schema(db):
         , cid char(20) not null
         , mtime int not null
         );
+
+        CREATE TABLE textes_composants
+        ( texte_version char(20) -- REFERENCES textes_versions
+        , composant char(20) -- REFERENCES articles OR sections
+        , source text
+        );
+
+        CREATE INDEX textes_composants_idx_t ON textes_composants (texte_version);
+        CREATE INDEX textes_composants_idx_c ON textes_composants (composant);
 
         CREATE TABLE sections
         ( id char(20) unique not null
@@ -154,7 +162,7 @@ def main(db, archive_path, old_files_log):
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
     SECTION_TA_TAGS = set('TITRE_TA COMMENTAIRE'.split())
-    TEXTELR_TAGS = set('VERSIONS STRUCT'.split())
+    TEXTELR_TAGS = set('VERSIONS'.split())
     TEXTE_VERSION_TAGS = set('VISAS SIGNATAIRES TP NOTA ABRO RECT'.split())
     META_ARTICLE_TAGS = set('NUM ETAT DATE_DEBUT DATE_FIN TYPE'.split())
     META_CHRONICLE_TAGS = set("""
@@ -277,17 +285,30 @@ def main(db, archive_path, old_files_log):
             elif tag == 'SECTION_TA':
                 assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
+                section_id = text_id
                 contexte = root.find('CONTEXTE/TEXTE')
                 assert attr(contexte, 'cid') == text_cid
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
+                textes = contexte.findall('.//TITRE_TXT')
+                if textes:
+                    db.run("""
+                        DELETE FROM textes_composants
+                         WHERE composant = ?
+                           AND source = 'section_ta'
+                    """, (section_id,))
+                    insert('textes_composants', {
+                        'texte_version': attr(textes[-1], 'id_txt'),
+                        'composant': section_id,
+                        'source': 'section_ta',
+                    })
                 if prev_row:
                     db.run("DELETE FROM sections_articles WHERE section = ?",
-                           (text_id,))
+                           (section_id,))
                 for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
                     insert('sections_articles', {
-                        'section': text_id,
+                        'section': section_id,
                         'id': attr(lien_art, 'id'),
                         'num': attr(lien_art, 'num'),
                         'debut': attr(lien_art, 'debut'),
@@ -297,6 +318,17 @@ def main(db, archive_path, old_files_log):
             elif tag == 'TEXTELR':
                 assert table == 'textes_structs'
                 scrape_tags(attrs, root, TEXTELR_TAGS)
+                db.run("""
+                    DELETE FROM textes_composants
+                     WHERE texte_version = ?
+                       AND source = 'texte_struct'
+                """, (text_id,))
+                for lien in root.find('STRUCT'):
+                    insert('textes_composants', {
+                        'texte_version': text_id,
+                        'composant': attr(lien, 'id'),
+                        'source': 'struct',
+                    })
             elif tag == 'TEXTE_VERSION':
                 assert table == 'textes_versions'
                 attrs['nature'] = nature
