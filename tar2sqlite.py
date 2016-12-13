@@ -66,15 +66,6 @@ def make_schema(db):
         , mtime int not null
         );
 
-        CREATE TABLE textes_composants
-        ( texte_version char(20) -- REFERENCES textes_versions
-        , composant char(20) -- REFERENCES articles OR sections
-        , source text
-        );
-
-        CREATE INDEX textes_composants_idx_t ON textes_composants (texte_version);
-        CREATE INDEX textes_composants_idx_c ON textes_composants (composant);
-
         CREATE TABLE sections
         ( id char(20) unique not null
         , titre_ta text
@@ -100,15 +91,19 @@ def make_schema(db):
         , mtime int not null
         );
 
-        CREATE TABLE sections_articles
-        ( section char(20) not null -- REFERENCES sections(id)
-        , id char(20) not null -- REFERENCES articles(id)
-        , num text not null
+        CREATE TABLE sommaires
+        ( cid char(20) not null
+        , parent char(20) -- REFERENCES sections
+        , element char(20) not null -- REFERENCES articles OR sections
         , debut day
         , fin day
         , etat text
-        , UNIQUE (section, id)
+        , num text
+        , position int
+        , _source text -- to support incremental updates
         );
+
+        CREATE INDEX sommaires_cid_idx ON sommaires (cid);
 
         CREATE TABLE liens
         ( src_id char(20) not null
@@ -131,6 +126,7 @@ def suppress(get_table, db, liste_suppression):
     for path in liste_suppression:
         parts = path.split('/')
         assert parts[0] == 'legi'
+        text_cid = parts[11]
         text_id = parts[-1]
         assert len(text_id) == 20
         table = get_table(parts)
@@ -139,7 +135,7 @@ def suppress(get_table, db, liste_suppression):
              WHERE dossier = ?
                AND cid = ?
                AND id = ?
-        """.format(table), (parts[3], parts[11], text_id))
+        """.format(table), (parts[3], text_cid, text_id))
         changes = db.changes()
         if changes:
             deleted += changes
@@ -151,8 +147,19 @@ def suppress(get_table, db, liste_suppression):
                 """, (text_id, text_id))
                 deleted += db.changes()
             elif table == 'sections':
-                db.run("DELETE FROM sections_articles WHERE section = ?",
-                       (text_id,))
+                db.run("""
+                    DELETE FROM sommaires
+                     WHERE cid = ?
+                       AND parent = ?
+                       AND _source = 'section_ta_liens'
+                """, (text_cid, text_id))
+                deleted += db.changes()
+            elif table == 'textes_structs':
+                db.run("""
+                    DELETE FROM sommaires
+                     WHERE cid = ?
+                       AND _source = 'struct/' || ?
+                """, (text_cid, text_id))
                 deleted += db.changes()
     print('deleted', deleted, 'rows based on liste_suppression_legi.dat')
 
@@ -291,43 +298,44 @@ def main(db, archive_path, old_files_log):
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
-                textes = contexte.findall('.//TITRE_TXT')
-                if textes:
-                    db.run("""
-                        DELETE FROM textes_composants
-                         WHERE composant = ?
-                           AND source = 'section_ta'
-                    """, (section_id,))
-                    insert('textes_composants', {
-                        'texte_version': attr(textes[-1], 'id_txt'),
-                        'composant': section_id,
-                        'source': 'section_ta',
-                    })
                 if prev_row:
-                    db.run("DELETE FROM sections_articles WHERE section = ?",
-                           (section_id,))
-                for lien_art in root.findall('STRUCTURE_TA/LIEN_ART'):
-                    insert('sections_articles', {
-                        'section': section_id,
-                        'id': attr(lien_art, 'id'),
-                        'num': attr(lien_art, 'num'),
-                        'debut': attr(lien_art, 'debut'),
-                        'fin': attr(lien_art, 'fin'),
-                        'etat': attr(lien_art, 'etat'),
+                    db.run("""
+                        DELETE FROM sommaires
+                         WHERE cid = ?
+                           AND parent = ?
+                           AND _source = 'section_ta_liens'
+                    """, (text_cid, section_id))
+                for i, lien in enumerate(root.find('STRUCTURE_TA')):
+                    insert('sommaires', {
+                        'cid': text_cid,
+                        'parent': section_id,
+                        'element': attr(lien, 'id'),
+                        'debut': attr(lien, 'debut'),
+                        'fin': attr(lien, 'fin'),
+                        'etat': attr(lien, 'etat'),
+                        'num': attr(lien, 'num'),
+                        'position': i,
+                        '_source': 'section_ta_liens',
                     })
             elif tag == 'TEXTELR':
                 assert table == 'textes_structs'
                 scrape_tags(attrs, root, TEXTELR_TAGS)
-                db.run("""
-                    DELETE FROM textes_composants
-                     WHERE texte_version = ?
-                       AND source = 'texte_struct'
-                """, (text_id,))
-                for lien in root.find('STRUCT'):
-                    insert('textes_composants', {
-                        'texte_version': text_id,
-                        'composant': attr(lien, 'id'),
-                        'source': 'struct',
+                source = 'struct/' + text_id
+                if prev_row:
+                    db.run("""
+                        DELETE FROM sommaires
+                         WHERE cid = ?
+                           AND _source = ?
+                    """, (text_cid, source))
+                for i, lien in enumerate(root.find('STRUCT')):
+                    insert('sommaires', {
+                        'cid': text_cid,
+                        'element': attr(lien, 'id'),
+                        'debut': attr(lien, 'debut'),
+                        'fin': attr(lien, 'fin'),
+                        'etat': attr(lien, 'etat'),
+                        'position': i,
+                        '_source': source,
                     })
             elif tag == 'TEXTE_VERSION':
                 assert table == 'textes_versions'
