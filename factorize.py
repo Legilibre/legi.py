@@ -29,6 +29,7 @@ def connect_by_nature_num():
     """)
     print('connected %i rows of textes_versions based on (nature, num)' % db.changes())
 
+
 def connect_by_nor():
     db.run("""
         CREATE TEMP TABLE texte_by_nor AS
@@ -58,6 +59,7 @@ def connect_by_nor():
     """)
     print('connected %i rows of textes_versions based on nor' % db.changes())
     db.run("DROP TABLE texte_by_nor")
+
 
 def connect_by_titrefull_s():
     db.run("""
@@ -98,9 +100,12 @@ def factorize_by(key):
     factorized = 0
     for row in duplicates:
         ids = tuple(row[2].split(','))
-        db.run("INSERT INTO textes (nature, {0}) VALUES (?, ?)".format(key),
-               (row[0], row[1]))
-        uid = db.one("SELECT id FROM textes WHERE {0} = ?".format(key), (row[1],))
+        uid = db.one("SELECT id FROM textes ORDER BY id DESC LIMIT 1") + 1
+        if key == 'cid':
+            db.run("INSERT INTO textes (id, nature) VALUES (?, ?)", (uid, row[0]))
+        else:
+            db.run("INSERT INTO textes (id, nature, {0}) VALUES (?, ?, ?)".format(key),
+                   (uid, row[0], row[1]))
         db.run("""
             UPDATE textes_versions
                SET texte_id = %s
@@ -200,6 +205,8 @@ def main():
                );
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
+
+    factorize_by('cid')
 
     xml = etree.XMLParser(remove_blank_text=True)
     q = db.all("""
