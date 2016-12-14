@@ -168,7 +168,6 @@ def main(db):
     except OperationalError:
         pass
 
-    sql = db.execute
     update_counts = {}
     def count_update(k):
         try:
@@ -176,6 +175,7 @@ def main(db):
         except KeyError:
             update_counts[k] = 1
 
+    updates = {}
     q = db.all("""
         SELECT rowid, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
           FROM textes_versions
@@ -262,9 +262,7 @@ def main(db):
                     if not num or not num[0].isdigit():
                         if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
                             if '-' in num_d:
-                                num = num_d
-                                sql("UPDATE textes_versions SET num = ? WHERE rowid = ?",
-                                    (num, rowid))
+                                updates['num'] = num = num_d
                                 count_update('num')
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
@@ -273,9 +271,7 @@ def main(db):
                 calendar = get_key('calendar')
                 if date_texte_d:
                     if not date_texte or date_texte == '2999-01-01':
-                        date_texte = date_texte_d
-                        sql("UPDATE textes_versions SET date_texte = ? WHERE rowid = ?",
-                            (date_texte, rowid))
+                        updates['date_texte'] = date_texte = date_texte_d
                         count_update('date_texte')
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
@@ -286,9 +282,7 @@ def main(db):
                     if not autorite_d.startswith('ministeriel'):
                         autorite_d = strip_prefix(autorite_d, 'du ').upper()
                         if not autorite:
-                            autorite = autorite_d
-                            sql("UPDATE textes_versions SET autorite = ? WHERE rowid = ?",
-                                (autorite, rowid))
+                            updates['autorite'] = autorite = autorite_d
                             count_update('autorite')
                         elif autorite != autorite_d:
                             print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
@@ -297,30 +291,21 @@ def main(db):
                     titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
                     titrefull = titre + titrefull[endpos2:]
-        bad_titre = titre != titre_o
-        bad_titrefull = titrefull != titrefull_o
-        bad_nature = nature != nature_o
-        if bad_titre or bad_titrefull or bad_nature:
-            sql("""
-                UPDATE textes_versions
-                   SET titre = ?
-                     , titrefull = ?
-                     , nature = ?
-                 WHERE rowid = ?
-            """, (titre, titrefull, nature, rowid))
-            if bad_titre:
-                count_update('titre')
-            if bad_titrefull:
-                count_update('titrefull')
-            if bad_nature:
-                count_update('nature')
         titrefull_s = filter_nonalnum(titrefull)
+        if titre != titre_o:
+            count_update('titre')
+            updates['titre'] = titre
+        if titrefull != titrefull_o:
+            count_update('titrefull')
+            updates['titrefull'] = titrefull
+        if nature != nature_o:
+            count_update('nature')
+            updates['nature'] = nature
         if titrefull_s != titrefull_s_o:
-            sql("""
-                UPDATE textes_versions
-                   SET titrefull_s = ?
-                 WHERE rowid = ?
-            """, (titrefull_s, rowid))
+            updates['titrefull_s'] = titrefull_s
+        if updates:
+            db.update("textes_versions", dict(rowid=rowid), updates)
+            updates.clear()
 
     print('Done. Updated %i values: %s' %
           (sum(update_counts.values()), json.dumps(update_counts, indent=4)))
