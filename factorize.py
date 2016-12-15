@@ -124,6 +124,7 @@ def main():
                FROM textes_versions
               WHERE texte_id IS NULL
                 AND nature IS NOT NULL
+                AND nature <> 'DECISION'
                 AND num IS NOT NULL
            GROUP BY nature, num;
     """)
