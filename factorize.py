@@ -3,7 +3,6 @@
 from __future__ import print_function, unicode_literals
 
 from argparse import ArgumentParser
-from sqlite3 import OperationalError
 
 from lxml import etree
 
@@ -117,22 +116,6 @@ def factorize_by(key):
 
 
 def main():
-    db.run("""
-        CREATE TABLE IF NOT EXISTS textes
-        ( id integer primary key not null
-        , nature text not null
-        , num text
-        , nor char(12) unique -- only used during factorization
-        , titrefull_s text unique -- only used during factorization
-        , UNIQUE (nature, num)
-        );
-    """)
-    try:
-        db.run("ALTER TABLE textes_versions ADD COLUMN texte_id integer REFERENCES textes")
-        db.run("CREATE INDEX textes_versions_texte_id ON textes_versions (texte_id)")
-    except OperationalError:
-        pass
-
     connect_by_nature_num()
 
     db.run("""

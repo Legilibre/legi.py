@@ -9,7 +9,6 @@ from __future__ import division, print_function, unicode_literals
 from argparse import ArgumentParser
 import json
 import re
-from sqlite3 import OperationalError
 
 from fr_calendar import (
     MOIS_GREG, MOIS_REPU, gregorian_to_republican, convert_date_to_iso,
@@ -159,14 +158,6 @@ def main(db):
         UPDATE textes_versions SET page_deb_publi = NULL WHERE page_deb_publi = 0;
         UPDATE textes_versions SET page_fin_publi = NULL WHERE page_fin_publi = 0;
     """)
-
-    try:
-        db.executescript("""
-            ALTER TABLE textes_versions ADD COLUMN titrefull_s text;
-            CREATE INDEX textes_versions_titrefull_s ON textes_versions (titrefull_s);
-        """)
-    except OperationalError:
-        pass
 
     update_counts = {}
     def count_update(k):
