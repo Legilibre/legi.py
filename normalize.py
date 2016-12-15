@@ -47,6 +47,7 @@ annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
+nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique))', re.U | re.I)
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
 titre2_re = re.compile(r' ?(%(autorite_p)s|\(?%(date_p)s\)?|%(numero_p)s|%(ordure_p)s)' % globals(), re.U | re.I)
@@ -110,6 +111,11 @@ def parse_titre(anomaly, titre):
         pos = m.end()
         m = titre2_re.match(titre, pos)
         if not m:
+            if strip_down(d.get('nature', '')) == 'loi':
+                m = nature2_re.match(titre, pos)
+                if m:
+                    d['nature'] += m.group('nature2')
+                    pos = m.end()
             return d, pos
         groups = m.groupdict()
         if 'date' in groups:
