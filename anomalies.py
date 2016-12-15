@@ -121,12 +121,12 @@ def anomalies_date_fin_etat(db):
 
 def anomalies_sections(db):
     q = db.all("""
-        SELECT s.dossier, s.cid, section, num, debut, etat, count(*) as count
-          FROM sections_articles sa
-          JOIN sections s ON s.id = sa.section
+        SELECT s.dossier, s.cid, s.id, num, debut, etat, count(*) as count
+          FROM sommaires so
+          JOIN sections s ON s.id = so.parent
          WHERE etat NOT LIKE 'MODIF%'
            AND lower(num) NOT LIKE 'annexe%'
-      GROUP BY section, num, debut, etat
+      GROUP BY s.id, num, debut, etat
         HAVING count(*) > 1
     """)
     for row in q:
@@ -137,10 +137,10 @@ def anomalies_sections(db):
             '" et l\'état "', etat, '"')
 
     q = db.all("""
-        SELECT DISTINCT s.dossier, s.cid, s.id, a.dossier, a.cid, a.id, sa.etat, a.etat
-          FROM sections_articles sa
-          JOIN articles a ON a.id = sa.id AND a.etat <> sa.etat
-          JOIN sections s ON s.id = sa.section
+        SELECT DISTINCT s.dossier, s.cid, s.id, a.dossier, a.cid, a.id, so.etat, a.etat
+          FROM sommaires so
+          JOIN articles a ON a.id = so.element AND a.etat <> so.etat
+          JOIN sections s ON s.id = so.parent
     """.format(date.today().isoformat()))
     for row in q:
         dossier, cid, id, a_dossier, a_cid, a_id, sa_etat, a_etat = row
