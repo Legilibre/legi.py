@@ -5,6 +5,9 @@ Extracts a LEGI tar archive into an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
+import fnmatch
+import os
+import re
 from sqlite3 import OperationalError
 
 import libarchive
@@ -27,6 +30,11 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
 
 def make_schema(db):
     db.executescript("""
+
+        CREATE TABLE db_meta
+        ( key text primary key
+        , value blob
+        );
 
         CREATE TABLE textes_structs
         ( id char(20) unique not null
@@ -164,7 +172,7 @@ def suppress(get_table, db, liste_suppression):
     print('deleted', deleted, 'rows based on liste_suppression_legi.dat')
 
 
-def main(db, archive_path, old_files_log):
+def process_archive(db, archive_path, old_files_log):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -200,12 +208,6 @@ def main(db, archive_path, old_files_log):
         "TRANSFERE": "TRANSFERT",
     }
     TYPELIEN_MAP.update([(v, k) for k, v in TYPELIEN_MAP.items()])
-
-    # Create the DB schema if necessary
-    try:
-        db.run("SELECT 1 FROM textes_versions LIMIT 1")
-    except OperationalError:
-        make_schema(db)
 
     # Define some shortcuts
     attr = etree._Element.get
@@ -398,16 +400,58 @@ def main(db, archive_path, old_files_log):
         suppress(get_table, db, liste_suppression)
 
 
-if __name__ == '__main__':
+def main():
     p = ArgumentParser()
-    p.add_argument('archive')
     p.add_argument('db')
+    p.add_argument('directory')
     args = p.parse_args()
 
     old_files_log = open(args.db+'.old_files.dat', 'a')
     db = connect_db(args.db)
+
+    # Create the DB schema if necessary
     try:
+        db.run("SELECT 1 FROM textes_versions LIMIT 1")
+    except OperationalError:
+        make_schema(db)
+
+    # Look for new archives in the given directory
+    last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
+    print("> last_update is", last_update)
+    archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+')
+    skipped = 0
+    files = sorted(os.listdir(args.directory))
+    for archive_name in fnmatch.filter(files, '*legi_*.tar.*'):
+        m = archive_re.match(archive_name)
+        if not m:
+            print("unable to extract date from archive filename", archive_name)
+            continue
+        is_delta = not m.group('global')
+        if bool(last_update) ^ is_delta:
+            skipped += 1
+            continue
+        archive_date = m.group('date')
+        if last_update and archive_date <= last_update:
+            skipped += 1
+            continue
+
+        # Okay, process this one
+        if skipped:
+            print("> Skipped %i old archives" % skipped)
+            skipped = 0
+        print("> Processing %s..." % archive_name)
         with db:
-            main(db, args.archive, old_files_log)
+            process_archive(db, args.directory + '/' + archive_name, old_files_log)
+            if last_update:
+                db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
+            else:
+                db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
+            last_update = archive_date
+            print('last_update is now set to', last_update)
+
+
+if __name__ == '__main__':
+    try:
+        main()
     except KeyboardInterrupt:
         pass

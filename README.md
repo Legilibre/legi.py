@@ -14,17 +14,16 @@ sont tous compatibles avec python 2 et 3.
 La première étape est de télécharger les archives LEGI depuis
 `ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/`:
 
-    wget 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/Freemium_legi_global_*.tar.gz'
-    wget 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/legi_*.tar.gz'
+    wget -c -N --no-remove-listing -nH 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/*legi_*'
 
 La deuxième étape est la conversion des archives en base SQLite avec le script
-`tar2sqlite.py`. D'abord la première grosse archive:
+`tar2sqlite.py`:
 
-    python tar2sqlite.py Freemium_legi_global_*.tar.gz legi.sqlite
+    python tar2sqlite.py legi.sqlite chemin/du/dossier/contenant/les/archives
 
-puis les autres petites archives, s'il y en a:
-
-    for f in legi_*.tar.gz; do python tar2sqlite.py $f legi.sqlite; done
+Vous pouvez lancer ce script régulièrement pour maintenir votre base de données
+à jour, il saute automatiquement les archives qu'il a déjà traité. En général la
+DILA publie une nouvelle archive chaque jour sauf pendant le weekend.
 
 Maintenant que vous avez les données dans une base SQLite vous pouvez exécuter
 d'autres scripts, mais pour le moment le seul qui soit réellement utile est
