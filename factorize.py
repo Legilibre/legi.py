@@ -202,11 +202,13 @@ def main():
         xml.feed(versions)
         xml.feed('</VERSIONS>')
         root = xml.close()
-        for lien in root.findall('LIEN_TXT'):
+        for lien in root.findall('.//LIEN_TXT'):
             dup_texte_id = db.one("""
                 SELECT texte_id FROM textes_versions WHERE id = ? AND texte_id <> ?
             """, (lien.get('id'), texte_id))
-            assert not dup_texte_id
+            if dup_texte_id:
+                print("Erreur: selon les métadonnées de", version_id, "les textes",
+                      texte_id, "et", dup_texte_id, "ne devraient être qu'un")
 
     # Clean up factorized texts
     db.run("""
