@@ -230,6 +230,9 @@ def main():
         db.run("UPDATE textes SET nor = NULL, titrefull_s = NULL")
         print("done")
 
+    n = db.one("SELECT count(*) FROM textes")
+    print("Il y a désormais %i textes dans la base." % n)
+
 
 if __name__ == '__main__':
     p = ArgumentParser()
