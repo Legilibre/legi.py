@@ -237,11 +237,17 @@ def main():
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
+    p.add_argument('--from-scratch')
     args = p.parse_args()
 
     db = connect_db(args.db)
     try:
         with db:
+            if args.from_scratch:
+                db.executescript("""
+                    DELETE FROM textes;
+                    UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
+                """)
             main()
             save = input('Sauvegarder les modifications? (o/n) ')
             if save.lower() != 'o':
