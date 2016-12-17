@@ -119,6 +119,27 @@ def anomalies_date_fin_etat(db):
             err(path, 'la date de fin "', date_fin, '" est dans le ', x, ' mais l\'état est "', etat, '"')
 
 
+def anomalies_orphans(db):
+    db.run("CREATE INDEX IF NOT EXISTS sommaires_element_idx ON sommaires (element)")
+    q = db.all("""
+        SELECT dossier, cid, id
+          FROM articles a
+         WHERE (SELECT count(*) FROM sommaires so WHERE so.element = a.id) = 0
+    """)
+    for dossier, cid, id in q:
+        path = reconstruct_path(dossier, cid, 'article', id)
+        err(path, "article orphelin, il n'apparaît dans aucun texte")
+    q = db.all("""
+        SELECT dossier, cid, id
+          FROM sections s
+         WHERE (SELECT count(*) FROM sommaires so WHERE so.element = s.id) = 0
+    """)
+    for dossier, cid, id in q:
+        path = reconstruct_path(dossier, cid, 'section_ta', id)
+        err(path, "section orpheline, elle n'apparaît dans aucun texte")
+    db.run("DROP INDEX sommaires_element_idx")
+
+
 def anomalies_sections(db):
     q = db.all("""
         SELECT s.dossier, s.cid, s.id, num, debut, etat, count(*) as count
@@ -227,6 +248,7 @@ def anomalies_textes_versions(db):
 
 def main(db):
     anomalies_date_fin_etat(db)
+    anomalies_orphans(db)
     anomalies_sections(db)
     anomalies_textes_versions(db)
 
