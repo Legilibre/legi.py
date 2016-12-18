@@ -10,22 +10,7 @@ from .titles import NATURE_MAP_R, parse_titre, spaces_re
 from .utils import connect_db, reconstruct_path, strip_down
 
 
-def normalize_title(path, col, title):
-    if not title:
-        return title
-    title = spaces_re.sub(' ', title.strip())
-    if 'constitutionel' in title:
-        err(path, 'faute d\'orthographe dans le ', col, ': "constitutionel"')
-        title = title.replace('constitutionel', 'constitutionnel')
-    return title
-
-
-def err(path, *a):
-    print(path, ': ', *a, sep='')
-    sys.stdout.flush()
-
-
-def anomalies_date_fin_etat(db):
+def anomalies_date_fin_etat(db, err):
     a = [('articles', 'article'), ('textes_versions', 'texte/version')]
     for table, sous_dossier in a:
         q = db.all("""
@@ -43,7 +28,7 @@ def anomalies_date_fin_etat(db):
             err(path, 'la date de fin "', date_fin, '" est dans le ', x, ' mais l\'état est "', etat, '"')
 
 
-def anomalies_orphans(db):
+def anomalies_orphans(db, err):
     db.run("CREATE INDEX IF NOT EXISTS sommaires_element_idx ON sommaires (element)")
     q = db.all("""
         SELECT dossier, cid, id
@@ -64,7 +49,7 @@ def anomalies_orphans(db):
     db.run("DROP INDEX sommaires_element_idx")
 
 
-def anomalies_sections(db):
+def anomalies_sections(db, err):
     q = db.all("""
         SELECT s.dossier, s.cid, s.id, num, debut, etat, count(*) as count
           FROM sommaires so
@@ -95,7 +80,16 @@ def anomalies_sections(db):
             '" dans le fichier ', a_path)
 
 
-def anomalies_textes_versions(db):
+def anomalies_textes_versions(db, err):
+    def normalize_title(path, col, title):
+        if not title:
+            return title
+        title = spaces_re.sub(' ', title.strip())
+        if 'constitutionel' in title:
+            err(path, 'faute d\'orthographe dans le ', col, ': "constitutionel"')
+            title = title.replace('constitutionel', 'constitutionnel')
+        return title
+
     q = db.all("""
         SELECT dossier, cid, id, titre, titrefull, nature, num, date_texte
           FROM textes_versions
@@ -174,15 +168,22 @@ def anomalies_textes_versions(db):
                 get_key('calendar')
 
 
-def main(db):
-    anomalies_date_fin_etat(db)
-    anomalies_orphans(db)
-    anomalies_sections(db)
-    anomalies_textes_versions(db)
+def detect_anomalies(db, out=sys.stdout):
+    count = [0]
+    def err(path, *a):
+        print(path, ': ', *a, sep='', file=out)
+        out.flush()
+        count[0] += 1
+
+    anomalies_date_fin_etat(db, err)
+    anomalies_orphans(db, err)
+    anomalies_sections(db, err)
+    anomalies_textes_versions(db, err)
+    return count[0]
 
 
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
     args = p.parse_args()
-    main(connect_db(args.db))
+    detect_anomalies(connect_db(args.db))

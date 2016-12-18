@@ -14,6 +14,7 @@ from sqlite3 import OperationalError
 import libarchive
 from lxml import etree
 
+from .anomalies import detect_anomalies
 from .utils import connect_db
 
 
@@ -359,7 +360,13 @@ def main():
     p = ArgumentParser()
     p.add_argument('db')
     p.add_argument('directory')
+    p.add_argument('--anomalies', action='store_true', default=False,
+                   help="detect anomalies after each processed archive")
+    p.add_argument('--anomalies-dir', default='.')
     args = p.parse_args()
+
+    if not os.path.isdir(args.anomalies_dir):
+        os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db)
 
@@ -400,8 +407,15 @@ def main():
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
                 db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
-            last_update = archive_date
-            print('last_update is now set to', last_update)
+        last_update = archive_date
+        print('last_update is now set to', last_update)
+
+        # Detect anomalies if requested
+        if args.anomalies:
+            fpath = args.anomalies_dir + '/anomalies-' + last_update + '.txt'
+            with open(fpath, 'w') as f:
+                n_anomalies = detect_anomalies(db, f)
+            print("logged", n_anomalies, "anomalies in", fpath)
 
 
 if __name__ == '__main__':
