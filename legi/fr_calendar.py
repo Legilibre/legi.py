@@ -8,8 +8,8 @@ from __future__ import division, print_function, unicode_literals
 
 from datetime import date, timedelta
 
-from roman import roman_to_decimal
-from utils import strip_down, strip_prefix
+from .roman import roman_to_decimal
+from .utils import strip_down, strip_prefix
 
 
 MOIS_GREG = 'janvier février mars avril mai juin juillet août septembre octobre novembre décembre'.split()

@@ -7,8 +7,8 @@ from datetime import date
 import re
 import sys
 
-from fr_calendar import MOIS_GREG, MOIS_REPU, convert_date_to_iso
-from utils import connect_db, reconstruct_path, strip_down
+from .fr_calendar import MOIS_GREG, MOIS_REPU, convert_date_to_iso
+from .utils import connect_db, reconstruct_path, strip_down
 
 
 NATURE_MAP = {

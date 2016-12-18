@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 from lxml import etree
 
-from utils import connect_db, input
+from .utils import connect_db, input
 
 
 def connect_by_nature_num():

@@ -2,7 +2,7 @@ from __future__ import division, print_function, unicode_literals
 
 from datetime import timedelta
 
-from fr_calendar import (
+from legi.fr_calendar import (
     MOIS_REPU, REPUBLICAN_START_DATE, SANSCULOTTIDES,
     gregorian_to_republican, republican_to_gregorian,
 )

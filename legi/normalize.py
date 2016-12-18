@@ -10,11 +10,11 @@ from argparse import ArgumentParser
 import json
 import re
 
-from fr_calendar import (
+from .fr_calendar import (
     MOIS_GREG, MOIS_REPU, gregorian_to_republican, convert_date_to_iso,
 )
-from roman import decimal_to_roman
-from utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
+from .roman import decimal_to_roman
+from .utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
 
 
 AUTORITE_MAP = {

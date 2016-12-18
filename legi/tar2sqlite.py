@@ -14,7 +14,7 @@ from sqlite3 import OperationalError
 import libarchive
 from lxml import etree
 
-from utils import connect_db
+from .utils import connect_db
 
 
 def count(d, k, c):
