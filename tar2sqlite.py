@@ -1,5 +1,5 @@
 """
-Extracts a LEGI tar archive into an SQLite DB
+Extracts LEGI tar archives into an SQLite DB
 """
 
 from __future__ import division, print_function, unicode_literals
