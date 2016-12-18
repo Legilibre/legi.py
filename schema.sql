@@ -107,3 +107,15 @@ CREATE TABLE liens
 
 CREATE INDEX liens_src_idx ON liens (src_id) WHERE NOT _reversed;
 CREATE INDEX liens_dst_idx ON liens (dst_id) WHERE _reversed;
+
+CREATE TABLE duplicate_files
+( id char(20) not null
+, sous_dossier text not null
+, cid char(20) not null
+, dossier text not null
+, mtime int not null
+, other_cid char(20) not null
+, other_dossier text not null
+, other_mtime int not null
+, UNIQUE (id, sous_dossier, cid, dossier)
+);

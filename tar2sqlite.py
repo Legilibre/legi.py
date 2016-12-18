@@ -6,6 +6,7 @@ from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 import fnmatch
+import json
 import os
 import re
 from sqlite3 import OperationalError
@@ -13,7 +14,16 @@ from sqlite3 import OperationalError
 import libarchive
 from lxml import etree
 
-from utils import connect_db, reconstruct_path
+from utils import connect_db
+
+
+def count(d, k, c):
+    if c == 0:
+        return
+    try:
+        d[k] += c
+    except KeyError:
+        d[k] = c
 
 
 def innerHTML(e):
@@ -34,7 +44,7 @@ def make_schema(db):
 
 
 def suppress(get_table, db, liste_suppression):
-    deleted = 0
+    deletions = {}
     for path in liste_suppression:
         parts = path.split('/')
         assert parts[0] == 'legi'
@@ -50,14 +60,15 @@ def suppress(get_table, db, liste_suppression):
         """.format(table), (parts[3], text_cid, text_id))
         changes = db.changes()
         if changes:
-            deleted += changes
+            count(deletions, table, changes)
+            # Also delete derivative data
             if table in ('articles', 'textes_versions'):
                 db.run("""
                     DELETE FROM liens
                      WHERE src_id = ? AND NOT _reversed
                         OR dst_id = ? AND _reversed
                 """, (text_id, text_id))
-                deleted += db.changes()
+                count(deletions, 'liens', db.changes())
             elif table == 'sections':
                 db.run("""
                     DELETE FROM sommaires
@@ -65,18 +76,28 @@ def suppress(get_table, db, liste_suppression):
                        AND parent = ?
                        AND _source = 'section_ta_liens'
                 """, (text_cid, text_id))
-                deleted += db.changes()
+                count(deletions, 'sommaires', db.changes())
             elif table == 'textes_structs':
                 db.run("""
                     DELETE FROM sommaires
                      WHERE cid = ?
                        AND _source = 'struct/' || ?
                 """, (text_cid, text_id))
-                deleted += db.changes()
-    print('deleted', deleted, 'rows based on liste_suppression_legi.dat')
+                count(deletions, 'sommaires', db.changes())
+            # And remove the file from the duplicates list if it was in there
+            db.run("""
+                DELETE FROM duplicate_files
+                 WHERE dossier = ?
+                   AND cid = ?
+                   AND id = ?
+            """.format(table), (parts[3], text_cid, text_id))
+            count(deletions, 'duplicate_files', db.changes())
+    total = sum(deletions.values())
+    print('deleted', total, 'rows based on liste_suppression_legi.dat:',
+          json.dumps(deletions))
 
 
-def process_archive(db, archive_path, old_files_log):
+def process_archive(db, archive_path):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -124,7 +145,7 @@ def process_archive(db, archive_path, old_files_log):
             table += parts[13] + 's'
         return table
 
-    old_files_count = 0
+    skipped = 0
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
@@ -144,6 +165,7 @@ def process_archive(db, archive_path, old_files_log):
             text_id = parts[-1][:-4]
             mtime = entry.mtime
 
+            # Skip the file if it hasn't changed, log it if it's a duplicate
             table = get_table(parts)
             prev_row = db.one("""
                 SELECT mtime, dossier, cid
@@ -152,21 +174,33 @@ def process_archive(db, archive_path, old_files_log):
             """.format(table), (text_id,))
             if prev_row:
                 prev_mtime, prev_dossier, prev_cid = prev_row
-                if prev_mtime == mtime:
-                    continue
                 if prev_dossier != dossier or prev_cid != text_cid:
-                    old_files_count += 1
-                    if prev_mtime > mtime:
-                        print(path, file=old_files_log)
+                    if prev_mtime >= mtime:
+                        insert('duplicate_files', {
+                            'id': text_id,
+                            'sous_dossier': SOUS_DOSSIER_MAP[table],
+                            'cid': text_cid,
+                            'dossier': dossier,
+                            'mtime': mtime,
+                            'other_cid': prev_cid,
+                            'other_dossier': prev_dossier,
+                            'other_mtime': prev_mtime,
+                        })
                         continue
                     else:
-                        prev_path = reconstruct_path(
-                            prev_dossier,
-                            prev_cid,
-                            SOUS_DOSSIER_MAP[table],
-                            text_id,
-                        )
-                        print(prev_path, file=old_files_log)
+                        insert('duplicate_files', {
+                            'id': text_id,
+                            'sous_dossier': SOUS_DOSSIER_MAP[table],
+                            'cid': prev_cid,
+                            'dossier': prev_dossier,
+                            'mtime': prev_mtime,
+                            'other_cid': text_cid,
+                            'other_dossier': dossier,
+                            'other_mtime': mtime,
+                        })
+                elif prev_mtime == mtime:
+                    skipped += 1
+                    continue
 
             for block in entry.get_blocks():
                 xml.feed(block)
@@ -298,7 +332,8 @@ def process_archive(db, archive_path, old_files_log):
                 attrs['id'] = text_id
                 insert(table, attrs)
 
-    print('detected', old_files_count, 'old files, logged into', old_files_log.name)
+    if skipped:
+        print("skipped", skipped, "files that haven't changed")
 
     if liste_suppression:
         suppress(get_table, db, liste_suppression)
@@ -310,7 +345,6 @@ def main():
     p.add_argument('directory')
     args = p.parse_args()
 
-    old_files_log = open(args.db+'.old_files.dat', 'a')
     db = connect_db(args.db)
 
     # Create the DB schema if necessary
@@ -345,7 +379,7 @@ def main():
             skipped = 0
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name, old_files_log)
+            process_archive(db, args.directory + '/' + archive_name)
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
