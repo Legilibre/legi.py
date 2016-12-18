@@ -116,3 +116,13 @@ def reconstruct_path(dossier, cid, sous_dossier, id):
     if id[4:8] != 'TEXT':
         id = id_to_path(id)
     return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
+
+
+nonword_re = re.compile(r'\W', re.U)
+spaces_re = re.compile(r'\s+', re.U)
+word_re = re.compile(r'\w{2,}', re.U)
+
+
+def upper_words_percentage(s):
+    words = word_re.findall(s)
+    return len([w for w in words if w.isupper()]) / len(words)

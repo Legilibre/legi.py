@@ -8,150 +8,12 @@ from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 import json
-import re
 
-from .fr_calendar import (
-    MOIS_GREG, MOIS_REPU, gregorian_to_republican, convert_date_to_iso,
+from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
+from .utils import (
+    connect_db, filter_nonalnum, input, nonword_re, strip_down, strip_prefix,
+    upper_words_percentage,
 )
-from .roman import decimal_to_roman
-from .utils import connect_db, filter_nonalnum, input, strip_down, strip_prefix
-
-
-AUTORITE_MAP = {
-    "CONSEIL D'ETAT": "du Conseil d'État",
-    "ROI": "du Roi",
-}
-NATURE_MAP = {
-    "ARRETE": "Arrêté",
-    "DECISION": "Décision",
-    "DECLARATION": "Déclaration",
-    "DECRET": "Décret",
-    "DECRET_LOI": "Décret-loi",
-    "LOI_CONSTIT": "Loi constitutionnelle",
-    "LOI_ORGANIQUE": "Loi organique",
-}
-NATURE_MAP_R = {strip_down(v): k for k, v in NATURE_MAP.items()}
-
-
-jour_p = r'(?P<jour>1er|[0-9]{1,2})'
-mois_p = r'(?P<mois>%s)' % '|'.join(MOIS_GREG+MOIS_REPU)
-annee_p = r'(?P<annee>[0-9]{4,}|an [IVX]+)'
-nonword_re = re.compile(r'\W', re.U)
-numero_re = re.compile(r'n°(?!\s)', re.U)
-premier_du_mois = re.compile(r'\b1 %(mois_p)s %(annee_p)s' % globals())
-spaces_re = re.compile(r'\s+', re.U)
-word_re = re.compile(r'\w{2,}', re.U)
-
-ordure_p = r'quinquennale?'
-annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
-autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
-nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
-nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique))', re.U | re.I)
-numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
-titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
-titre2_re = re.compile(r' ?(%(autorite_p)s|\(?%(date_p)s\)?|%(numero_p)s|%(ordure_p)s)' % globals(), re.U | re.I)
-
-
-def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
-    if not nature:
-        return ''
-    if annexe:
-        titre = annexe[0].upper() + annexe[1:].lower()
-        titre += NATURE_MAP.get(nature, nature).lower()
-    else:
-        titre = NATURE_MAP.get(nature, nature.title())
-    if autorite:
-        titre += ' ' + AUTORITE_MAP[autorite]
-    if num:
-        titre += ' n° '+num
-    if date_texte and date_texte != '2999-01-01':
-        year, month, day = map(int, date_texte.split('-'))
-        gregorian = '%s %s %s' % (day, MOIS_GREG[month-1], year)
-        if calendar == 'republican':
-            year, month, day = gregorian_to_republican(year, month, day)
-            titre += ' du %s' % day
-            if month:
-                titre += ' ' + month
-            titre += ' an ' + decimal_to_roman(year)
-            titre += ' (%s)' % gregorian
-        else:
-            assert calendar == 'gregorian'
-            titre += ' du %s' % gregorian
-        titre = titre.replace(' 1 ', ' 1er ')
-    return titre
-
-
-def normalize_title(title):
-    if not title:
-        return title
-    title = spaces_re.sub(' ', title.strip())
-    title = title.rstrip('.').rstrip()
-    title = numero_re.sub('n° ', title)
-    title = premier_du_mois.sub(r'1er \1 \2', title)
-    if title[0].islower():
-        title = title[0].upper() + title[1:]
-    else:
-        first_space = title.find(' ')
-        first_word = title[:first_space]
-        if first_word.isupper():
-            first_word = first_word.title()
-            title = first_word + title[first_space:]
-    title = title.replace('constitutionel', 'constitutionnel')
-    return title
-
-
-def parse_titre(anomaly, titre):
-    m = titre1_re.match(titre)
-    if not m:
-        return {}, 0
-    d = m.groupdict()
-    duplicates = set()
-    while True:
-        pos = m.end()
-        m = titre2_re.match(titre, pos)
-        if not m:
-            if strip_down(d.get('nature', '')) == 'loi':
-                m = nature2_re.match(titre, pos)
-                if m:
-                    d['nature'] += m.group('nature2')
-                    pos = m.end()
-            return d, pos
-        groups = m.groupdict()
-        if 'date' in groups:
-            groups['date'], groups['calendar'] = convert_date_to_iso(
-                groups.pop('jour'),
-                groups.pop('mois'),
-                groups.pop('annee'),
-            )
-        for k, v in groups.items():
-            if v is None or k in duplicates:
-                continue
-            if k == 'numero':
-                v = v.replace('–', '-')
-            if k not in d:
-                d[k] = v
-                continue
-            if d[k] == v or strip_down(d[k]) == strip_down(v):
-                continue
-            if k == 'numero':
-                a, b = sorted((d[k], v), key=len)
-                x, y = b.split('-', 1)
-                if a == x or a == y:
-                    d[k] = b
-                    continue
-            if k == 'calendar':
-                continue
-            print('Incohérence: ', k, ': "', d[k], '" ≠ "', v, '"\n'
-                  '       dans: "', titre, '"', sep='')
-            anomaly[0] = True
-            duplicates.add(k)
-            d.pop(k)
-
-
-def upper_words_percentage(s):
-    words = word_re.findall(s)
-    return len([w for w in words if w.isupper()]) / len(words)
 
 
 def main(db):
@@ -216,10 +78,14 @@ def main(db):
             print('Échec: titre "', titre, '" contient beaucoup de mots en majuscule', sep='')
         if nature != 'CODE':
             anomaly = [False]
-            d1, endpos1 = parse_titre(anomaly, titre)
+            def anomaly_cb(titre, k, v1, v2):
+                print('Incohérence: ', k, ': "', v1, '" ≠ "', v2, '"\n'
+                      '       dans: "', titre, '"', sep='')
+                anomaly[0] = True
+            d1, endpos1 = parse_titre(titre, anomaly_cb)
             if not d1 and titre != 'Annexe' or d1 and endpos1 < len_titre:
                 print('Fail: regex did not fully match titre "', titre, '"', sep='')
-            d2, endpos2 = parse_titre(anomaly, titrefull)
+            d2, endpos2 = parse_titre(titrefull, anomaly_cb)
             if not d2:
                 print('Fail: regex did not match titrefull "', titrefull, '"', sep='')
             if d1 or d2:
@@ -244,7 +110,7 @@ def main(db):
                     anomaly[0] = True
                 annexe = get_key('annexe', ignore_not_found=True)
                 nature_d = strip_down(get_key('nature'))
-                nature_d = NATURE_MAP_R.get(nature_d, nature_d).upper()
+                nature_d = NATURE_MAP_R_SD.get(nature_d, nature_d).upper()
                 if nature_d and nature_d != nature:
                     if not nature:
                         nature = nature_d

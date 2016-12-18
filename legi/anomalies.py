@@ -4,40 +4,10 @@ from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from datetime import date
-import re
 import sys
 
-from .fr_calendar import MOIS_GREG, MOIS_REPU, convert_date_to_iso
+from .titles import NATURE_MAP_R, parse_titre, spaces_re
 from .utils import connect_db, reconstruct_path, strip_down
-
-
-NATURE_MAP = {
-    "ARRETE": "Arrêté",
-    "DECISION": "Décision",
-    "DECLARATION": "Déclaration",
-    "DECRET": "Décret",
-    "DECRET_LOI": "Décret-loi",
-    "LOI_CONSTIT": "Loi constitutionnelle",
-    "LOI_ORGANIQUE": "Loi organique",
-}
-NATURE_MAP_R = {v.upper(): k for k, v in NATURE_MAP.items()}
-
-
-jour_p = r'(?P<jour>1er|[0-9]{1,2})'
-mois_p = r'(?P<mois>%s)' % '|'.join(MOIS_GREG+MOIS_REPU)
-annee_p = r'(?P<annee>[0-9]{4,}|an [IVX]+)'
-numero_re = re.compile(r'n°(?!\s)', re.U)
-spaces_re = re.compile(r'\s+', re.U)
-word_re = re.compile(r'\w{2,}', re.U)
-
-ordure_p = r'quinquennale?'
-annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
-autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
-nature_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( constitutionnelle| organique)?|Ordonnance)'
-numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
-titre1_re = re.compile(r'(%(annexe_p)s)?%(nature_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def normalize_title(path, col, title):
@@ -48,52 +18,6 @@ def normalize_title(path, col, title):
         err(path, 'faute d\'orthographe dans le ', col, ': "constitutionel"')
         title = title.replace('constitutionel', 'constitutionnel')
     return title
-
-
-def parse_titre(path, col, titre):
-    m = titre1_re.match(titre)
-    if not m:
-        return {}, 0
-    d = m.groupdict()
-    duplicates = set()
-    while True:
-        pos = m.end()
-        m = titre2_re.match(titre, pos)
-        if not m:
-            return d, pos
-        groups = m.groupdict()
-        if 'date' in groups:
-            groups['date'], groups['calendar'] = convert_date_to_iso(
-                groups.pop('jour'),
-                groups.pop('mois'),
-                groups.pop('annee'),
-            )
-        for k, v in groups.items():
-            if v is None or k in duplicates:
-                continue
-            if k == 'numero':
-                v = v.replace('–', '-')
-            if k not in d:
-                d[k] = v
-                continue
-            if d[k] == v or strip_down(d[k]) == strip_down(v):
-                continue
-            if k == 'numero':
-                a, b = sorted((d[k], v), key=len)
-                x, y = b.split('-', 1)
-                if a == x or a == y:
-                    d[k] = b
-                    continue
-            if k == 'calendar':
-                continue
-            err(path, k, ': "', d[k], '" ≠ "', v, '" dans ', col)
-            duplicates.add(k)
-            d.pop(k)
-
-
-def upper_words_percentage(s):
-    words = word_re.findall(s)
-    return len([w for w in words if w.isupper()]) / len(words)
 
 
 def err(path, *a):
@@ -201,10 +125,14 @@ def anomalies_textes_versions(db):
             err(path, 'titre est plus long que titrefull')
             titrefull = titre
         if nature != 'CODE':
-            d1, endpos1 = parse_titre(path, 'titre', titre)
+            def anomaly_cb(col):
+                def f(titre, k, v1, v2):
+                    err(path, k, ': "', v1, '" ≠ "', v2, '" dans ', col)
+                return f
+            d1, endpos1 = parse_titre(titre, anomaly_cb('titre'), strict=True)
             if not d1 and titre != 'Annexe' or d1 and endpos1 < len_titre:
                 err(path, 'titre est irrégulier: "', titre, '"')
-            d2, endpos2 = parse_titre(path, 'titrefull', titrefull)
+            d2, endpos2 = parse_titre(titrefull, anomaly_cb('titrefull'), strict=True)
             if not d2:
                 err(path, 'titrefull est irrégulier: "', titrefull, '"')
             if d1 or d2:
