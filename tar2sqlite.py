@@ -94,7 +94,7 @@ def suppress(get_table, db, liste_suppression):
             count(deletions, 'duplicate_files', db.changes())
     total = sum(deletions.values())
     print('deleted', total, 'rows based on liste_suppression_legi.dat:',
-          json.dumps(deletions))
+          json.dumps(deletions, sort_keys=True))
 
 
 def process_archive(db, archive_path):
@@ -145,6 +145,13 @@ def process_archive(db, archive_path):
             table += parts[13] + 's'
         return table
 
+    counts = {}
+    def count_one(k):
+        try:
+            counts[k] += 1
+        except KeyError:
+            counts[k] = 1
+
     skipped = 0
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
@@ -175,6 +182,7 @@ def process_archive(db, archive_path):
             if prev_row:
                 prev_mtime, prev_dossier, prev_cid = prev_row
                 if prev_dossier != dossier or prev_cid != text_cid:
+                    count_one('insert into duplicate_files')
                     if prev_mtime >= mtime:
                         insert('duplicate_files', {
                             'id': text_id,
@@ -246,6 +254,7 @@ def process_archive(db, archive_path):
                            AND _source = 'section_ta_liens'
                     """, (text_cid, section_id))
                 for i, lien in enumerate(root.find('STRUCTURE_TA')):
+                    count_one('insert into sommaires')
                     insert('sommaires', {
                         'cid': text_cid,
                         'parent': section_id,
@@ -268,6 +277,7 @@ def process_archive(db, archive_path):
                            AND _source = ?
                     """, (text_cid, source))
                 for i, lien in enumerate(root.find('STRUCT')):
+                    count_one('insert into sommaires')
                     insert('sommaires', {
                         'cid': text_cid,
                         'element': attr(lien, 'id'),
@@ -313,6 +323,7 @@ def process_archive(db, archive_path):
                             dst_cid = attr(lien, 'cidtexte')
                             dst_titre = lien.text
                             _reversed = False
+                        count_one('insert into liens')
                         insert('liens', {
                             'src_id': src_id,
                             'dst_cid': dst_cid,
@@ -327,10 +338,15 @@ def process_archive(db, archive_path):
             attrs['mtime'] = mtime
 
             if prev_row:
+                count_one('update in '+table)
                 update(table, dict(id=text_id), attrs)
             else:
+                count_one('insert into '+table)
                 attrs['id'] = text_id
                 insert(table, attrs)
+
+    print("made", sum(counts.values()), "changes in the database:",
+          json.dumps(counts, indent=4, sort_keys=True))
 
     if skipped:
         print("skipped", skipped, "files that haven't changed")
