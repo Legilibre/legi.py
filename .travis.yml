@@ -1,0 +1,15 @@
+language: python
+python: "3.5"
+
+branches:
+  only:
+    - master
+
+install: pip install tox
+
+script: tox
+
+notifications:
+  email: false
+
+sudo: false
