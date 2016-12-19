@@ -254,6 +254,7 @@ def process_archive(db, archive_path):
                            AND parent = ?
                            AND _source = 'section_ta_liens'
                     """, (text_cid, section_id))
+                    count(counts, 'delete from sommaires', db.changes())
                 for i, lien in enumerate(root.find('STRUCTURE_TA')):
                     count_one('insert into sommaires')
                     insert('sommaires', {
@@ -277,6 +278,7 @@ def process_archive(db, archive_path):
                          WHERE cid = ?
                            AND _source = ?
                     """, (text_cid, source))
+                    count(counts, 'delete from sommaires', db.changes())
                 for i, lien in enumerate(root.find('STRUCT')):
                     count_one('insert into sommaires')
                     insert('sommaires', {
@@ -308,6 +310,7 @@ def process_archive(db, archive_path):
                          WHERE src_id = ? AND NOT _reversed
                             OR dst_id = ? AND _reversed
                     """, (text_id, text_id))
+                    count(counts, 'delete from liens', db.changes())
                 e = root if tag == 'ARTICLE' else meta_version
                 liens = e.find('LIENS')
                 if liens is not None:
