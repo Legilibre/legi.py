@@ -1,8 +1,7 @@
 ## Installation
 
-Les scripts ici présents nécessitent [`libarchive`][libarchive] ainsi que les
-modules python listés dans `requirements.txt`. Les scripts et leurs dépendances
-sont tous compatibles avec python 2 et 3.
+legi.py nécessite [`libarchive`][libarchive] ainsi que les modules python listés
+dans `requirements.txt`. Tout est compatible avec python 2 et 3.
 
 ### Ubuntu
 
@@ -16,21 +15,24 @@ La première étape est de télécharger les archives LEGI depuis
 
     wget -c -N --no-remove-listing -nH 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/*legi_*'
 
-La deuxième étape est la conversion des archives en base SQLite avec le script
-`tar2sqlite.py`:
+La deuxième étape est la conversion des archives en base SQLite:
 
-    python tar2sqlite.py legi.sqlite chemin/du/dossier/contenant/les/archives
+    python -m legi.tar2sqlite legi.sqlite chemin/du/dossier/contenant/les/archives [--anomalies] [--anomalies-dir=.]
+
+La taille du fichier SQLite créé est environ 3,3Go (en décembre 2016).
 
 Vous pouvez lancer ce script régulièrement pour maintenir votre base de données
 à jour, il saute automatiquement les archives qu'il a déjà traité. En général la
 DILA publie une nouvelle archive chaque jour sauf pendant le weekend.
 
-Maintenant que vous avez les données dans une base SQLite vous pouvez exécuter
-d'autres scripts, mais pour le moment le seul qui soit réellement utile est
-`anomalies.py`. Il est conçu pour détecter les incohérences dans les données
-afin de les signaler à la DILA. Il s'utilise comme ça:
+Le module `anomalies` est conçu pour détecter les incohérences dans les données
+afin de les signaler à la DILA. L'option `--anomalies` de `tar2sqlite` génère
+une liste d'anomalies après chaque archive traitée, l'intérêt étant de voir
+l'évolution de la cohérence de la base dans le temps. Si l'historique ne vous
+intéresse pas vous pouvez lancer la détection d'anomalies séparément après
+`tar2sqlite` pour obtenir une seule liste:
 
-    python anomalies.py legi.sqlite
+    python -m legi.anomalies legi.sqlite
 
 ## Licence
 
