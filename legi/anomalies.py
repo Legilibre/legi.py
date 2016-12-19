@@ -3,7 +3,6 @@
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-from datetime import date
 import sys
 
 from .titles import NATURE_MAP_R, parse_titre, spaces_re
@@ -12,6 +11,10 @@ from .utils import connect_db, reconstruct_path, strip_down
 
 def anomalies_date_fin_etat(db, err):
     a = [('articles', 'article'), ('textes_versions', 'texte/version')]
+    last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
+    date, heure = last_update.split('-')
+    assert len(date) == 8
+    date = date[:4] + '-' + date[4:6] + '-' + date[6:]
     for table, sous_dossier in a:
         q = db.all("""
             SELECT dossier, cid, id, date_fin, etat
@@ -20,7 +23,7 @@ def anomalies_date_fin_etat(db, err):
                AND ( etat LIKE 'VIGUEUR%' AND date_fin < '{1}' OR
                      etat NOT LIKE 'VIGUEUR%' AND etat <> 'ABROGE_DIFF' AND date_fin > '{1}'
                    )
-        """.format(table, date.today().isoformat()))
+        """.format(table, date))
         for row in q:
             dossier, cid, id, date_fin, etat = row
             path = reconstruct_path(dossier, cid, sous_dossier, id)
@@ -71,7 +74,7 @@ def anomalies_sections(db, err):
           FROM sommaires so
           JOIN articles a ON a.id = so.element AND a.etat <> so.etat
           JOIN sections s ON s.id = so.parent
-    """.format(date.today().isoformat()))
+    """)
     for row in q:
         dossier, cid, id, a_dossier, a_cid, a_id, sa_etat, a_etat = row
         path = reconstruct_path(dossier, cid, 'section_ta', id)
