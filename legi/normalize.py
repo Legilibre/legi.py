@@ -103,7 +103,7 @@ def main(db):
                         return g1 if len(g1) > len(g2) else g2
                     if key == 'calendar':
                         return 'republican'
-                    print('Incohérence: ', key,  ': "', g1, '" ≠ "', g2, '"\n',
+                    print('Incohérence: ', key, ': "', g1, '" ≠ "', g2, '"\n',
                           '      titre: "', titre, '"\n',
                           '  titrefull: "', titrefull, '"',
                           sep='')

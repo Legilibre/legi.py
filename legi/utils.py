@@ -16,7 +16,8 @@ from unicodedata import combining, normalize
 input = getattr(builtins, 'raw_input', input)
 
 
-class DB(Connection): pass
+class DB(Connection):
+    pass
 
 
 def connect_db(address):

@@ -69,10 +69,11 @@ def main(args):
     biggest_file = {'path': biggest_file, 'size': max_size}
     smallest_file = {'path': smallest_file, 'size': min_size}
 
-    r = {k: v for k, v in locals().items()
-              if k in ('avg_file_size', 'number_of_files', 'biggest_file',
-                       'smallest_file', 'roots', 'etats_par_dossier',
-                       'values_count')}
+    stats = {
+        'avg_file_size', 'number_of_files', 'biggest_file', 'smallest_file',
+        'roots', 'etats_par_dossier', 'values_count'
+    }
+    r = {k: v for k, v in locals().items() if k in stats}
     print(json.dumps(r, indent=4, sort_keys=True))
 
 
