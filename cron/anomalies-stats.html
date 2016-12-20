@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>$title</title>
+<meta charset="utf-8" />
+<style>
+* { box-sizing: border-box; }
+
+html, body { height: 100%; width: 100%; }
+html, body, div, p { margin: 0; padding: 0; }
+body { padding: 0 1em 1em; font-family: Monospace; max-width: 1250px; margin: 0 auto; }
+
+h1 { text-align: center; }
+
+.columns { border: 2px dashed #ca8; margin: 1em 0; padding: 0 5ex 1em; }
+a.column { text-decoration: none; color: inherit; }
+.column { display: inline-block; margin-top: 1em; padding-bottom: 1em; text-align: center; vertical-align: bottom; width: 8px; }
+.column > span { display: block; }
+.column-bar { background-color: #ca8; margin-top: 1em; }
+.column-labels { visibility: hidden; margin-left: -4.5ex; width: 10ex; position: absolute; }
+.column.default-visible > .column-labels { visibility: visible; }
+.columns:hover > .column.default-visible > .column-labels { visibility: hidden; }
+.columns:hover > .column:hover > .column-labels { visibility: visible; }
+.column:hover > .column-bar { border: 1px solid #b97; }
+</style>
+</head>
+<body>
+
+<h1>$title</h1>
+
+<p>Ici sont publiées les anomalies détectées par <a href="https://github.com/Legilibre/legi.py">legi.py</a> dans la base de données des lois françaises (LEGI),
+pour encourager la <a href="https://fr.wikipedia.org/wiki/Direction_de_l'information_légale_et_administrative">DILA</a> à les corriger.</p>
+
+<h2>Situation actuelle</h2>
+
+<p><a href="logs/$last_fname">$last_fname</a> liste $last_count anomalies.</p>
+
+<h2>Historique des anomalies</h2>
+
+<p>Le graphique ci-dessous représente le nombre d'anomalies trouvées dans chaque version de la base LEGI, à partir du 6 avril 2016.<br>
+Vous pouvez cliquer sur une colonne pour voir la liste d'anomalies correspondante, ou visiter <a href="logs/">le répertoire qui contient les fichiers</a>.</p>
+
+$graph
+
+</body>
+</html>
