@@ -21,7 +21,7 @@ def columns(l, height=100):
         extra_col_class = 'default-visible' if i == 0 or i == last else ''
         out += (
             '<a class="column ' + extra_col_class + '" href="' + data.get('href', '') + '">'
-            '<span class="column-labels">' + data['value'] + '</span> '
+            '<span class="column-labels">' + str(data['value']) + '</span> '
             '<span class="column-bar" style="height: ' + bar_height + '"></span> '
             '<span class="column-labels">' + data['key'] + '</span>'
             '</a>'
