@@ -10,6 +10,13 @@ html, body { height: 100%; width: 100%; }
 html, body, div, p { margin: 0; padding: 0; }
 body { padding: 0 1em 1em; font-family: Monospace; max-width: 1250px; margin: 0 auto; }
 
+#header { border-bottom: 1px solid #ddd; }
+#header * { display: inline-block; }
+#site-link { color: inherit; text-decoration: none; }
+#site-logo, #site-text { vertical-align: middle; }
+#site-name { font-size: 2em; }
+#site-slogan { font-size: 1.4em; }
+
 h1 { text-align: center; }
 
 .columns { border: 2px dashed #ca8; margin: 1em 0; padding: 0 5ex 1em; }
@@ -25,6 +32,16 @@ a.column { text-decoration: none; color: inherit; }
 </style>
 </head>
 <body>
+
+<div id="header">
+    <a href="http://legilibre.fr/" id="site-link">
+        <img id="site-logo" src="http://avatars1.githubusercontent.com/u/6777462" height="70px">
+        <span id="site-text">
+            <span id="site-name">Légilibre</span><br>
+            <span id="site-slogan">Le droit libre</span>
+        </span>
+    </a>
+</div>
 
 <h1>$title</h1>
 
