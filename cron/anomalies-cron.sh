@@ -1,5 +1,7 @@
 #!/bin/bash -eu
 
+set -o pipefail
+
 cd "$(dirname "$0")/.."
 mkdir -p tarballs
 ( cd tarballs && wget -c -N --no-remove-listing -nH 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/*legi_*' )
@@ -8,4 +10,7 @@ python -m legi.tar2sqlite legi.raw.sqlite tarballs --anomalies --anomalies-dir=a
 echo "=> Uploading anomaly logs..."
 rsync anomalies/ $1:~/anomalies/logs -rtv --chmod=F644
 echo "=> Generating index.html..."
-python cron/anomalies-stats.py anomalies | ssh $1 'umask 022 && cat >~/anomalies/index.html'
+f=tmp_anomalies-index.html
+python cron/anomalies-stats.py anomalies >$f
+[ -s $f ] && rsync $f $1:~/anomalies/index.html -tv --chmod=F644
+rm $f
