@@ -17,8 +17,8 @@ def anomalies_date_fin_etat(db, err):
     assert len(day) == 8
     annee, mois, jour = day[:4], day[4:6], day[6:]
     current_day = annee + '-' + mois + '-' + jour
-    next_day = date(int(annee), int(mois), int(jour)) + timedelta(days=1)
-    next_day = next_day.isoformat()
+    near_future = date(int(annee), int(mois), int(jour)) + timedelta(days=5)
+    near_future = near_future.isoformat()
     for table, sous_dossier in a:
         q = db.all("""
             SELECT dossier, cid, id, date_fin, etat
@@ -27,7 +27,7 @@ def anomalies_date_fin_etat(db, err):
                AND ( etat LIKE 'VIGUEUR%' AND date_fin < '{1}' OR
                      etat NOT LIKE 'VIGUEUR%' AND etat <> 'ABROGE_DIFF' AND date_fin > '{2}'
                    )
-        """.format(table, current_day, next_day))
+        """.format(table, current_day, near_future))
         for row in q:
             dossier, cid, id, date_fin, etat = row
             path = reconstruct_path(dossier, cid, sous_dossier, id)
