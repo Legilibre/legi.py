@@ -9,7 +9,8 @@ except ImportError:
 
 from itertools import chain, repeat
 import re
-from sqlite3 import Connection, IntegrityError
+from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError
+import traceback
 from unicodedata import combining, normalize
 
 
@@ -20,7 +21,7 @@ class DB(Connection):
     pass
 
 
-def connect_db(address):
+def connect_db(address, create_schema=True, update_schema=True):
     db = DB(address)
     db.all = lambda *a: iter_results(db.execute(*a))
     db.insert = inserter(db)
@@ -35,6 +36,16 @@ def connect_db(address):
 
     db.one = one
     db.changes = lambda: one("SELECT changes()")
+
+    if create_schema:
+        try:
+            db.run("SELECT 1 FROM db_meta LIMIT 1")
+        except OperationalError:
+            with open('sql/schema.sql', 'r') as f:
+                db.executescript(f.read())
+
+    if update_schema:
+        run_migrations(db)
 
     return db
 
@@ -85,6 +96,30 @@ def iter_results(q):
             return
         for row in r:
             yield row
+
+
+def run_migrations(db):
+    v = db.one("SELECT value FROM db_meta WHERE key = 'schema_version'") or 0
+    if v == 0:
+        db.insert('db_meta', dict(key='schema_version', value=v))
+    migrations = open('sql/migrations.sql').read().split('\n\n-- migration #')
+    n = 0
+    for m in migrations[1:]:
+        n, sql = m.split('\n', 1)
+        n = int(n)
+        if v >= n:
+            continue
+        print('Running DB migration #%s...' % n)
+        try:
+            db.executescript(sql)
+        except (IntegrityError, ProgrammingError):
+            traceback.print_exc()
+            r = input('Have you already run this migration? (y/N) ')
+            if r.lower() != 'y':
+                raise SystemExit(1)
+        db.run("UPDATE db_meta SET value = ? WHERE key = 'schema_version'", (n,))
+        db.commit()
+    return n - v
 
 
 nonalphanum_re = re.compile(r'[^a-z0-9]')

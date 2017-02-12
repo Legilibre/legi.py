@@ -9,7 +9,6 @@ import fnmatch
 import json
 import os
 import re
-from sqlite3 import OperationalError
 
 import libarchive
 from lxml import etree
@@ -37,11 +36,6 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
         (e.tag.lower(), (innerHTML(e[0]) if unwrap else innerHTML(e)) or None)
         for e in root if e.tag in wanted_tags
     )
-
-
-def make_schema(db):
-    with open('schema.sql', 'r') as f:
-        db.executescript(f.read())
 
 
 def suppress(get_table, db, liste_suppression):
@@ -372,12 +366,6 @@ def main():
         os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db)
-
-    # Create the DB schema if necessary
-    try:
-        db.run("SELECT 1 FROM textes_versions LIMIT 1")
-    except OperationalError:
-        make_schema(db)
 
     # Look for new archives in the given directory
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
