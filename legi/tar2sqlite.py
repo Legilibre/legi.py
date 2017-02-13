@@ -87,6 +87,10 @@ def suppress(get_table, db, liste_suppression):
                    AND id = ?
             """.format(table), (parts[3], text_cid, text_id))
             count(deletions, 'duplicate_files', db.changes())
+            # And delete the associated row in textes_versions_brutes if it exists
+            if table == 'textes_versions':
+                db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
+                count(deletions, 'textes_versions_brutes', db.changes())
     total = sum(deletions.values())
     print('deleted', total, 'rows based on liste_suppression_legi.dat:',
           json.dumps(deletions, sort_keys=True))
@@ -336,6 +340,10 @@ def process_archive(db, archive_path):
             attrs['mtime'] = mtime
 
             if prev_row:
+                # Delete the associated row in textes_versions_brutes if it exists
+                if table == 'textes_versions':
+                    db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
+                    count(counts, 'delete from textes_versions_brutes', db.changes())
                 count_one('update in '+table)
                 update(table, dict(id=text_id), attrs)
             else:

@@ -7,6 +7,7 @@ try:
 except ImportError:
     import __builtin__ as builtins
 
+from contextlib import contextmanager
 from itertools import chain, repeat
 import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError
@@ -17,8 +18,32 @@ from unicodedata import combining, normalize
 input = getattr(builtins, 'raw_input', input)
 
 
+IGNORE = object()
+NIL = object()
+
+
+@contextmanager
+def patch_object(obj, attr, value):
+    if value is IGNORE:
+        yield
+        return
+    backup = getattr(obj, attr, NIL)
+    setattr(obj, attr, value)
+    try:
+        yield
+    finally:
+        if backup is NIL:
+            delattr(obj, attr)
+        else:
+            setattr(obj, attr, backup)
+
+
 class DB(Connection):
     pass
+
+
+def dict_factory(cursor, row):
+    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
 def connect_db(address, create_schema=True, update_schema=True):
@@ -28,11 +53,13 @@ def connect_db(address, create_schema=True, update_schema=True):
     db.update = updater(db)
     db.run = db.execute
 
-    def one(*args):
-        r = db.execute(*args).fetchone()
-        if r and len(r) == 1:
-            return r[0]
-        return r
+    def one(*args, **kw):
+        to_dict = kw.get('to_dict', False)
+        with patch_object(db, 'row_factory', dict_factory if to_dict else IGNORE):
+            r = db.execute(*args).fetchone()
+            if r and len(r) == 1 and not to_dict:
+                r = r[0]
+            return r
 
     db.one = one
     db.changes = lambda: one("SELECT changes()")
@@ -51,14 +78,15 @@ def connect_db(address, create_schema=True, update_schema=True):
 
 
 def inserter(conn):
-    def insert(table, attrs):
+    def insert(table, attrs, replace=False):
+        or_clause = 'OR REPLACE' if replace else ''
         keys, values = zip(*attrs.items())
         keys = ','.join(keys)
         placeholders = ','.join(repeat('?', len(attrs)))
         try:
             conn.execute("""
-                INSERT INTO {0} ({1}) VALUES ({2})
-            """.format(table, keys, placeholders), values)
+                INSERT {0} INTO {1} ({2}) VALUES ({3})
+            """.format(or_clause, table, keys, placeholders), values)
         except IntegrityError:
             print(table, *attrs.items(), sep='\n    ')
             raise

@@ -99,7 +99,7 @@ def anomalies_textes_versions(db, err):
 
     q = db.all("""
         SELECT dossier, cid, id, titre, titrefull, nature, num, date_texte
-          FROM textes_versions
+          FROM textes_versions_brutes_view
     """)
     for row in q:
         dossier, cid, id, titre_o, titrefull_o, nature_o, num, date_texte = row

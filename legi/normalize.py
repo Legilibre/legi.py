@@ -7,25 +7,26 @@ Normalizes LEGI data stored in an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
+from functools import reduce
 import json
 
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
-    connect_db, filter_nonalnum, input, nonword_re, strip_down, strip_prefix,
+    connect_db, filter_nonalnum, nonword_re, strip_down, strip_prefix,
     upper_words_percentage,
 )
 
 
 def main(db):
 
-    db.executescript("""
-        UPDATE textes_versions SET date_texte = NULL WHERE nor IS NOT NULL AND date_texte < '1868-01-01';
-        UPDATE textes_versions SET num = substr(num, 1, length(num)-1) WHERE num like '%.';
-        UPDATE textes_versions SET num = NULL WHERE num = date_texte;
-        UPDATE textes_versions SET num_sequence = NULL WHERE num_sequence = 0;
-        UPDATE textes_versions SET page_deb_publi = NULL WHERE page_deb_publi = 0;
-        UPDATE textes_versions SET page_fin_publi = NULL WHERE page_fin_publi = 0;
-    """)
+    TEXTES_VERSIONS_BRUTES_BITS = {
+        'nature': 1,
+        'titre': 2,
+        'titrefull': 4,
+        'autorite': 8,
+        'num': 16,
+        'date_texte': 32,
+    }
 
     update_counts = {}
     def count_update(k):
@@ -35,12 +36,13 @@ def main(db):
             update_counts[k] = 1
 
     updates = {}
+    orig_values = {}
     q = db.all("""
-        SELECT rowid, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
+        SELECT id, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
           FROM textes_versions
     """)
     for row in q:
-        rowid, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
+        text_id, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
         titre, titrefull, nature = titre_o, titrefull_o, nature_o
         if titrefull.startswith('COUR DES COMPTESET DE FINANCEMENTS POLITIQUES '):
             titrefull = titrefull[46:]
@@ -125,8 +127,13 @@ def main(db):
                     if not num or not num[0].isdigit():
                         if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
                             if '-' in num_d:
+                                orig_values['num'] = num
                                 updates['num'] = num = num_d
                                 count_update('num')
+                    elif num[-1] == '.' and num[:-1] == num_d:
+                        orig_values['num'] = num
+                        updates['num'] = num = num_d
+                        count_update('num')
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                         anomaly[0] = True
@@ -134,6 +141,7 @@ def main(db):
                 calendar = get_key('calendar')
                 if date_texte_d:
                     if not date_texte or date_texte == '2999-01-01':
+                        orig_values['date_texte'] = date_texte
                         updates['date_texte'] = date_texte = date_texte_d
                         count_update('date_texte')
                     elif date_texte_d != date_texte:
@@ -145,6 +153,7 @@ def main(db):
                     if not autorite_d.startswith('ministeriel'):
                         autorite_d = strip_prefix(autorite_d, 'du ').upper()
                         if not autorite:
+                            orig_values['autorite'] = autorite
                             updates['autorite'] = autorite = autorite_d
                             count_update('autorite')
                         elif autorite != autorite_d:
@@ -157,18 +166,32 @@ def main(db):
         titrefull_s = filter_nonalnum(titrefull)
         if titre != titre_o:
             count_update('titre')
+            orig_values['titre'] = titre_o
             updates['titre'] = titre
         if titrefull != titrefull_o:
             count_update('titrefull')
+            orig_values['titrefull'] = titrefull_o
             updates['titrefull'] = titrefull
         if nature != nature_o:
             count_update('nature')
+            orig_values['nature'] = nature_o
             updates['nature'] = nature
         if titrefull_s != titrefull_s_o:
             updates['titrefull_s'] = titrefull_s
         if updates:
-            db.update("textes_versions", dict(rowid=rowid), updates)
+            db.update("textes_versions", dict(id=text_id), updates)
             updates.clear()
+            if orig_values:
+                # Save the original non-normalized data in textes_versions_brutes
+                bits = (TEXTES_VERSIONS_BRUTES_BITS[k] for k in orig_values)
+                orig_values['bits'] = reduce(int.__or__, bits)
+                orig_values.update(db.one("""
+                    SELECT id, dossier, cid, mtime
+                      FROM textes_versions
+                     WHERE id = ?
+                """, (text_id,), to_dict=True))
+                db.insert("textes_versions_brutes", orig_values, replace=True)
+                orig_values.clear()
 
     print('Done. Updated %i values: %s' %
           (sum(update_counts.values()), json.dumps(update_counts, indent=4)))
@@ -183,8 +206,5 @@ if __name__ == '__main__':
     try:
         with db:
             main(db)
-            save = input('Sauvegarder les modifications? (o/n) ')
-            if save.lower() != 'o':
-                raise KeyboardInterrupt
     except KeyboardInterrupt:
         pass
