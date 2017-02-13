@@ -7,10 +7,11 @@ try:
 except ImportError:
     import __builtin__ as builtins
 
+from collections import namedtuple
 from contextlib import contextmanager
 from itertools import chain, repeat
 import re
-from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError
+from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
 import traceback
 from unicodedata import combining, normalize
 
@@ -46,8 +47,23 @@ def dict_factory(cursor, row):
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
-def connect_db(address, create_schema=True, update_schema=True):
+def namedtuple_factory(cursor, row):
+    return namedtuple('Record', [col[0] for col in cursor.description])(*row)
+
+
+ROW_FACTORIES = {
+    'dict': dict_factory,
+    'namedtuple': namedtuple_factory,
+    'Row': Row,
+}
+
+
+def connect_db(address, row_factory=None, create_schema=True, update_schema=True):
     db = DB(address)
+    if row_factory:
+        if not callable(row_factory):
+            row_factory = ROW_FACTORIES[row_factory]
+        db.row_factory = row_factory
     db.all = lambda *a: iter_results(db.execute(*a))
     db.insert = inserter(db)
     db.update = updater(db)
@@ -153,8 +169,11 @@ def run_migrations(db):
 nonalphanum_re = re.compile(r'[^a-z0-9]')
 
 
+_unicode = getattr(builtins, 'unicode', str)
+
+
 def strip_accents(s):
-    return ''.join(c for c in normalize('NFKD', s) if not combining(c))
+    return ''.join(c for c in normalize('NFKD', _unicode(s)) if not combining(c))
 
 
 strip_down = lambda s: strip_accents(s).lower()

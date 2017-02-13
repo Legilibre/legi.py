@@ -44,16 +44,12 @@ def main(db):
     for row in q:
         text_id, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
         titre, titrefull, nature = titre_o, titrefull_o, nature_o
-        if titrefull.startswith('COUR DES COMPTESET DE FINANCEMENTS POLITIQUES '):
-            titrefull = titrefull[46:]
         len_titre = len(titre)
         if len(titrefull) > len_titre:
             if titrefull[len_titre:][:1] != ' ' and titrefull[:len_titre] == titre:
                 # Add missing space
                 titrefull = titre + ' ' + titrefull[len_titre:]
         titre, titrefull = normalize_title(titre), normalize_title(titrefull)
-        if titre.endswith(' du'):
-            titre = titre[:-3]
         len_titre = len(titre)
         if titrefull[:len_titre] != titre:
             if len_titre > len(titrefull):
@@ -126,7 +122,7 @@ def main(db):
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
                         if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
-                            if '-' in num_d:
+                            if '-' in num_d or nature == 'DECISION':
                                 orig_values['num'] = num
                                 updates['num'] = num = num_d
                                 count_update('num')
