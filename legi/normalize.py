@@ -162,7 +162,10 @@ def main(db):
                 if not anomaly[0]:
                     titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
-                    titrefull = titre + titrefull[endpos2:]
+                    titrefull_p2 = titrefull[endpos2:]
+                    if titrefull_p2 and titrefull_p2[0] != ' ':
+                        titrefull_p2 = ' ' + titrefull_p2
+                    titrefull = titre + titrefull_p2
         titrefull_s = filter_nonalnum(titrefull)
         if titre != titre_o:
             count_update('titre')
