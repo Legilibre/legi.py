@@ -5,6 +5,7 @@ from datetime import timedelta
 from legi.fr_calendar import (
     MOIS_REPU, REPUBLICAN_START_DATE, SANSCULOTTIDES,
     gregorian_to_republican, republican_to_gregorian,
+    convert_date_to_iso,
 )
 
 
@@ -21,3 +22,7 @@ def test_continuity():
             assert republican_to_gregorian(year, None, day) == greg
             assert gregorian_to_republican(greg.year, greg.month, greg.day) == (year, None, day)
             greg += one_day
+
+
+def test_convert_date_to_iso():
+    assert convert_date_to_iso('1', 'vendemiaire', 'an I')[0] == '1792-09-22'
