@@ -136,6 +136,10 @@ def anomalies_textes_versions(db, err):
             d2, endpos2 = parse_titre(titrefull, anomaly_cb('titrefull'), strict=True)
             if not d2:
                 err(path, 'titrefull est irrégulier: "', titrefull, '"')
+            if d2:
+                titrefull_p2 = titrefull[endpos2:]
+                if titrefull_p2 and titrefull_p2[0] != ' ':
+                    err(path, 'espace manquante dans titrefull après le ', endpos2, 'e caractère')
             if d1 or d2:
                 def get_key(key, ignore_not_found=False):
                     g1, g2 = d1.get(key), d2.get(key)
