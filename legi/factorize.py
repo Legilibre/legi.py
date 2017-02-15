@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 from lxml import etree
 
-from .utils import connect_db, input
+from .utils import connect_db
 
 
 def connect_by_nature_num():
@@ -249,8 +249,5 @@ if __name__ == '__main__':
                     UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
                 """)
             main()
-            save = input('Sauvegarder les modifications? (o/n) ')
-            if save.lower() != 'o':
-                raise KeyboardInterrupt
     except KeyboardInterrupt:
         pass
