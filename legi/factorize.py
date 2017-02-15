@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 
 from lxml import etree
 
+from .normalize import main as normalize
 from .utils import connect_db
 
 
@@ -248,6 +249,10 @@ if __name__ == '__main__':
                     DELETE FROM textes;
                     UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
                 """)
+            if db.one("SELECT id FROM textes_versions WHERE titrefull_s IS NULL LIMIT 1"):
+                print("> Normalisation des titres...")
+                normalize(db)
+                print("> Factorisation des textes...")
             main()
     except KeyboardInterrupt:
         pass
