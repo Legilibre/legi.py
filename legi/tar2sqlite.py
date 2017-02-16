@@ -368,6 +368,7 @@ def main():
     p.add_argument('--anomalies', action='store_true', default=False,
                    help="detect anomalies after each processed archive")
     p.add_argument('--anomalies-dir', default='.')
+    p.add_argument('--raw', default=False, action='store_true')
     args = p.parse_args()
 
     if not os.path.isdir(args.anomalies_dir):
@@ -415,6 +416,12 @@ def main():
             with open(fpath, 'w') as f:
                 n_anomalies = detect_anomalies(db, f)
             print("logged", n_anomalies, "anomalies in", fpath)
+
+    if not args.raw:
+        from .normalize import main as normalize
+        normalize(db)
+        from .factorize import main as factorize
+        factorize(db)
 
 
 if __name__ == '__main__':
