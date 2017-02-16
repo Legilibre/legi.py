@@ -3,11 +3,13 @@ from os.path import join, dirname
 
 from setuptools import setup, find_packages
 
+from version import get_version
+
 os.umask(0o022)
 
 setup(
     name='legi',
-    version='0.0',
+    version=get_version(),
     description="Tools to work with the database of French laws (LEGI)",
     author='Changaco',
     author_email='changaco@changaco.oy.lc',
