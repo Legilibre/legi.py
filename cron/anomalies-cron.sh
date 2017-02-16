@@ -3,7 +3,7 @@
 set -o pipefail
 
 cd "$(dirname "$0")/.."
-wget -c -N --no-remove-listing -nH -P ./tarballs 'ftp://legi:open1234@ftp2.journal-officiel.gouv.fr/*legi_*'
+python -m legi.download ./tarballs
 echo "=> Starting tar2sqlite..."
 python -m legi.tar2sqlite legi.raw.sqlite tarballs --anomalies --anomalies-dir=anomalies | tee -a legi.raw.log
 echo "=> Uploading anomaly logs..."
