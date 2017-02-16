@@ -10,6 +10,7 @@ except ImportError:
 from collections import namedtuple
 from contextlib import contextmanager
 from itertools import chain, repeat
+import os.path
 import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
 import traceback
@@ -21,6 +22,7 @@ input = getattr(builtins, 'raw_input', input)
 
 IGNORE = object()
 NIL = object()
+ROOT = os.path.dirname(__file__) + '/'
 
 
 @contextmanager
@@ -84,7 +86,7 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         try:
             db.run("SELECT 1 FROM db_meta LIMIT 1")
         except OperationalError:
-            with open('sql/schema.sql', 'r') as f:
+            with open(ROOT + 'sql/schema.sql', 'r') as f:
                 db.executescript(f.read())
 
     if update_schema:
@@ -146,7 +148,7 @@ def run_migrations(db):
     v = db.one("SELECT value FROM db_meta WHERE key = 'schema_version'") or 0
     if v == 0:
         db.insert('db_meta', dict(key='schema_version', value=v))
-    migrations = open('sql/migrations.sql').read().split('\n\n-- migration #')
+    migrations = open(ROOT + 'sql/migrations.sql').read().split('\n\n-- migration #')
     n = 0
     for m in migrations[1:]:
         n, sql = m.split('\n', 1)

@@ -19,4 +19,6 @@ setup(
     long_description="See https://github.com/Legilibre/legi.py",
     install_requires=open(join(dirname(__file__), 'requirements.txt')).read(),
     keywords='legi law france',
+    include_package_data=True,
+    zip_safe=False,
 )
