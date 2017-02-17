@@ -83,6 +83,13 @@ Pour détecter les anomalies actuellement présentes dans la base:
 
     python -m legi.anomalies legi.sqlite
 
+## Contribuer
+
+Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion]
+(https://github.com/Legilibre/legi.py/issues/new) avant de commencer le travail,
+ça permet une meilleure coopération et coordination. Vous pouvez aussi vous
+présenter dans [le salon](https://github.com/Legilibre/salon).
+
 ## Licence
 
 [CC0 Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/)
