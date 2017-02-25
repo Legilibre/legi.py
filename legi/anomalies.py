@@ -211,6 +211,17 @@ def anomalies_textes_versions(db, err):
                 get_key('calendar')
 
 
+def anomalies_textes_vides(db, err):
+    q = db.all("""
+        SELECT dossier, cid, id
+          FROM textes_structs ts
+         WHERE (SELECT count(*) FROM sommaires so WHERE so.cid = ts.cid AND so._source = 'struct/'||ts.id) = 0
+    """)
+    for dossier, cid, id in q:
+        path = reconstruct_path(dossier, cid, 'texte/struct', id)
+        err(path, 'texte vide')
+
+
 def detect_anomalies(db, out=sys.stdout):
     count = [0]
     def err(path, *a):
@@ -223,6 +234,7 @@ def detect_anomalies(db, out=sys.stdout):
     anomalies_orphans(db, err)
     anomalies_sections(db, err)
     anomalies_textes_versions(db, err)
+    anomalies_textes_vides(db, err)
     return count[0]
 
 
