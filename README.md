@@ -11,6 +11,8 @@ sont pas encore implémentées directement dans legi.py, par exemple générer d
 statistiques sur l'activité législative, [trouver le texte le plus ancien encore
 en vigueur][tweet-texte-plus-ancien], etc.
 
+[![Build Status](https://travis-ci.org/Legilibre/legi.py.svg)](https://travis-ci.org/Legilibre/legi.py)
+
 ## Installation
 
 Vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python
@@ -89,6 +91,10 @@ Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion]
 (https://github.com/Legilibre/legi.py/issues/new) avant de commencer le travail,
 ça permet une meilleure coopération et coordination. Vous pouvez aussi vous
 présenter dans [le salon](https://github.com/Legilibre/salon).
+
+### Tests
+
+legi.py utilise [Tox](https://pypi.python.org/pypi/tox) pour tester le code sur plusieurs versions de Python. Installez-le si nécessaire puis lancez la commande `tox` dans le dossier qui contient votre copie du dépôt legi.py.
 
 ## Licence
 
