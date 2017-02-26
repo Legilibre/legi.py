@@ -35,6 +35,38 @@ def anomalies_date_fin_etat(db, err):
             err(path, 'la date de fin "', date_fin, '" est dans le ', x, ' mais l\'état est "', etat, '"')
 
 
+def anomalies_element_sommaire(db, err):
+    q = db.all("""
+        SELECT cid, parent, _source, element, position
+          FROM sommaires so
+         WHERE ( CASE WHEN substr(so.element, 5, 4) = 'ARTI'
+                           THEN (SELECT count(*) FROM articles a WHERE a.id = so.element)
+                      WHEN substr(so.element, 5, 4) = 'SCTA'
+                           THEN (SELECT count(*) FROM sections s WHERE s.id = so.element)
+                      ELSE 1
+                 END ) = 0
+    """)
+    for cid, parent, _source, element, position in q:
+        if _source == 'section_ta_liens':
+            source_id = parent
+            dossier = db.one("SELECT dossier FROM sections WHERE id = ?", (source_id,))
+            assert dossier
+            sous_dossier = 'section_ta'
+        elif _source.startswith('struct/'):
+            source_id = _source[7:]
+            dossier = db.one("SELECT dossier FROM textes_structs WHERE id = ?", (source_id,))
+            assert dossier
+            sous_dossier = 'texte/struct'
+        else:
+            raise Exception('unexpected `_source` value')
+        path = reconstruct_path(dossier, cid, sous_dossier, source_id)
+        element_type = element[4:8]
+        if element_type == 'ARTI':
+            err(path, "l'article %s référencé en position %i est introuvable" % (element, position + 1))
+        elif element_type == 'SCTA':
+            err(path, "la section %s référencée en position %i est introuvable" % (element, position + 1))
+
+
 def anomalies_orphans(db, err):
     db.run("CREATE INDEX IF NOT EXISTS sommaires_element_idx ON sommaires (element)")
     q = db.all("""
@@ -179,6 +211,17 @@ def anomalies_textes_versions(db, err):
                 get_key('calendar')
 
 
+def anomalies_textes_vides(db, err):
+    q = db.all("""
+        SELECT dossier, cid, id
+          FROM textes_structs ts
+         WHERE (SELECT count(*) FROM sommaires so WHERE so.cid = ts.cid AND so._source = 'struct/'||ts.id) = 0
+    """)
+    for dossier, cid, id in q:
+        path = reconstruct_path(dossier, cid, 'texte/struct', id)
+        err(path, 'texte vide')
+
+
 def detect_anomalies(db, out=sys.stdout):
     count = [0]
     def err(path, *a):
@@ -187,9 +230,11 @@ def detect_anomalies(db, out=sys.stdout):
         count[0] += 1
 
     anomalies_date_fin_etat(db, err)
+    anomalies_element_sommaire(db, err)
     anomalies_orphans(db, err)
     anomalies_sections(db, err)
     anomalies_textes_versions(db, err)
+    anomalies_textes_vides(db, err)
     return count[0]
 
 
