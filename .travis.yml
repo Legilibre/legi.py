@@ -5,11 +5,22 @@ branches:
   only:
     - master
 
-install: pip install tox
+install:
+  - sqlite3 --version
+  - pip install tox
 
 script: tox
 
 notifications:
   email: false
+  irc:
+    channels:
+      - "chat.freenode.net#legilibre"
+    on_failure: always
+    on_success: change
+    skip_join: true
+    template:
+      - "%{repository} (%{branch}:%{commit} by %{author}): %{message} (%{build_url})"
 
+dist: trusty
 sudo: false
