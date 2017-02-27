@@ -225,6 +225,8 @@ def process_archive(db, archive_path):
 
             # Extract the data we want
             attrs = {}
+            liens = ()
+            sommaires = ()
             if tag == 'ARTICLE':
                 assert nature == 'Article'
                 assert table == 'articles'
@@ -245,17 +247,8 @@ def process_archive(db, archive_path):
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
-                if prev_row:
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND parent = ?
-                           AND _source = 'section_ta_liens'
-                    """, (text_cid, section_id))
-                    count(counts, 'delete from sommaires', db.changes())
-                for i, lien in enumerate(root.find('STRUCTURE_TA')):
-                    count_one('insert into sommaires')
-                    insert('sommaires', {
+                sommaires = [
+                    {
                         'cid': text_cid,
                         'parent': section_id,
                         'element': attr(lien, 'id'),
@@ -265,29 +258,24 @@ def process_archive(db, archive_path):
                         'num': attr(lien, 'num'),
                         'position': i,
                         '_source': 'section_ta_liens',
-                    })
+                    }
+                    for i, lien in enumerate(root.find('STRUCTURE_TA'))
+                ]
             elif tag == 'TEXTELR':
                 assert table == 'textes_structs'
                 scrape_tags(attrs, root, TEXTELR_TAGS)
-                source = 'struct/' + text_id
-                if prev_row:
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND _source = ?
-                    """, (text_cid, source))
-                    count(counts, 'delete from sommaires', db.changes())
-                for i, lien in enumerate(root.find('STRUCT')):
-                    count_one('insert into sommaires')
-                    insert('sommaires', {
+                sommaires = [
+                    {
                         'cid': text_cid,
                         'element': attr(lien, 'id'),
                         'debut': attr(lien, 'debut'),
                         'fin': attr(lien, 'fin'),
                         'etat': attr(lien, 'etat'),
                         'position': i,
-                        '_source': source,
-                    })
+                        '_source': 'struct/' + text_id,
+                    }
+                    for i, lien in enumerate(root.find('STRUCT'))
+                ]
             elif tag == 'TEXTE_VERSION':
                 assert table == 'textes_versions'
                 attrs['nature'] = nature
@@ -302,17 +290,11 @@ def process_archive(db, archive_path):
                 raise Exception('unexpected tag: '+tag)
 
             if tag in ('ARTICLE', 'TEXTE_VERSION'):
-                if prev_row:
-                    db.run("""
-                        DELETE FROM liens
-                         WHERE src_id = ? AND NOT _reversed
-                            OR dst_id = ? AND _reversed
-                    """, (text_id, text_id))
-                    count(counts, 'delete from liens', db.changes())
                 e = root if tag == 'ARTICLE' else meta_version
-                liens = e.find('LIENS')
-                if liens is not None:
-                    for lien in liens:
+                liens_tags = e.find('LIENS')
+                if liens_tags is not None:
+                    liens = []
+                    for lien in liens_tags:
                         typelien, sens = attr(lien, 'typelien'), attr(lien, 'sens')
                         src_id, dst_id = text_id, attr(lien, 'id')
                         if sens == 'cible':
@@ -325,8 +307,7 @@ def process_archive(db, archive_path):
                             dst_cid = attr(lien, 'cidtexte')
                             dst_titre = lien.text
                             _reversed = False
-                        count_one('insert into liens')
-                        insert('liens', {
+                        liens.append({
                             'src_id': src_id,
                             'dst_cid': dst_cid,
                             'dst_id': dst_id,
@@ -340,16 +321,47 @@ def process_archive(db, archive_path):
             attrs['mtime'] = mtime
 
             if prev_row:
-                # Delete the associated row in textes_versions_brutes if it exists
+                # Delete the associated rows
+                if tag == 'SECTION_TA':
+                    db.run("""
+                        DELETE FROM sommaires
+                         WHERE cid = ?
+                           AND parent = ?
+                           AND _source = 'section_ta_liens'
+                    """, (text_cid, section_id))
+                    count(counts, 'delete from sommaires', db.changes())
+                elif tag == 'TEXTELR':
+                    db.run("""
+                        DELETE FROM sommaires
+                         WHERE cid = ?
+                           AND _source = ?
+                    """, (text_cid, 'struct/' + text_id))
+                    count(counts, 'delete from sommaires', db.changes())
+                if tag in ('ARTICLE', 'TEXTE_VERSION'):
+                    db.run("""
+                        DELETE FROM liens
+                         WHERE src_id = ? AND NOT _reversed
+                            OR dst_id = ? AND _reversed
+                    """, (text_id, text_id))
+                    count(counts, 'delete from liens', db.changes())
                 if table == 'textes_versions':
                     db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
                     count(counts, 'delete from textes_versions_brutes', db.changes())
+                # Update the row
                 count_one('update in '+table)
                 update(table, dict(id=text_id), attrs)
             else:
                 count_one('insert into '+table)
                 attrs['id'] = text_id
                 insert(table, attrs)
+
+            # Insert the associated rows
+            for lien in liens:
+                db.insert('liens', lien)
+            count(counts, 'insert into liens', len(liens))
+            for sommaire in sommaires:
+                db.insert('sommaires', sommaire)
+            count(counts, 'insert into sommaires', len(sommaires))
 
     print("made", sum(counts.values()), "changes in the database:",
           json.dumps(counts, indent=4, sort_keys=True))
