@@ -4,7 +4,7 @@ CREATE TABLE db_meta
 , value blob
 );
 
-INSERT INTO db_meta (key, value) VALUES ('schema_version', 1);
+INSERT INTO db_meta (key, value) VALUES ('schema_version', 2);
 
 CREATE TABLE textes
 ( id integer primary key not null
@@ -116,6 +116,7 @@ CREATE TABLE duplicate_files
 , cid char(20) not null
 , dossier text not null
 , mtime int not null
+, data text not null
 , other_cid char(20) not null
 , other_dossier text not null
 , other_mtime int not null

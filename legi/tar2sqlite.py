@@ -171,7 +171,8 @@ def process_archive(db, archive_path):
             text_id = parts[-1][:-4]
             mtime = entry.mtime
 
-            # Skip the file if it hasn't changed, log it if it's a duplicate
+            # Skip the file if it hasn't changed, store it if it's a duplicate
+            duplicate = False
             table = get_table(parts)
             prev_row = db.one("""
                 SELECT mtime, dossier, cid
@@ -181,30 +182,50 @@ def process_archive(db, archive_path):
             if prev_row:
                 prev_mtime, prev_dossier, prev_cid = prev_row
                 if prev_dossier != dossier or prev_cid != text_cid:
-                    count_one('insert into duplicate_files')
                     if prev_mtime >= mtime:
-                        insert('duplicate_files', {
-                            'id': text_id,
-                            'sous_dossier': SOUS_DOSSIER_MAP[table],
-                            'cid': text_cid,
-                            'dossier': dossier,
-                            'mtime': mtime,
-                            'other_cid': prev_cid,
-                            'other_dossier': prev_dossier,
-                            'other_mtime': prev_mtime,
-                        })
-                        continue
+                        duplicate = True
                     else:
+                        prev_row_dict = db.one("""
+                            SELECT *
+                              FROM {0}
+                             WHERE id = ?
+                        """.format(table), (text_id,), to_dict=True)
+                        data = {table: prev_row_dict}
+                        data['liens'] = list(db.all("""
+                            SELECT *
+                              FROM liens
+                             WHERE src_id = ? AND NOT _reversed
+                                OR dst_id = ? AND _reversed
+                        """, (text_id, text_id), to_dict=True))
+                        if table == 'sections':
+                            data['sommaires'] = list(db.all("""
+                                SELECT *
+                                  FROM sommaires
+                                 WHERE cid = ?
+                                   AND parent = ?
+                                   AND _source = 'section_ta_liens'
+                            """, (text_id, text_id), to_dict=True))
+                        elif table == 'textes_structs':
+                            source = 'struct/' + text_id
+                            data['sommaires'] = list(db.all("""
+                                SELECT *
+                                  FROM sommaires
+                                 WHERE cid = ?
+                                   AND _source = ?
+                            """, (text_cid, source), to_dict=True))
+                        data = {k: v for k, v in data.items() if v}
                         insert('duplicate_files', {
                             'id': text_id,
                             'sous_dossier': SOUS_DOSSIER_MAP[table],
                             'cid': prev_cid,
                             'dossier': prev_dossier,
                             'mtime': prev_mtime,
+                            'data': json.dumps(data),
                             'other_cid': text_cid,
                             'other_dossier': dossier,
                             'other_mtime': mtime,
                         })
+                        count_one('insert into duplicate_files')
                 elif prev_mtime == mtime:
                     skipped += 1
                     continue
@@ -315,6 +336,26 @@ def process_archive(db, archive_path):
                             'typelien': typelien,
                             '_reversed': _reversed,
                         })
+
+            if duplicate:
+                data = {table: attrs}
+                if liens:
+                    data['liens'] = liens
+                if sommaires:
+                    data['sommaires'] = sommaires
+                insert('duplicate_files', {
+                    'id': text_id,
+                    'sous_dossier': SOUS_DOSSIER_MAP[table],
+                    'cid': text_cid,
+                    'dossier': dossier,
+                    'mtime': mtime,
+                    'data': json.dumps(data),
+                    'other_cid': prev_cid,
+                    'other_dossier': prev_dossier,
+                    'other_mtime': prev_mtime,
+                })
+                count_one('insert into duplicate_files')
+                continue
 
             attrs['dossier'] = dossier
             attrs['cid'] = text_cid
