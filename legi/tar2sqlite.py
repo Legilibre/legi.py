@@ -39,7 +39,7 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
 
 
 def suppress(get_table, db, liste_suppression):
-    deletions = {}
+    counts = {}
     for path in liste_suppression:
         parts = path.split('/')
         assert parts[0] == 'legi'
@@ -55,7 +55,7 @@ def suppress(get_table, db, liste_suppression):
         """.format(table), (parts[3], text_cid, text_id))
         changes = db.changes()
         if changes:
-            count(deletions, table, changes)
+            count(counts, 'delete from ' + table, changes)
             # Also delete derivative data
             if table in ('articles', 'textes_versions'):
                 db.run("""
@@ -63,7 +63,7 @@ def suppress(get_table, db, liste_suppression):
                      WHERE src_id = ? AND NOT _reversed
                         OR dst_id = ? AND _reversed
                 """, (text_id, text_id))
-                count(deletions, 'liens', db.changes())
+                count(counts, 'delete from liens', db.changes())
             elif table == 'sections':
                 db.run("""
                     DELETE FROM sommaires
@@ -71,18 +71,45 @@ def suppress(get_table, db, liste_suppression):
                        AND parent = ?
                        AND _source = 'section_ta_liens'
                 """, (text_cid, text_id))
-                count(deletions, 'sommaires', db.changes())
+                count(counts, 'delete from sommaires', db.changes())
             elif table == 'textes_structs':
                 db.run("""
                     DELETE FROM sommaires
                      WHERE cid = ?
                        AND _source = 'struct/' || ?
                 """, (text_cid, text_id))
-                count(deletions, 'sommaires', db.changes())
+                count(counts, 'delete from sommaires', db.changes())
             # And delete the associated row in textes_versions_brutes if it exists
             if table == 'textes_versions':
                 db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
-                count(deletions, 'textes_versions_brutes', db.changes())
+                count(counts, 'delete from textes_versions_brutes', db.changes())
+            # If the file had an older duplicate that hasn't been deleted then
+            # we have to fall back to that, otherwise we'd be missing data
+            older_file = db.one("""
+                SELECT *
+                  FROM duplicate_files
+                 WHERE id = ?
+              ORDER BY mtime DESC
+                 LIMIT 1
+            """, (text_id,), to_dict=True)
+            if older_file:
+                db.run("""
+                    DELETE FROM duplicate_files
+                     WHERE dossier = ?
+                       AND cid = ?
+                       AND id = ?
+                """, (older_file['dossier'], older_file['cid'], older_file['id']))
+                count(counts, 'delete from duplicate_files', db.changes())
+                for table, rows in json.loads(older_file['data']).items():
+                    if isinstance(rows, dict):
+                        rows['id'] = older_file['id']
+                        rows['cid'] = older_file['cid']
+                        rows['dossier'] = older_file['dossier']
+                        rows['mtime'] = older_file['mtime']
+                        rows = (rows,)
+                    for row in rows:
+                        db.insert(table, row)
+                    count(counts, 'insert into ' + table, len(rows))
         else:
             # Remove the file from the duplicates table if it was in there
             db.run("""
@@ -91,10 +118,10 @@ def suppress(get_table, db, liste_suppression):
                    AND cid = ?
                    AND id = ?
             """, (parts[3], text_cid, text_id))
-            count(deletions, 'duplicate_files', db.changes())
-    total = sum(deletions.values())
-    print('deleted', total, 'rows based on liste_suppression_legi.dat:',
-          json.dumps(deletions, sort_keys=True))
+            count(counts, 'delete from duplicate_files', db.changes())
+    total = sum(counts.values())
+    print("made", total, "changes in the database based on liste_suppression_legi.dat:",
+          json.dumps(counts, indent=4, sort_keys=True))
 
 
 def process_archive(db, archive_path):
