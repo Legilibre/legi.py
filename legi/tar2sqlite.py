@@ -79,18 +79,19 @@ def suppress(get_table, db, liste_suppression):
                        AND _source = 'struct/' || ?
                 """, (text_cid, text_id))
                 count(deletions, 'sommaires', db.changes())
-            # And remove the file from the duplicates list if it was in there
+            # And delete the associated row in textes_versions_brutes if it exists
+            if table == 'textes_versions':
+                db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
+                count(deletions, 'textes_versions_brutes', db.changes())
+        else:
+            # Remove the file from the duplicates table if it was in there
             db.run("""
                 DELETE FROM duplicate_files
                  WHERE dossier = ?
                    AND cid = ?
                    AND id = ?
-            """.format(table), (parts[3], text_cid, text_id))
+            """, (parts[3], text_cid, text_id))
             count(deletions, 'duplicate_files', db.changes())
-            # And delete the associated row in textes_versions_brutes if it exists
-            if table == 'textes_versions':
-                db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
-                count(deletions, 'textes_versions_brutes', db.changes())
     total = sum(deletions.values())
     print('deleted', total, 'rows based on liste_suppression_legi.dat:',
           json.dumps(deletions, sort_keys=True))
