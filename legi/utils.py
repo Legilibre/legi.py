@@ -101,7 +101,6 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
     if update_schema:
         r = run_migrations(db)
         if r == '!RECREATE!':
-            del db
             return connect_db(address, row_factory=row_factory, create_schema=True)
 
     return db
