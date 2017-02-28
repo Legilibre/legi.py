@@ -10,6 +10,7 @@ except ImportError:
 from collections import namedtuple
 from contextlib import contextmanager
 from itertools import chain, repeat
+import os
 import os.path
 import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
@@ -62,6 +63,7 @@ ROW_FACTORIES = {
 
 def connect_db(address, row_factory=None, create_schema=True, update_schema=True):
     db = DB(address)
+    db.address = address
     if row_factory:
         if not callable(row_factory):
             row_factory = ROW_FACTORIES[row_factory]
@@ -97,7 +99,10 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
                 db.executescript(f.read())
 
     if update_schema:
-        run_migrations(db)
+        r = run_migrations(db)
+        if r == '!RECREATE!':
+            del db
+            return connect_db(address, row_factory=row_factory, create_schema=True)
 
     return db
 
@@ -162,6 +167,12 @@ def run_migrations(db):
         n = int(n)
         if v >= n:
             continue
+        sql = sql.strip()
+        if sql == '!RECREATE!':
+            print('Recreating DB from scratch (migration #%s)...' % n)
+            db.close()
+            os.rename(db.address, db.address + '.back')
+            return sql
         print('Running DB migration #%s...' % n)
         try:
             db.executescript(sql)
