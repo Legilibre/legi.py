@@ -66,10 +66,17 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         if not callable(row_factory):
             row_factory = ROW_FACTORIES[row_factory]
         db.row_factory = row_factory
-    db.all = lambda *a: iter_results(db.execute(*a))
     db.insert = inserter(db)
     db.update = updater(db)
     db.run = db.execute
+
+    def all(*a, **kw):
+        to_dict = kw.get('to_dict', False)
+        with patch_object(db, 'row_factory', dict_factory if to_dict else IGNORE):
+            q = db.execute(*a)
+        return iter_results(q)
+
+    db.all = all
 
     def one(*args, **kw):
         to_dict = kw.get('to_dict', False)

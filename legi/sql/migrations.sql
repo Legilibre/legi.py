@@ -25,3 +25,10 @@ CREATE VIEW textes_versions_brutes_view AS
       FROM textes_versions a
  LEFT JOIN textes_versions_brutes b
         ON b.id = a.id AND b.cid = a.cid AND b.dossier = a.dossier AND b.mtime = a.mtime;
+
+-- migration #2
+DELETE FROM db_meta WHERE key = 'last_update';
+DELETE FROM textes; DELETE FROM textes_structs; DELETE FROM textes_versions;
+DELETE FROM sections; DELETE FROM articles; DELETE FROM sommaires; DELETE FROM liens;
+DELETE FROM duplicate_files; DELETE FROM textes_versions_brutes;
+ALTER TABLE duplicate_files ADD COLUMN data text NOT NULL;
