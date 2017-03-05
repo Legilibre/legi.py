@@ -1,6 +1,6 @@
 
 CREATE TABLE db_meta
-( key     text   primary key
+( key     char(30)   primary key
 , value   blob
 );
 
