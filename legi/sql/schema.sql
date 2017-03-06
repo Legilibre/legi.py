@@ -27,8 +27,8 @@ CREATE TABLE textes_versions
 ( id                      char(20)   unique not null
 , nature                  text
 , titre                   text
-, titrefull               text
-, titrefull_s             text
+, titrefull               char(40)
+, titrefull_s             char(40)
 , etat                    text
 , date_debut              day
 , date_fin                day
