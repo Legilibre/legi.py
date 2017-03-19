@@ -16,16 +16,21 @@ TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections'}
 def iterate_everything(db):
     textes = [r[0] for r in db.all("SELECT id FROM textes")]
     for texte_id in textes:
-        versions = list(db.all("""
-            SELECT cid, id
-              FROM textes_versions
-             WHERE texte_id = ?
-          ORDER BY date_debut ASC
-        """, (texte_id,), to_dict=True))
-        yield ('texte', {'temp_id': texte_id, 'versions': versions})
-        for v in versions:
-            for e in iterate_cid(db, v['cid']):
-                yield e
+        for e in iterate_texte(db, texte_id):
+            yield e
+
+
+def iterate_texte(db, texte_id):
+    versions = list(db.all("""
+        SELECT cid, id
+          FROM textes_versions
+         WHERE texte_id = ?
+      ORDER BY date_debut ASC
+    """, (texte_id,), to_dict=True))
+    yield ('texte', {'temp_id': texte_id, 'versions': versions})
+    for v in versions:
+        for e in iterate_cid(db, v['cid']):
+            yield e
 
 
 def iterate_cid(db, cid):
@@ -71,7 +76,15 @@ def iterate_cid(db, cid):
 
 def main(args):
     db = connect_db(args.db)
-    stream = iterate_cid(db, args.cid) if args.cid else iterate_everything(db)
+    if args.texte:
+        if not args.cid:
+            raise SystemExit("--texte nécessite --cid")
+        texte_id = db.one("SELECT texte_id FROM textes_versions WHERE cid = ? LIMIT 1", (args.cid,))
+        stream = iterate_texte(db, texte_id)
+    elif args.cid:
+        stream = iterate_cid(db, args.cid)
+    else:
+        stream = iterate_everything(db)
     for i, t in enumerate(stream):
         if i >= args.limit:
             print('reached the limit (%i)' % args.limit)
@@ -90,5 +103,7 @@ if __name__ == '__main__':
     p.add_argument('db')
     p.add_argument('limit', type=int)
     p.add_argument('--cid', nargs='?')
+    p.add_argument('--texte', action='store_true', default=False,
+                   help="active l'export de toutes les versions du texte identitifé par --cid")
     args = p.parse_args()
     main(args)
