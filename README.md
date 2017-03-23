@@ -112,7 +112,7 @@ En 2015 j'ai réouvert, nettoyé et publié mon code. J'ai ensuite été très o
 à créer [Liberapay](https://liberapay.com/).
 
 Fin 2016 j'ai à nouveau travaillé sur legi.py. Le projet progressa fortement,
-[anomalies.legilibre.fr][anomalies] fût créé.
+[anomalies.legilibre.fr][anomalies] fut créé.
 
 En février 2017 la version 0.1 est publiée.
 
