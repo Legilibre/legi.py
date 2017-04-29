@@ -10,7 +10,7 @@ from .normalize import main as normalize
 from .utils import connect_db
 
 
-def connect_by_nature_num():
+def connect_by_nature_num(db):
     db.run("""
         UPDATE textes_versions
            SET texte_id = (
@@ -30,7 +30,7 @@ def connect_by_nature_num():
     print('connected %i rows of textes_versions based on (nature, num)' % db.changes())
 
 
-def connect_by_nor():
+def connect_by_nor(db):
     db.run("""
         CREATE TEMP TABLE texte_by_nor AS
             SELECT nor, min(texte_id)
@@ -61,7 +61,7 @@ def connect_by_nor():
     db.run("DROP TABLE texte_by_nor")
 
 
-def connect_by_titrefull_s():
+def connect_by_titrefull_s(db):
     db.run("""
         CREATE TEMP TABLE texte_by_titrefull_s AS
             SELECT DISTINCT titrefull_s, texte_id
@@ -87,7 +87,7 @@ def connect_by_titrefull_s():
     db.run("DROP TABLE texte_by_titrefull_s")
 
 
-def factorize_by(key):
+def factorize_by(db, key):
     duplicates = db.all("""
         SELECT min(nature), {0}, group_concat(texte_id)
           FROM textes_versions
@@ -116,8 +116,8 @@ def factorize_by(key):
     print('factorized %i duplicates into %i uniques based on %s' % (total, factorized, key))
 
 
-def main():
-    connect_by_nature_num()
+def main(db):
+    connect_by_nature_num(db)
 
     db.run("""
         INSERT INTO textes (nature, num)
@@ -131,9 +131,9 @@ def main():
     """)
     print('inserted %i rows in textes based on (nature, num)' % db.changes())
 
-    connect_by_nature_num()
-    connect_by_nor()
-    connect_by_titrefull_s()
+    connect_by_nature_num(db)
+    connect_by_nor(db)
+    connect_by_titrefull_s(db)
 
     db.run("""
         INSERT INTO textes (nature, nor)
@@ -163,8 +163,8 @@ def main():
     """)
     print('connected %i rows of textes_versions based on nor' % db.changes())
 
-    factorize_by('titrefull_s')
-    connect_by_titrefull_s()
+    factorize_by(db, 'titrefull_s')
+    connect_by_titrefull_s(db)
 
     db.run("""
         INSERT INTO textes (nature, titrefull_s)
@@ -191,7 +191,7 @@ def main():
     """)
     print('connected %i rows of textes_versions based on titrefull_s' % db.changes())
 
-    factorize_by('cid')
+    factorize_by(db, 'cid')
 
     xml = etree.XMLParser(remove_blank_text=True)
     q = db.all("""
@@ -253,6 +253,6 @@ if __name__ == '__main__':
                 print("> Normalisation des titres...")
                 normalize(db)
                 print("> Factorisation des textes...")
-            main()
+            main(db)
     except KeyboardInterrupt:
         pass
