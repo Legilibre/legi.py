@@ -258,8 +258,7 @@ def process_archive(db, archive_path):
                     skipped += 1
                     continue
 
-            for block in entry.get_blocks():
-                xml.feed(block)
+            xml.feed(b''.join(entry.get_blocks()))
             root = xml.close()
             tag = root.tag
             meta = root.find('META')
