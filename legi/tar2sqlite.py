@@ -252,14 +252,13 @@ def process_archive(db, archive_path):
                             'other_cid': text_cid,
                             'other_dossier': dossier,
                             'other_mtime': mtime,
-                        })
-                        count_one('insert into duplicate_files')
+                        }, replace=True)
+                        count_one('upsert into duplicate_files')
                 elif prev_mtime == mtime:
                     skipped += 1
                     continue
 
-            for block in entry.get_blocks():
-                xml.feed(block)
+            xml.feed(b''.join(entry.get_blocks()))
             root = xml.close()
             tag = root.tag
             meta = root.find('META')
@@ -381,8 +380,8 @@ def process_archive(db, archive_path):
                     'other_cid': prev_cid,
                     'other_dossier': prev_dossier,
                     'other_mtime': prev_mtime,
-                })
-                count_one('insert into duplicate_files')
+                }, replace=True)
+                count_one('upsert into duplicate_files')
                 continue
 
             attrs['dossier'] = dossier
