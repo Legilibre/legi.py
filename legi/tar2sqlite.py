@@ -12,6 +12,7 @@ import re
 
 import libarchive
 from lxml import etree
+from tqdm import tqdm
 
 from .anomalies import detect_anomalies
 from .utils import connect_db
@@ -183,7 +184,7 @@ def process_archive(db, archive_path):
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
-        for entry in archive:
+        for entry in tqdm(archive):
             path = entry.pathname
             if path[-1] == '/':
                 continue

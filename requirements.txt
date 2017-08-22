@@ -1,2 +1,3 @@
 libarchive-c
 lxml
+tqdm
