@@ -77,9 +77,7 @@ La base LEGI n'a pas d'identifiant qui remplisse réellement ce rôle.
 
 ### Détection d'anomalies
 
-Le module `anomalies` est conçu pour détecter les incohérences dans les données
-afin de les signaler à la DILA. Le résultat est visible sur [anomalies.legilibre.fr]
-[anomalies]. (`cron/anomalies-cron.sh` est le script qui génère ce mini-site.)
+Le module `anomalies` est conçu pour détecter les incohérences dans les données afin de les signaler à la DILA. Le résultat est visible sur [anomalies.legilibre.fr][anomalies]. (`cron/anomalies-cron.sh` est le script qui génère ce mini-site.)
 
 Pour détecter les anomalies actuellement présentes dans la base:
 
@@ -87,10 +85,7 @@ Pour détecter les anomalies actuellement présentes dans la base:
 
 ## Contribuer
 
-Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion]
-(https://github.com/Legilibre/legi.py/issues/new) avant de commencer le travail,
-ça permet une meilleure coopération et coordination. Vous pouvez aussi vous
-présenter dans [le salon](https://github.com/Legilibre/salon).
+Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion](https://github.com/Legilibre/legi.py/issues/new) avant de commencer le travail, ça permet une meilleure coopération et coordination. Vous pouvez aussi vous présenter dans [le salon](https://github.com/Legilibre/salon).
 
 ### Tests
 
