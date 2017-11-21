@@ -12,7 +12,12 @@ import re
 
 import libarchive
 from lxml import etree
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    print('[warning] tqdm is not installed, the progress bar is disabled')
+    tqdm = lambda x:x
 
 from .anomalies import detect_anomalies
 from .utils import connect_db
