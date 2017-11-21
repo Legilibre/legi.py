@@ -17,7 +17,7 @@ try:
     from tqdm import tqdm
 except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
-    tqdm = lambda x:x
+    tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
 from .utils import connect_db
