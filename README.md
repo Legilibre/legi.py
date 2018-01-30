@@ -39,8 +39,6 @@ La première étape est de télécharger les archives LEGI depuis
 
     python -m legi.download ./tarballs
 
-(`wget` doit être installé pour que cela fonctionne.)
-
 La deuxième étape est la conversion des archives en base SQLite:
 
     python -m legi.tar2sqlite legi.sqlite ./tarballs
