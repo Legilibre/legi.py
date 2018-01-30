@@ -5,10 +5,10 @@ Downloads the LEGI tarballs from the official FTP server.
 from __future__ import division, print_function, unicode_literals
 
 import argparse
-import re
-import os
-import ftplib
 import datetime
+import ftplib
+import os
+import re
 import time
 
 
