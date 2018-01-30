@@ -454,6 +454,8 @@ def main():
     p.add_argument('--anomalies', action='store_true', default=False,
                    help="detect anomalies after each processed archive")
     p.add_argument('--anomalies-dir', default='.')
+    p.add_argument('--pragma', action='append', default=[],
+                   help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
     args = p.parse_args()
 
@@ -461,6 +463,10 @@ def main():
         os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db)
+    for pragma in args.pragma:
+        query = "PRAGMA " + pragma
+        result = db.one(query)
+        print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
 
     # Look for new archives in the given directory
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
