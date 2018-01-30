@@ -8,7 +8,6 @@ import argparse
 import datetime
 import ftplib
 import os
-import re
 import time
 
 
@@ -20,39 +19,17 @@ DILA_LEGI_DIR = '/LEGI'
 EPOCH_DATETIME = datetime.datetime.fromtimestamp(0)
 
 
-re_incremental_file = re.compile('legi_.*\.tar\.gz')
-re_global_file = re.compile('Freemium_legi_global.*\.tar\.gz')
-
-
 def to_epoch_time(date):
     return (date - EPOCH_DATETIME).total_seconds()
 
 
-def filter_incremental(e):
-    return bool(re_incremental_file.match(e))
-
-
-def filter_global(e):
-    return bool(re_global_file.match(e))
-
-
 def download_legi(dst_dir):
-    remote_files = {}
-    local_files = {}
-    filenames = os.listdir(dst_dir)
-    for filename in filenames:
-        local_files[filename] = ({'name': filename})
+    local_files = {filename: {} for filename in os.listdir(dst_dir)}
     ftph = ftplib.FTP()
     ftph.connect(DILA_FTP_HOST, DILA_FTP_PORT)
     ftph.login()
     ftph.cwd(DILA_LEGI_DIR)
-    filenames = ftph.nlst()
-    filenames = filter(
-        lambda e: filter_global(e) or filter_incremental(e),
-        filenames
-    )
-    for filename in filenames:
-        remote_files[filename] = ({'name': filename})
+    remote_files = {filename: {} for filename in ftph.nlst() if 'legi_' in filename}
     local_set = set(local_files.keys())
     remote_set = set(remote_files.keys())
     common_files = list(local_set & remote_set)
@@ -62,7 +39,7 @@ def download_legi(dst_dir):
             os.path.join(dst_dir, filename)
         )
     ftph.voidcmd('TYPE I')
-    for filename in set(missing_files) | set(common_files):
+    for filename in remote_files:
         tmp = ftph.sendcmd('MDTM {}'.format(filename)).split(' ', 1)[1]
         file_mtim = datetime.datetime.strptime(tmp, '%Y%m%d%H%M%S')
         file_size = ftph.size(filename)
