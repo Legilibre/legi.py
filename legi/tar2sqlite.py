@@ -130,7 +130,7 @@ def suppress(get_table, db, liste_suppression):
           json.dumps(counts, indent=4, sort_keys=True))
 
 
-def process_archive(db, archive_path):
+def process_archive(db, archive_path, process_links=True):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -343,7 +343,7 @@ def process_archive(db, archive_path):
             else:
                 raise Exception('unexpected tag: '+tag)
 
-            if tag in ('ARTICLE', 'TEXTE_VERSION'):
+            if process_links and tag in ('ARTICLE', 'TEXTE_VERSION'):
                 e = root if tag == 'ARTICLE' else meta_version
                 liens_tags = e.find('LIENS')
                 if liens_tags is not None:
@@ -457,6 +457,8 @@ def main():
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
+    p.add_argument('--skip-links', default=False, action='store_true',
+                   help="if set, all link metadata will be ignored (the `liens` table will be empty)")
     args = p.parse_args()
 
     if not os.path.isdir(args.anomalies_dir):
@@ -467,6 +469,10 @@ def main():
         query = "PRAGMA " + pragma
         result = db.one(query)
         print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
+
+    process_links = not args.skip_links
+    if args.skip_links:
+        db.run("DELETE FROM liens")
 
     # Look for new archives in the given directory
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
@@ -494,7 +500,7 @@ def main():
             skipped = 0
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name)
+            process_archive(db, args.directory + '/' + archive_name, process_links)
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
