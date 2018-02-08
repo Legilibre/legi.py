@@ -116,21 +116,31 @@ const getTableNameFromLegiId = id => {
 const serial = promises =>
   promises.reduce((chain, c) => chain.then(res => c.then(cur => [...res, cur])), Promise.resolve([]));
 
+const getEntryDetails = async entry => {
+  const table = getTableNameFromLegiId(entry.element);
+  return await knex
+    .table(table)
+    .where("id", entry.element)
+    .first();
+};
 // recursive
 const getEntryStructure = async ({ cid, entry }) => {
   const table = getTableNameFromLegiId(entry.element);
 
+  const details = await getEntryDetails(entry);
+  //console.log("d", d);
   const entryData = {
-    ...entry,
+    ...details,
     sections: []
   };
-  //console.log("entryData", entryData);
+
   if (table === "sections" && entry.element !== cid) {
+    const childEntries = await knex.table("sommaires").where({
+      cid,
+      parent: entry.element
+    });
     entryData.sections = await serial(
-      (await knex.table("sommaires").where({
-        cid,
-        parent: entry.element
-      })).map(entry2 =>
+      childEntries.map(entry2 =>
         getEntryStructure({
           entry: entry2,
           cid
@@ -149,8 +159,7 @@ const getStructure = async cid => {
     .table("sommaires")
     .where({ cid: cid, _source: `struct/${firstVersion.id}` })
     .orderBy("position", "ASC");
-  console.log("sommaire", sommaire);
-  const structure = await serial(
+  return await serial(
     sommaire.map(x =>
       getEntryStructure({
         cid: cid,
@@ -158,8 +167,6 @@ const getStructure = async cid => {
       })
     )
   );
-
-  return structure;
 };
 
 const test = async () => {
