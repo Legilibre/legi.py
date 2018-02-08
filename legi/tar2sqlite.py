@@ -186,6 +186,7 @@ def process_archive(db, archive_path, process_links=True):
             counts[k] = 1
 
     skipped = 0
+    unknown_folders = {}
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
@@ -200,6 +201,13 @@ def process_archive(db, archive_path, process_links=True):
             if parts[1] == 'legi':
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
+            if not parts[2].startswith('code_et_TNC_'):
+                # https://github.com/Legilibre/legi.py/issues/23
+                try:
+                    unknown_folders[parts[2]] += 1
+                except KeyError:
+                    unknown_folders[parts[2]] = 1
+                continue
             dossier = parts[3]
             text_cid = parts[11]
             text_id = parts[-1][:-4]
@@ -442,6 +450,10 @@ def process_archive(db, archive_path, process_links=True):
 
     if skipped:
         print("skipped", skipped, "files that haven't changed")
+
+    if unknown_folders:
+        for d, x in unknown_folders.items():
+            print("skipped", x, "files in unknown folder `%s`" % d)
 
     if liste_suppression:
         suppress(get_table, db, liste_suppression)
