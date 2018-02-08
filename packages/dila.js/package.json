@@ -1,0 +1,18 @@
+{
+  "name": "legi.js",
+  "version": "1.0.0",
+  "author": "Julien Bouquillon <julien@revolunet.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/revolunet/legi.js.git"
+  },
+  "homepage": "https://revolunet.github.io/legi.js/",
+  "bugs": {
+    "url": "https://github.com/revolunet/legi.js/issues"
+  },
+  "dependencies": {
+    "knex": "^0.14.2",
+    "sqlite3": "^3.1.13"
+  }
+}
