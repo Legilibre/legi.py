@@ -1,5 +1,6 @@
 const db = "../legilibre/legi.py-docker/tarballs/legilibre.sqlite";
 /*
+todo : handle dates
 
 articles :
   id:
@@ -17,19 +18,16 @@ const knex = require("knex")({
   }
 });
 
-const getCodeDuTravail = () =>
+const getCode = titre =>
   knex
     .select()
     .from("textes_versions")
-    .where("titre", "Code du travail")
+    .where("titre", titre)
     .first();
 
-const getCodePI = () =>
-  knex
-    .select()
-    .from("textes_versions")
-    .where("titre", "Code de la propriété intellectuelle")
-    .first();
+const getCodeDuTravail = () => getCode("Code du travail");
+
+const getCodePI = () => getCode("Code de la propriété intellectuelle");
 
 const getLinks = () =>
   getCodeDuTravail().then(r =>
@@ -123,6 +121,7 @@ const getEntryDetails = async entry => {
     .where("id", entry.element)
     .first();
 };
+
 // recursive
 const getEntryStructure = async ({ cid, entry }) => {
   const table = getTableNameFromLegiId(entry.element);
