@@ -227,7 +227,7 @@ def process_archive(
     unknown_folders = defaultdict(int)
     liste_suppression = []
     liste_suppression_dossier = []
-    xml = etree.XMLParser(remove_blank_text=True)
+    xml = etree.XMLParser(collect_ids=False, remove_blank_text=True)
     with tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar, \
          open(archive_path, 'rb') as file, \
          libarchive.stream_reader(file) as archive:
