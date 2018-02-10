@@ -33,8 +33,8 @@ def count(d, k, c):
 
 
 def innerHTML(e):
-    i = len(e.tag) + 2
-    return etree.tostring(e, encoding='unicode', with_tail=False)[i:-i-1]
+    r = etree.tostring(e, encoding='unicode', with_tail=False)
+    return r[r.find('>')+1:-len(e.tag)-3]
 
 
 def scrape_tags(attrs, root, wanted_tags, unwrap=False):
