@@ -7,11 +7,113 @@ This module handles the HTML provided in LEGI.
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
+from cgi import escape
 import json
 
 from lxml import etree
+from maps import FrozenMap, namedfrozen
 
-from .utils import connect_db
+from .utils import connect_db, multispace_re
+
+
+# An immutable type representing the opening of an HTML element
+StartTag = namedfrozen(str('StartTag'), ['tag', 'void', 'style', 'dropped'])
+
+# Default styles, used to detect redundant attributes
+DEFAULT_STYLE = FrozenMap({
+    '.collapse-spaces': True,
+    'align': 'left',
+    'dir': 'ltr',
+})
+
+# Set of elements that should not be dropped even if they're completely empty
+KEEP_EMPTY = {'td', 'th'}
+
+# A fake StartTag which holds the default styles
+INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True)
+
+# Set of elements that should be dropped if they don't have any attributes
+USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
+
+# http://w3c.github.io/html/syntax.html#void-elements
+# Only two void tags are actually used in LEGI
+VOID_ELEMENTS = {'br', 'hr'}
+
+
+class HTMLCleaner(object):
+    """A parser target which returns cleaned HTML (as a string, not a tree).
+
+    Doc: http://lxml.de/parsing.html#the-target-parser-interface
+    """
+
+    def __init__(self):
+        self.out = []
+        self.tag_stack = [INVISIBLE_ROOT_TAG]
+
+    def start(self, tag, attrs):
+        # Add start tag to stack and output
+        void = tag in VOID_ELEMENTS
+        attrs_str = ''
+        parent_styles = self.tag_stack[-1].style
+        new_styles = {}
+        for k, v in attrs.items():
+            parent_style = parent_styles.get(k)
+            if k == 'id' or parent_style == v:
+                # Skip useless attributes
+                continue
+            if parent_style:
+                new_styles[k] = v
+            attrs_str += ' %s="%s"' % (k, escape(v))
+        if tag == 'pre':
+            new_styles['.collapse-spaces'] = False
+        styles = FrozenMap(parent_styles, **new_styles) if new_styles else parent_styles
+        dropped = not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES
+        self.tag_stack.append(StartTag(tag, void, styles, dropped))
+        if not dropped:
+            self.out.append('<' + tag + attrs_str + (' />' if void else '>'))
+
+    def end(self, tag):
+        start_tag = self.tag_stack.pop()
+        # Don't add an end tag if the start tag was self-closed or skipped
+        if start_tag.void or start_tag.dropped:
+            return
+        # Drop empty elements, unless they're in the KEEP_EMPTY set
+        if tag not in KEEP_EMPTY and self.out[-1] == '<%s>' % tag:
+            self.out.pop()
+            return
+        # Add end tag to output
+        self.out.append('</%s>' % tag)
+
+    def data(self, text):
+        # Skip if it's all whitespace
+        if not text.strip():
+            return
+        # Collapse spaces, unless we're inside a <pre>
+        if self.tag_stack[-1].style['.collapse-spaces']:
+            text = multispace_re.sub(' ', text)
+        # Add to output
+        self.out.append(text)
+
+    def close(self):
+        # Join the output into a single string, then reset the parser before
+        # returning so that it can be reused
+        r = ''.join(self.out).rstrip()
+        self.__init__()
+        return r
+
+
+cleaner = etree.XMLParser(target=HTMLCleaner())
+
+
+def clean_html(html):
+    """Returns cleaned HTML
+
+    This function is a simple wrapper around the HTMLCleaner class.
+    """
+    cleaner.feed('<root>')
+    cleaner.feed(html)
+    cleaner.feed('</root>')
+    return cleaner.close()[6:-7]
 
 
 class StatsCollector(object):
