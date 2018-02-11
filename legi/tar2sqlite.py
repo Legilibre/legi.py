@@ -476,11 +476,7 @@ def main():
     if not os.path.isdir(args.anomalies_dir):
         os.mkdir(args.anomalies_dir)
 
-    db = connect_db(args.db)
-    for pragma in args.pragma:
-        query = "PRAGMA " + pragma
-        result = db.one(query)
-        print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
+    db = connect_db(args.db, pragmas=args.pragma)
 
     process_links = not args.skip_links
     if args.skip_links:

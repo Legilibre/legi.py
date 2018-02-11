@@ -61,7 +61,7 @@ ROW_FACTORIES = {
 }
 
 
-def connect_db(address, row_factory=None, create_schema=True, update_schema=True):
+def connect_db(address, row_factory=None, create_schema=True, update_schema=True, pragmas=()):
     db = DB(address)
     db.address = address
     if row_factory:
@@ -102,6 +102,11 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         r = run_migrations(db)
         if r == '!RECREATE!':
             return connect_db(address, row_factory=row_factory, create_schema=True)
+
+    for pragma in pragmas:
+        query = "PRAGMA " + pragma
+        result = db.one(query)
+        print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
 
     return db
 
