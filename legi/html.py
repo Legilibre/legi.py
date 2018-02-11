@@ -19,11 +19,21 @@ from .utils import connect_db, multispace_re
 # An immutable type representing the opening of an HTML element
 StartTag = namedfrozen(str('StartTag'), ['tag', 'void', 'style', 'dropped'])
 
+# Map of color names to hexadecimal values
+COLORS_MAP = {
+    'black': '#000000',
+    'white': '#ffffff',
+}
+
 # Default styles, used to detect redundant attributes
 DEFAULT_STYLE = FrozenMap({
     '.collapse-spaces': True,
     'align': 'left',
+    'bgcolor': '#ffffff',
+    'clear': 'none',
+    'color': '#000000',
     'dir': 'ltr',
+    'valign': 'baseline',
 })
 
 # Set of elements that should not be dropped even if they're completely empty
@@ -31,6 +41,9 @@ KEEP_EMPTY = {'td', 'th'}
 
 # A fake StartTag which holds the default styles
 INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True)
+
+# Set of attributes that should always be dropped
+USELESS_ATTRIBUTES = {'charoff', 'id'}
 
 # Set of elements that should be dropped if they don't have any attributes
 USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
@@ -57,12 +70,29 @@ class HTMLCleaner(object):
         parent_styles = self.tag_stack[-1].style
         new_styles = {}
         for k, v in attrs.items():
+            # Skip useless attributes
+            if k in USELESS_ATTRIBUTES:
+                continue
+            # Skip obsolete list style attribute
+            if k == 'type' and tag in {'ul', 'ol'}:
+                continue
+            # Normalize the value
+            v = v.strip()
+            if k.endswith('color'):
+                v = v.lower()
+                if v.startswith('rgb('):
+                    v = '#%02x%02x%02x' % [int(s.strip()) for s in v[4:-1].split(',')]
+                elif len(v) == 6 and v.isdigit():
+                    v = '#' + v
+                else:
+                    v = COLORS_MAP.get(v, v)
+            # Skip redundant styles
             parent_style = parent_styles.get(k)
-            if k == 'id' or parent_style == v:
-                # Skip useless attributes
+            if parent_style == v:
                 continue
             if parent_style:
                 new_styles[k] = v
+            # Add to output
             attrs_str += ' %s="%s"' % (k, escape(v))
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
