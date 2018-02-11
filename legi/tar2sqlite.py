@@ -18,6 +18,7 @@ except ImportError:
     tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
+from .html import clean_html
 from .utils import connect_db, partition
 
 
@@ -43,9 +44,9 @@ def innerHTML(e):
     return r[r.find('>')+1:-len(e.tag)-3]
 
 
-def scrape_tags(attrs, root, wanted_tags, unwrap=False):
+def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=lambda a: a):
     attrs.update(
-        (e.tag.lower(), (innerHTML(e[0]) if unwrap else innerHTML(e)) or None)
+        (e.tag.lower(), clean(innerHTML(e[0] if unwrap else e)) or None)
         for e in root if e.tag in wanted_tags
     )
 
@@ -140,7 +141,7 @@ def suppress(get_table, db, liste_suppression):
           json.dumps(counts, indent=4, sort_keys=True))
 
 
-def process_archive(db, archive_path, process_links=True):
+def process_archive(db, archive_path, raw, process_links=True):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -189,6 +190,7 @@ def process_archive(db, archive_path, process_links=True):
         except KeyError:
             counts[k] = 1
 
+    clean = (lambda a: a) if raw else clean_html
     skipped = 0
     unknown_folders = {}
     liste_suppression = []
@@ -305,7 +307,7 @@ def process_archive(db, archive_path, process_links=True):
                     attrs['section'] = attr(sections[-1], 'id')
                 meta_article = meta.find('META_SPEC/META_ARTICLE')
                 scrape_tags(attrs, meta_article, META_ARTICLE_TAGS)
-                scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True)
+                scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True, clean=clean)
             elif tag == 'SECTION_TA':
                 assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
@@ -353,7 +355,7 @@ def process_archive(db, archive_path, process_links=True):
                 scrape_tags(attrs, meta_chronicle, META_CHRONICLE_TAGS)
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
-                scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True)
+                scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True, clean=clean)
             else:
                 raise Exception('unexpected tag: '+tag)
 
@@ -531,7 +533,7 @@ def main():
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name, not args.skip_links)
+            process_archive(db, args.directory + '/' + archive_name, args.raw, not args.skip_links)
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
