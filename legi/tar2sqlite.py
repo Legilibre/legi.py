@@ -477,13 +477,29 @@ def main():
         os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db, pragmas=args.pragma)
+    last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
 
-    process_links = not args.skip_links
-    if args.skip_links:
+    # Check and record the data mode
+    db_meta_raw = db.one("SELECT value FROM db_meta WHERE key = 'raw'")
+    if args.raw:
+        versions_brutes = db.one("SELECT count(*) FROM textes_versions_brutes")
+        data_is_not_raw = versions_brutes > 0 or db_meta_raw is False
+        if data_is_not_raw:
+            print("!> Can't honor --raw option, the data has already been modified previously.")
+            raise SystemExit(1)
+    if db_meta_raw != args.raw:
+        db.insert('db_meta', dict(key='raw', value=args.raw))
+
+    # Handle the --skip-links option
+    links_count = db.one("SELECT count(*) FROM liens")
+    if not args.skip_links and links_count == 0 and last_update is not None:
+        args.skip_links = True
+        print("> Warning: links will not be processed because this DB was built with --skip-links.")
+    elif args.skip_links and links_count > 0:
+        print("> Deleting links...")
         db.run("DELETE FROM liens")
 
     # Look for new archives in the given directory
-    last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
     print("> last_update is", last_update)
     archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+')
     skipped = 0
@@ -508,7 +524,7 @@ def main():
             skipped = 0
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name, process_links)
+            process_archive(db, args.directory + '/' + archive_name, not args.skip_links)
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
