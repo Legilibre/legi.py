@@ -37,6 +37,7 @@ sous forme de paquet [sur PyPI][legi-pypi].
 La première étape est de télécharger les archives LEGI depuis
 `ftp://echanges.dila.gouv.fr/LEGI/`:
 
+    mkdir tarballs
     python -m legi.download ./tarballs
 
 La deuxième étape est la conversion des archives en base SQLite:
