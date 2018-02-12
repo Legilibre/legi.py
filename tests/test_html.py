@@ -25,14 +25,14 @@ def test_clean_html_drops_useless_attributes_and_elements():
 
 
 def test_clean_html_does_not_alter_clean_html():
-    expected = '<h1 align="center">Titre</h1><p>Lorem ipsum</p>'
+    expected = '<h1 align="center">Titre</h1><p>Lorem ipsum &amp;</p>'
     actual = clean_html(expected)
     assert actual == expected
 
 
 def test_clean_html_does_not_collapse_spaces_inside_pre():
     unclean = '''
-        <pre>    print("Hello world")
+        <pre>    print("&gt; Hello world")
         </pre>
     '''
     actual = clean_html(unclean)

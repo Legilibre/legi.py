@@ -136,7 +136,7 @@ class HTMLCleaner(object):
             # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
             text = bad_space_re.sub(drop_bad_space, text)
         # Add to output
-        self.out.append(text)
+        self.out.append(escape(text))
 
     def close(self):
         # Join the output into a single string, then reset the parser before
