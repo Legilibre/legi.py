@@ -89,7 +89,7 @@ class HTMLCleaner(object):
             if k.endswith('color'):
                 v = v.lower()
                 if v.startswith('rgb('):
-                    v = '#%02x%02x%02x' % [int(s.strip()) for s in v[4:-1].split(',')]
+                    v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
                 elif len(v) == 6 and v.isdigit():
                     v = '#' + v
                 else:
