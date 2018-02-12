@@ -9,6 +9,7 @@ from __future__ import division, print_function, unicode_literals
 from argparse import ArgumentParser
 from cgi import escape
 import json
+import re
 
 from lxml import etree
 from maps import FrozenMap, namedfrozen
@@ -51,6 +52,13 @@ USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
 # http://w3c.github.io/html/syntax.html#void-elements
 # Only two void tags are actually used in LEGI
 VOID_ELEMENTS = {'br', 'hr'}
+
+
+bad_space_re = re.compile(r"[dl]['’] \w| [,.]", re.U)
+
+
+def drop_bad_space(m):
+    return m.group(0).replace(' ', '')
 
 
 class HTMLCleaner(object):
@@ -122,6 +130,8 @@ class HTMLCleaner(object):
         # https://www.w3.org/TR/css-text-3/#white-space-processing
         if self.tag_stack[-1].style['.collapse-spaces']:
             text = spaces_re.sub(' ', text)
+            # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
+            text = bad_space_re.sub(drop_bad_space, text)
         # Add to output
         self.out.append(text)
 
