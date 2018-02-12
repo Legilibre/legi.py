@@ -105,7 +105,10 @@ class HTMLCleaner(object):
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
         styles = FrozenMap(parent_styles, **new_styles) if new_styles else parent_styles
-        dropped = not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES
+        dropped = (
+            not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES or
+            len(self.out) == 1 and tag == 'br'
+        )
         self.tag_stack.append(StartTag(tag, void, styles, dropped))
         if not dropped:
             self.out.append('<' + tag + attrs_str + (' />' if void else '>'))
