@@ -14,7 +14,13 @@ import re
 from lxml import etree
 from maps import FrozenMap, namedfrozen
 
-from .utils import connect_db, spaces_re
+try:
+    from tqdm import tqdm
+except ImportError:
+    print('[warning] tqdm is not installed, the progress bar is disabled')
+    tqdm = lambda x: x
+
+from .utils import connect_db, input, spaces_re
 
 
 # An immutable type representing the opening of an HTML element
@@ -160,6 +166,42 @@ def clean_html(html):
     return cleaner.close()[6:-7]
 
 
+def clean_all_html_in_db(db):
+    stats = {'cleaned': 0, 'delta': 0, 'total': 0}
+
+    def clean_row(table, row):
+        row_id = row.pop('id')
+        update = {}
+        for col, html in row.items():
+            if html:
+                html_c = clean_html(html)
+                if html_c != html:
+                    update[col] = html_c
+                    stats['cleaned'] += 1
+                    stats['delta'] += len(html_c) - len(html)
+            stats['total'] += 1
+        if update:
+            db.update(table, dict(id=row_id), update)
+
+    # Articles
+    print("Cleaning articles...")
+    q = db.all("SELECT id, bloc_textuel, nota FROM articles", to_dict=True)
+    for row in tqdm(q):
+        clean_row('articles', row)
+    # Textes
+    print("Cleaning textes_versions...")
+    q = db.all("""
+        SELECT id, visas, signataires, tp, nota, abro, rect
+          FROM textes_versions
+    """, to_dict=True)
+    for row in tqdm(q):
+        clean_row('textes_versions', row)
+
+    # Print stats
+    print("Done.")
+    print("Cleaned %(cleaned)i HTML fragments, out of %(total)i. Char delta = %(delta)i." % stats)
+
+
 class StatsCollector(object):
     """Collects stats about the HTML tags and attributes used in LEGI
     """
@@ -197,7 +239,7 @@ class StatsCollector(object):
         return r
 
 
-def main(db):
+def analyze(db):
     parser = etree.XMLParser(target=StatsCollector())
     parser.feed('<root>')
     # Articles
@@ -231,11 +273,20 @@ def main(db):
 
 if __name__ == '__main__':
     p = ArgumentParser()
+    p.add_argument('command', choices=['analyze', 'clean'])
     p.add_argument('db')
     args = p.parse_args()
 
     db = connect_db(args.db)
     try:
-        main(db)
+        with db:
+            if args.command == 'analyze':
+                analyze(db)
+            elif args.command == 'clean':
+                clean_all_html_in_db(db)
+                save = input('Save changes? (y/N) ')
+                if save.lower() != 'y':
+                    raise KeyboardInterrupt
+                db.insert('db_meta', dict(key='raw', value=False), replace=True)
     except KeyboardInterrupt:
         pass
