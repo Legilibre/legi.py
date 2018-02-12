@@ -13,7 +13,7 @@ import json
 from lxml import etree
 from maps import FrozenMap, namedfrozen
 
-from .utils import connect_db, multispace_re
+from .utils import connect_db, spaces_re
 
 
 # An immutable type representing the opening of an HTML element
@@ -119,8 +119,9 @@ class HTMLCleaner(object):
         if not text.strip():
             return
         # Collapse spaces, unless we're inside a <pre>
+        # https://www.w3.org/TR/css-text-3/#white-space-processing
         if self.tag_stack[-1].style['.collapse-spaces']:
-            text = multispace_re.sub(' ', text)
+            text = spaces_re.sub(' ', text)
         # Add to output
         self.out.append(text)
 
