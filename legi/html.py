@@ -77,8 +77,11 @@ class HTMLCleaner(object):
     def __init__(self):
         self.out = []
         self.tag_stack = [INVISIBLE_ROOT_TAG]
+        self.text_chunks = []
 
     def start(self, tag, attrs):
+        if self.text_chunks:
+            self.handle_text()
         # Add start tag to stack and output
         void = tag in VOID_ELEMENTS
         attrs_str = ''
@@ -121,6 +124,8 @@ class HTMLCleaner(object):
             self.out.append('<' + tag + attrs_str + (' />' if void else '>'))
 
     def end(self, tag):
+        if self.text_chunks:
+            self.handle_text()
         start_tag = self.tag_stack.pop()
         # Don't add an end tag if the start tag was self-closed or skipped
         if start_tag.void or start_tag.dropped:
@@ -133,7 +138,13 @@ class HTMLCleaner(object):
         self.out.append('</%s>' % tag)
 
     def data(self, text):
-        # Skip if it's all whitespace
+        # We can't rely on the parser to give us a single string for each text
+        # node, so we assemble the chunks ourselves
+        self.text_chunks.append(text)
+
+    def handle_text(self):
+        text = ''.join(self.text_chunks)
+        self.text_chunks = []
         if not text.strip():
             return
         # Collapse spaces, unless we're inside a <pre>
@@ -146,6 +157,8 @@ class HTMLCleaner(object):
         self.out.append(escape(text))
 
     def close(self):
+        if self.text_chunks:
+            self.handle_text()
         # Join the output into a single string, then reset the parser before
         # returning so that it can be reused
         r = ''.join(self.out).rstrip()
