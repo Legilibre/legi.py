@@ -190,6 +190,17 @@ def run_migrations(db):
     return n - v
 
 
+def group_by_2(iterable):
+    iterable = iter(iterable)
+    while True:
+        a = next(iterable)
+        try:
+            b = next(iterable)
+        except StopIteration:
+            raise ValueError("iterable returned an odd number of items")
+        yield (a, b)
+
+
 nonalphanum_re = re.compile(r'[^a-z0-9]')
 
 

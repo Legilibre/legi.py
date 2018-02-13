@@ -11,6 +11,7 @@ from cgi import escape
 from collections import namedtuple
 import json
 import re
+from xml.parsers import expat
 
 from lxml import etree
 from maps import FrozenMap
@@ -21,7 +22,7 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
-from .utils import connect_db, input, spaces_re
+from .utils import connect_db, group_by_2, input, spaces_re
 
 
 # An immutable type representing the opening of an HTML element
@@ -87,7 +88,7 @@ class HTMLCleaner(object):
         attrs_str = ''
         parent_styles = self.tag_stack[-1].style
         new_styles = {}
-        for k, v in attrs.items():
+        for k, v in group_by_2(attrs):
             # Skip useless attributes
             if k in USELESS_ATTRIBUTES:
                 continue
@@ -166,17 +167,21 @@ class HTMLCleaner(object):
         return r
 
 
-cleaner = etree.XMLParser(target=HTMLCleaner())
-
-
 def clean_html(html):
     """Returns cleaned HTML
 
     This function is a simple wrapper around the HTMLCleaner class.
     """
-    cleaner.feed('<root>')
-    cleaner.feed(html)
-    cleaner.feed('</root>')
+    cleaner = HTMLCleaner()
+    p = expat.ParserCreate()
+    p.buffer_text = True
+    p.ordered_attributes = True
+    p.StartElementHandler = cleaner.start
+    p.EndElementHandler = cleaner.end
+    p.CharacterDataHandler = cleaner.data
+    p.Parse('<root>')
+    p.Parse(html)
+    p.Parse('</root>', 1)
     return cleaner.close()[6:-7]
 
 
