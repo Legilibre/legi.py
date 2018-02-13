@@ -8,11 +8,12 @@ from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from cgi import escape
+from collections import namedtuple
 import json
 import re
 
 from lxml import etree
-from maps import FrozenMap, namedfrozen
+from maps import FrozenMap
 
 try:
     from tqdm import tqdm
@@ -24,7 +25,7 @@ from .utils import connect_db, input, spaces_re
 
 
 # An immutable type representing the opening of an HTML element
-StartTag = namedfrozen(str('StartTag'), ['tag', 'void', 'style', 'dropped'])
+StartTag = namedtuple('StartTag', 'tag void style dropped')
 
 # Map of color names to hexadecimal values
 COLORS_MAP = {
