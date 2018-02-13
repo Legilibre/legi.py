@@ -92,8 +92,9 @@ def test_clean_html_does_not_collapse_spaces_inside_pre():
 
 
 def test_clean_html_escapes_properly():
-    expected = '<p attr="&amp;">&lt;p&gt;</p>'
-    actual = clean_html(expected)
+    original = '<p attr="&quot;">&lt;p&gt;</p>'
+    actual = clean_html(original)
+    expected = '''<p attr='"'>&lt;p&gt;</p>'''
     assert actual == expected
 
 

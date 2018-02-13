@@ -7,11 +7,11 @@ This module handles the HTML provided in LEGI.
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-from cgi import escape
 from collections import namedtuple
 import json
 import re
 from xml.parsers import expat
+from xml.sax.saxutils import escape, quoteattr
 
 from lxml import etree
 from maps import FrozenMap
@@ -112,7 +112,7 @@ class HTMLCleaner(object):
             if parent_style:
                 new_styles[k] = v
             # Add to output
-            attrs_str += ' %s="%s"' % (k, escape(v))
+            attrs_str += ' %s=%s' % (k, quoteattr(v))
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
         styles = FrozenMap(parent_styles, **new_styles) if new_styles else parent_styles
