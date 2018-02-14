@@ -77,7 +77,7 @@ USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
 VOID_ELEMENTS = {'br', 'hr'}
 
 
-bad_space_re = re.compile(r"[dl]['’] \w| [,.]", re.U)
+bad_space_re = re.compile(r"[dl]['’] \w| [,.]", re.I | re.U)
 
 
 def drop_bad_space(m):
