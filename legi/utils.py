@@ -236,6 +236,7 @@ def reconstruct_path(dossier, cid, sous_dossier, id):
     return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
 
 
+ascii_spaces_re = re.compile(r'[ \t\n\r\f\v]+')
 nonword_re = re.compile(r'\W', re.U)
 spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)

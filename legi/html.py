@@ -23,11 +23,14 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
-from .utils import connect_db, group_by_2, input, spaces_re
+from .utils import connect_db, group_by_2, input, ascii_spaces_re
 
 
 # An immutable type representing the opening of an HTML element
 StartTag = namedtuple('StartTag', 'tag void style dropped')
+
+# String of ascii whitespace
+ASCII_SPACES = ' \t\n\r\f\v'
 
 # Map of color names to hexadecimal values
 COLORS_MAP = {
@@ -147,12 +150,12 @@ class HTMLCleaner(object):
     def handle_text(self):
         text = ''.join(self.text_chunks)
         self.text_chunks = []
-        if not text.strip():
+        if not text.strip(ASCII_SPACES):
             return
         # Collapse spaces, unless we're inside a <pre>
         # https://www.w3.org/TR/css-text-3/#white-space-processing
         if self.tag_stack[-1].style['.collapse-spaces']:
-            text = spaces_re.sub(' ', text)
+            text = ascii_spaces_re.sub(' ', text)
             # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
             text = bad_space_re.sub(drop_bad_space, text)
         # Add to output
@@ -163,7 +166,7 @@ class HTMLCleaner(object):
             self.handle_text()
         # Join the output into a single string, then reset the parser before
         # returning so that it can be reused
-        r = ''.join(self.out).rstrip()
+        r = ''.join(self.out)
         self.__init__()
         return r
 
