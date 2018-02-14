@@ -61,7 +61,7 @@ DEFAULT_STYLE = FrozenMap({
 })
 
 # Set of elements that should not be dropped even if they're completely empty
-KEEP_EMPTY = {'td', 'th'}
+KEEP_EMPTY = {'body', 'td', 'th'}
 
 # A fake StartTag which holds the default styles
 INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True)
@@ -255,9 +255,9 @@ def clean_html(html):
     p.StartElementHandler = cleaner.start
     p.EndElementHandler = cleaner.end
     p.CharacterDataHandler = cleaner.data
-    p.Parse('<root>')
+    p.Parse('<body>')
     p.Parse(html)
-    p.Parse('</root>', 1)
+    p.Parse('</body>', 1)
     return cleaner.close()[6:-7]
 
 
