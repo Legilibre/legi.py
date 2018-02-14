@@ -8,6 +8,7 @@ from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from collections import namedtuple
+from difflib import ndiff
 import json
 import re
 from xml.parsers import expat
@@ -185,20 +186,61 @@ def clean_html(html):
     return cleaner.close()[6:-7]
 
 
-def clean_all_html_in_db(db):
+strip_re = re.compile(r"<.+?>|[ \t\n\r\f\v]+", re.S)
+
+
+def clean_all_html_in_db(db, check=True):
     stats = {'cleaned': 0, 'delta': 0, 'total': 0}
 
     def clean_row(table, row):
         row_id = row.pop('id')
         update = {}
         for col, html in row.items():
-            if html:
-                html_c = clean_html(html)
-                if html_c != html:
-                    update[col] = html_c
-                    stats['cleaned'] += 1
-                    stats['delta'] += len(html_c) - len(html)
             stats['total'] += 1
+            if not html:
+                continue
+            html_c = clean_html(html)
+            if html_c == html:
+                continue
+            update[col] = html_c
+            stats['cleaned'] += 1
+            stats['delta'] += len(html_c) - len(html)
+            if not check:
+                continue
+            # Check lengths
+            if len(html_c) > len(html):
+                print()
+                print("=" * 70)
+                print((
+                    "Warning: cleaning column '%s' of row '%s' increased the "
+                    "length from %i to %i. Diff:"
+                ) % (col, row_id, len(html), len(html_c)))
+                print(diff_html(html, html_c))
+            # Check that no meaningfull text content was lost
+            html_s, html_c_s = strip_re.sub('', html), strip_re.sub('', html_c)
+            if html_s != html_c_s:
+                print()
+                print("=" * 70)
+                print("Cleaning column '%s' of row '%s' resulted in content loss. Diff:" %
+                      (col, row_id))
+                print(*ndiff([html_s], [html_c_s], None, None), sep='\n')
+            # Check that cleaning a second time does not alter the result
+            try:
+                html_c_2 = clean_html(html_c)
+            except Exception:
+                print()
+                print("Cleaning a second time failed for column '%s' of row '%s'. Diff:" %
+                      (col, row_id))
+                print(diff_html(html, html_c))
+                raise
+            if html_c_2 != html_c:
+                print()
+                print("=" * 70)
+                print("Inconsistent output for column '%s' of row '%s'." % (col, row_id))
+                print("*" * 5, "Original data:", "*" * 5)
+                print(html)
+                print("*" * 5, "Second run diff:", "*" * 5)
+                print(diff_html(html_c, html_c_2))
         if update:
             db.update(table, dict(id=row_id), update)
 
@@ -219,6 +261,21 @@ def clean_all_html_in_db(db):
     # Print stats
     print("Done.")
     print("Cleaned %(cleaned)i HTML fragments, out of %(total)i. Char delta = %(delta)i." % stats)
+
+
+def split_html_into_lines(html):
+    """Splits an HTML document into lines based on element boundaries.
+    """
+    tags = '(?:%s)' % ('|'.join(TRIM_AROUND_ELEMENTS))
+    html_split_re = re.compile(r"</{0}>".format(tags), re.I)
+    return html_split_re.sub('\\0\n', html.replace('\n', '\\n')).split('\n')
+
+
+def diff_html(html_a, html_b):
+    """Diff two HTML documents.
+    """
+    a, b = split_html_into_lines(html_a), split_html_into_lines(html_b)
+    return '\n'.join(ndiff(a, b, None, None))
 
 
 class StatsCollector(object):
@@ -294,6 +351,8 @@ if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('command', choices=['analyze', 'clean'])
     p.add_argument('db')
+    p.add_argument('--skip-checks', default=False, action='store_true',
+                   help="skips checking the result of HTML cleaning")
     args = p.parse_args()
 
     db = connect_db(args.db)
@@ -302,7 +361,7 @@ if __name__ == '__main__':
             if args.command == 'analyze':
                 analyze(db)
             elif args.command == 'clean':
-                clean_all_html_in_db(db)
+                clean_all_html_in_db(db, check=(not args.skip_checks))
                 save = input('Save changes? (y/N) ')
                 if save.lower() != 'y':
                     raise KeyboardInterrupt
