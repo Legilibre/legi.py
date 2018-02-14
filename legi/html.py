@@ -12,7 +12,7 @@ from difflib import ndiff
 import json
 import re
 from xml.parsers import expat
-from xml.sax.saxutils import escape, quoteattr
+from xml.sax.saxutils import escape, quoteattr, unescape
 
 from lxml import etree
 from maps import FrozenMap
@@ -31,6 +31,17 @@ StartTag = namedtuple('StartTag', 'tag void style dropped')
 
 # String of ascii whitespace
 ASCII_SPACES = ' \t\n\r\f\v'
+
+# Set of HTML block tags
+# https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements
+BLOCK_ELEMENTS = set('''
+    address article aside blockquote canvas dd div dl dt fieldset figcaption
+    figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr li main nav noscript
+    ol output p pre section table tfoot ul video
+'''.split())
+
+# Set of HTML tags around which we want to trim whitespace
+TRIM_AROUND_ELEMENTS = BLOCK_ELEMENTS | set('body br td th tr'.split())
 
 # Map of color names to hexadecimal values
 COLORS_MAP = {
@@ -73,6 +84,11 @@ def drop_bad_space(m):
     return m.group(0).replace(' ', '')
 
 
+def is_start_of(s, tag):
+    x = len(tag)
+    return s[0] == '<' and s[1:x+1] == tag and s[x+1] in ' >' and s[-2] != '/'
+
+
 class HTMLCleaner(object):
     """A parser target which returns cleaned HTML (as a string, not a tree).
 
@@ -80,17 +96,18 @@ class HTMLCleaner(object):
     """
 
     def __init__(self):
+        self.drop_next_space = True
+        self.last_collapsible_node = None
         self.out = []
         self.tag_stack = [INVISIBLE_ROOT_TAG]
         self.text_chunks = []
 
     def start(self, tag, attrs):
-        if self.text_chunks:
-            self.handle_text()
         # Add start tag to stack and output
         void = tag in VOID_ELEMENTS
         attrs_str = ''
-        parent_styles = self.tag_stack[-1].style
+        parent = self.tag_stack[-1]
+        parent_styles = parent.style
         new_styles = {}
         for k, v in group_by_2(attrs):
             # Skip useless attributes
@@ -124,46 +141,101 @@ class HTMLCleaner(object):
             not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES or
             len(self.out) == 1 and tag == 'br'
         )
-        self.tag_stack.append(StartTag(tag, void, styles, dropped))
+        start_tag = StartTag(tag, void, styles, dropped)
         if not dropped:
+            # Process queued text chunks
+            if self.text_chunks:
+                self.handle_text(parent)
+            # Handle whitespace collapsing
+            if tag in TRIM_AROUND_ELEMENTS:
+                # Drop previous tail space
+                if self.out and self.out[-1][-1] == ' ':
+                    trimmed = self.out[-1][:-1]
+                    if trimmed:
+                        self.out[-1] = trimmed
+                    else:
+                        self.out.pop()
+                # Enable dropping the next space
+                self.drop_next_space = True
+            # Add start tag to output
             self.out.append('<' + tag + attrs_str + (' />' if void else '>'))
+        self.tag_stack.append(start_tag)
 
     def end(self, tag):
-        if self.text_chunks:
-            self.handle_text()
         start_tag = self.tag_stack.pop()
         # Don't add an end tag if the start tag was self-closed or skipped
         if start_tag.void or start_tag.dropped:
             return
-        # Drop empty elements, unless they're in the KEEP_EMPTY set
-        if tag not in KEEP_EMPTY and self.out[-1] == '<%s>' % tag:
-            self.out.pop()
-            return
+        # Clean up empty elements
+        if self.out[-1] == '<%s>' % tag:
+            text = ''.join(self.text_chunks).strip(ASCII_SPACES)
+            if not text:
+                if tag in KEEP_EMPTY:
+                    # Drop the empty text node but keep the element
+                    self.text_chunks = []
+                else:
+                    # Drop the element entirely
+                    self.out.pop()
+                    if self.out and self.out[-1][0] != '<':
+                        # Previous output element was a text node, put it back
+                        # in the chunks queue
+                        self.text_chunks.insert(0, unescape(self.out.pop()))
+                        # Reset last_collapsible_node (we don't need to restore
+                        # its previous value)
+                        self.last_collapsible_node = None
+                    return
+        # Process queued text chunks
+        if self.text_chunks:
+            self.handle_text(start_tag, True)
+        # Handle whitespace collapsing
+        if tag in TRIM_AROUND_ELEMENTS:
+            # Drop tail space
+            if self.last_collapsible_node:
+                i, self.last_collapsible_node = self.last_collapsible_node, None
+                if i is not None and self.out[i][-1] == ' ':
+                    self.out[i] = self.out[i][:-1]
+            # Enable dropping the next space
+            self.drop_next_space = True
         # Add end tag to output
         self.out.append('</%s>' % tag)
 
     def data(self, text):
-        # We can't rely on the parser to give us a single string for each text
-        # node, so we assemble the chunks ourselves
+        # We can't always get a single string for a text node, so we store
+        # chunks in a list and assemble them when we're ready
         self.text_chunks.append(text)
 
-    def handle_text(self):
+    def handle_text(self, current_tag, closing=False):
         text = ''.join(self.text_chunks)
         self.text_chunks = []
-        if not text.strip(ASCII_SPACES):
+        if not text:
             return
         # Collapse spaces, unless we're inside a <pre>
         # https://www.w3.org/TR/css-text-3/#white-space-processing
-        if self.tag_stack[-1].style['.collapse-spaces']:
+        if current_tag.style['.collapse-spaces']:
             text = ascii_spaces_re.sub(' ', text)
+            # Drop leading space if the previous text node has a trailing space
+            # or if we're at the beginning of a "segment"
+            if text[0] == ' ':
+                i = self.last_collapsible_node
+                if i and self.out[i][-1] == ' ' or self.drop_next_space:
+                    text = text[1:]
+                    if not text:
+                        return
             # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
             text = bad_space_re.sub(drop_bad_space, text)
+            # Update the collapsible node index
+            self.last_collapsible_node = len(self.out)
+        else:
+            # Reset the collapsible node index
+            self.last_collapsible_node = None
+        # Disable dropping the next space
+        self.drop_next_space = False
         # Add to output
         self.out.append(escape(text))
 
     def close(self):
         if self.text_chunks:
-            self.handle_text()
+            self.handle_text(self.tag_stack[-1])
         # Join the output into a single string, then reset the parser before
         # returning so that it can be reused
         r = ''.join(self.out)
