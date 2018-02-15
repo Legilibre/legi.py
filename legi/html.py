@@ -97,6 +97,7 @@ class HTMLCleaner(object):
 
     def __init__(self):
         self.drop_next_space = True
+        self.drop_line_breaks = True
         self.last_collapsible_node = None
         self.out = []
         self.tag_stack = [INVISIBLE_ROOT_TAG]
@@ -137,9 +138,11 @@ class HTMLCleaner(object):
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
         styles = FrozenMap(parent_styles, **new_styles) if new_styles else parent_styles
+        if self.drop_line_breaks and ''.join(self.text_chunks).strip(ASCII_SPACES):
+            self.drop_line_breaks = False
         dropped = (
             not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES or
-            len(self.out) == 1 and tag == 'br'
+            tag == 'br' and self.drop_line_breaks
         )
         start_tag = StartTag(tag, void, styles, dropped)
         if not dropped:
@@ -230,6 +233,8 @@ class HTMLCleaner(object):
             self.last_collapsible_node = None
         # Disable dropping the next space
         self.drop_next_space = False
+        # Stop dropping <br> tags
+        self.drop_line_breaks = False
         # Add to output
         self.out.append(escape(text))
 
