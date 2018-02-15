@@ -18,6 +18,8 @@ import traceback
 from unicodedata import combining, normalize
 
 
+PY2 = str is bytes
+
 input = getattr(builtins, 'raw_input', input)
 
 
@@ -191,11 +193,12 @@ def run_migrations(db):
 
 
 def group_by_2(iterable):
-    iterable = iter(iterable)
+    iterable = iterable.__iter__()
+    next = iterable.next if PY2 else iterable.__next__
     while True:
-        a = next(iterable)
+        a = next()
         try:
-            b = next(iterable)
+            b = next()
         except StopIteration:
             raise ValueError("iterable returned an odd number of items")
         yield (a, b)
