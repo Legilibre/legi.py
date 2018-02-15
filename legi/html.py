@@ -170,12 +170,16 @@ class HTMLCleaner(object):
         if start_tag.void or start_tag.dropped:
             return
         # Clean up empty elements
-        if self.out[-1] == '<%s>' % tag:
-            text = ''.join(self.text_chunks).strip(ASCII_SPACES)
-            if not text:
-                if tag in KEEP_EMPTY:
-                    # Drop the empty text node but keep the element
+        collapsed = False
+        if is_start_of(self.out[-1], tag):
+            if not ''.join(self.text_chunks).strip(ASCII_SPACES):
+                tag_has_attributes = len(self.out[-1]) > len(tag) + 2
+                if tag_has_attributes or tag in KEEP_EMPTY:
+                    # Drop the whitespace chunks, if any
                     self.text_chunks = []
+                    # Collapse the element
+                    self.out[-1] = self.out[-1][:-1] + '/>'
+                    collapsed = True
                 else:
                     # Drop the element entirely
                     self.out.pop()
@@ -200,7 +204,8 @@ class HTMLCleaner(object):
             # Enable dropping the next space
             self.drop_next_space = True
         # Add end tag to output
-        self.out.append('</%s>' % tag)
+        if not collapsed:
+            self.out.append('</%s>' % tag)
 
     def data(self, text):
         # We can't always get a single string for a text node, so we store
