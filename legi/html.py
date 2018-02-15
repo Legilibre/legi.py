@@ -15,7 +15,6 @@ from xml.parsers import expat
 from xml.sax.saxutils import escape, quoteattr, unescape
 
 from lxml import etree
-from maps import FrozenMap
 
 try:
     from tqdm import tqdm
@@ -50,7 +49,7 @@ COLORS_MAP = {
 }
 
 # Default styles, used to detect redundant attributes
-DEFAULT_STYLE = FrozenMap({
+DEFAULT_STYLE = {
     '.collapse-spaces': True,
     'align': 'left',
     'bgcolor': '#ffffff',
@@ -58,7 +57,7 @@ DEFAULT_STYLE = FrozenMap({
     'color': '#000000',
     'dir': 'ltr',
     'valign': 'baseline',
-})
+}
 
 # Set of elements that should not be dropped even if they're completely empty
 KEEP_EMPTY = {'body', 'br', 'hr', 'td', 'th'}
@@ -137,7 +136,7 @@ class HTMLCleaner(object):
             attrs_str += ' %s=%s' % (k, quoteattr(v))
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
-        styles = FrozenMap(parent_styles, **new_styles) if new_styles else parent_styles
+        styles = dict(parent_styles, **new_styles) if new_styles else parent_styles
         if self.drop_line_breaks and ''.join(self.text_chunks).strip(ASCII_SPACES):
             self.drop_line_breaks = False
         dropped = (

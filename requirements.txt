@@ -1,4 +1,3 @@
 libarchive-c
 lxml
-maps
 tqdm
