@@ -61,7 +61,7 @@ DEFAULT_STYLE = FrozenMap({
 })
 
 # Set of elements that should not be dropped even if they're completely empty
-KEEP_EMPTY = {'body', 'td', 'th'}
+KEEP_EMPTY = {'body', 'br', 'hr', 'td', 'th'}
 
 # A fake StartTag which holds the default styles
 INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True)
