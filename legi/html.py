@@ -161,7 +161,7 @@ class HTMLCleaner(object):
                 # Enable dropping the next space
                 self.drop_next_space = True
             # Add start tag to output
-            self.out.append('<' + tag + attrs_str + (' />' if void else '>'))
+            self.out.append('<' + tag + attrs_str + ('/>' if void else '>'))
         self.tag_stack.append(start_tag)
 
     def end(self, tag):
