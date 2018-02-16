@@ -124,9 +124,9 @@ class HTMLCleaner(object):
     """
 
     def __init__(self):
-        self.drop_next_space = True
+        self.at_segment_start = True
         self.drop_line_breaks = True
-        self.last_collapsible_node = None
+        self.last_trimmable_node = None
         self.out = []
         self.tag_stack = [INVISIBLE_ROOT_TAG]
         self.text_chunks = []
@@ -178,18 +178,7 @@ class HTMLCleaner(object):
         if not dropped:
             # Process queued text chunks
             if self.text_chunks:
-                self.handle_text(parent)
-            # Handle whitespace collapsing
-            if tag in TRIM_AROUND_ELEMENTS:
-                # Drop previous tail space
-                if self.out and self.out[-1][-1] == ' ':
-                    trimmed = self.out[-1][:-1]
-                    if trimmed:
-                        self.out[-1] = trimmed
-                    else:
-                        self.out.pop()
-                # Enable dropping the next space
-                self.drop_next_space = True
+                self.handle_text(parent, start_tag)
             # Add start tag to output
             self.out.append('<' + tag + attrs_str + ('/>' if void else '>'))
         self.tag_stack.append(start_tag)
@@ -217,22 +206,21 @@ class HTMLCleaner(object):
                         # Previous output element was a text node, put it back
                         # in the chunks queue
                         self.text_chunks.insert(0, unescape(self.out.pop()))
-                        # Reset last_collapsible_node (we don't need to restore
+                        # Reset last_trimmable_node (we don't need to restore
                         # its previous value)
-                        self.last_collapsible_node = None
+                        self.last_trimmable_node = None
                     return
         # Process queued text chunks
         if self.text_chunks:
-            self.handle_text(start_tag, True)
+            self.handle_text(start_tag)
         # Handle whitespace collapsing
         if tag in TRIM_AROUND_ELEMENTS:
             # Drop tail space
-            if self.last_collapsible_node:
-                i, self.last_collapsible_node = self.last_collapsible_node, None
-                if i is not None and self.out[i][-1] == ' ':
-                    self.out[i] = self.out[i][:-1]
+            if self.last_trimmable_node:
+                i, self.last_trimmable_node = self.last_trimmable_node, None
+                self.out[i] = self.out[i][:-1]
             # Enable dropping the next space
-            self.drop_next_space = True
+            self.at_segment_start = True
         # Add end tag to output
         if not collapsed:
             self.out.append('</%s>' % tag)
@@ -242,7 +230,7 @@ class HTMLCleaner(object):
         # chunks in a list and assemble them when we're ready
         self.text_chunks.append(text)
 
-    def handle_text(self, current_tag, closing=False):
+    def handle_text(self, current_tag, next_tag=None):
         text = ''.join(self.text_chunks)
         self.text_chunks = []
         if not text:
@@ -253,29 +241,38 @@ class HTMLCleaner(object):
             text = ascii_spaces_re.sub(' ', text)
             # Drop leading space if the previous text node has a trailing space
             # or if we're at the beginning of a "segment"
-            if text[0] == ' ':
-                i = self.last_collapsible_node
-                if i and self.out[i][-1] == ' ' or self.drop_next_space:
-                    text = text[1:]
-                    if not text:
-                        return
+            if text[0] == ' ' and (self.last_trimmable_node or self.at_segment_start):
+                text = text[1:]
+                if not text:
+                    return
             # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
             text = bad_space_re.sub(drop_bad_space, text)
-            # Update the collapsible node index
-            self.last_collapsible_node = self.out.__len__()
+            # Are we about to open a new non-inline element?
+            if next_tag and next_tag.tag in TRIM_AROUND_ELEMENTS:
+                self.at_segment_start = True
+                # Drop tail space
+                if text[-1] == ' ':
+                    text = text[:-1]
+                    if not text:
+                        return
+            else:
+                self.at_segment_start = False
+            # Does the trimmable text node we're adding have a tail space?
+            if text[-1] == ' ':
+                self.last_trimmable_node = self.out.__len__()
+            else:
+                self.last_trimmable_node = None
         else:
-            # Reset the collapsible node index
-            self.last_collapsible_node = None
-        # Disable dropping the next space
-        self.drop_next_space = False
+            self.last_trimmable_node = None
         # Stop dropping <br> tags
-        self.drop_line_breaks = False
+        if self.drop_line_breaks:
+            self.drop_line_breaks = False
         # Add to output
         self.out.append(escape(text))
 
     def close(self):
         if self.text_chunks:
-            self.handle_text(self.tag_stack[-1])
+            self.out.append(''.join(self.text_chunks).rstrip(ASCII_SPACES))
         # Join the output into a single string, then reset the parser before
         # returning so that it can be reused
         r = ''.join(self.out)
