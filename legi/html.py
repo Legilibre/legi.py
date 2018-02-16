@@ -84,7 +84,7 @@ def drop_bad_space(m):
 
 
 def is_start_of(s, tag):
-    x = len(tag)
+    x = tag.__len__()
     return s[0] == '<' and s[1:x+1] == tag and s[x+1] in ' >' and s[-2] != '/'
 
 
@@ -124,7 +124,7 @@ class HTMLCleaner(object):
                     v = v.lower()
                     if v.startswith('rgb('):
                         v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
-                    elif len(v) == 6 and v.isdigit():
+                    elif v.__len__() == 6 and v.isdigit():
                         v = '#' + v
                     else:
                         v = COLORS_MAP.get(v, v)
@@ -174,7 +174,7 @@ class HTMLCleaner(object):
         collapsed = False
         if is_start_of(self.out[-1], tag):
             if not ''.join(self.text_chunks).strip(ASCII_SPACES):
-                tag_has_attributes = len(self.out[-1]) > len(tag) + 2
+                tag_has_attributes = self.out[-1].__len__() > tag.__len__() + 2
                 if tag_has_attributes or tag in KEEP_EMPTY:
                     # Drop the whitespace chunks, if any
                     self.text_chunks = []
@@ -233,7 +233,7 @@ class HTMLCleaner(object):
             # French-specific dropping of bad spaces, e.g. "l' article" → "l'article"
             text = bad_space_re.sub(drop_bad_space, text)
             # Update the collapsible node index
-            self.last_collapsible_node = len(self.out)
+            self.last_collapsible_node = self.out.__len__()
         else:
             # Reset the collapsible node index
             self.last_collapsible_node = None
@@ -290,11 +290,12 @@ def clean_all_html_in_db(db, check=True):
                 continue
             update[col] = html_c
             stats['cleaned'] += 1
-            stats['delta'] += len(html_c) - len(html)
+            delta = html_c.__len__() - html.__len__()
+            stats['delta'] += delta
             if not check:
                 continue
             # Check lengths
-            if len(html_c) > len(html):
+            if delta > 0:
                 print()
                 print("=" * 70)
                 print((
