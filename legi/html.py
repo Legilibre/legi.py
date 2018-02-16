@@ -292,12 +292,12 @@ class HTMLCleaner(object):
         return r
 
 
-def clean_html(html):
+def clean_html(html, cleaner=HTMLCleaner()):
     """Returns cleaned HTML
 
-    This function is a simple wrapper around the HTMLCleaner class.
+    Warning: this function is not thread safe unless you provide your own
+    thread-local `cleaner` instance.
     """
-    cleaner = HTMLCleaner()
     p = expat.ParserCreate()
     p.buffer_text = True
     p.ordered_attributes = True
