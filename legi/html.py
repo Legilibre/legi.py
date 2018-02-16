@@ -149,9 +149,9 @@ class HTMLCleaner(object):
                     continue
                 # Normalize the value
                 v = v.strip()
-                if k.endswith('color'):
+                if k[-5:] == 'color':
                     v = v.lower()
-                    if v.startswith('rgb('):
+                    if v[:4] == 'rgb(':
                         v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
                     elif v.__len__() == 6 and v.isdigit():
                         v = '#' + v
