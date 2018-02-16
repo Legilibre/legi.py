@@ -15,9 +15,9 @@ def test_clean_html_on_single_whitespace():
 
 
 def test_clean_html_collapses_spaces():
-    unclean = '<p>Lorem \r <b><i> ipsum</i> </b>\n\t dolor</p>'
+    unclean = '<s> Lorem \r <b><i> ipsum</i> dolor\n\t</b>sit </s>'
     cleaned = clean_html(unclean)
-    expected = '<p>Lorem <b><i>ipsum</i> </b>dolor</p>'
+    expected = '<s>Lorem <b><i>ipsum</i> dolor</b> sit</s>'
     assert cleaned == expected
 
 

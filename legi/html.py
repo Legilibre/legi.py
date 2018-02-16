@@ -239,6 +239,18 @@ class HTMLCleaner(object):
         # https://www.w3.org/TR/css-text-3/#white-space-processing
         if current_tag.style['.collapse-spaces']:
             text = ascii_spaces_re.sub(' ', text)
+            # Handle spaces around closing tags
+            i = self.last_trimmable_node
+            if i and not next_tag and self.out[i - 1][:2] == '</':
+                # `</i> foo </b>bar` → `</i> foo</b> bar`
+                trimmed = self.out[i][:-1]
+                if trimmed:
+                    self.out[i] = trimmed
+                else:
+                    self.out.pop(i)
+                i = self.last_trimmable_node = None
+                if text[0] != ' ':
+                    text = ' ' + text
             # Drop leading space if the previous text node has a trailing space
             # or if we're at the beginning of a "segment"
             if text[0] == ' ' and (self.last_trimmable_node or self.at_segment_start):
