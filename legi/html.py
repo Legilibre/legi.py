@@ -12,7 +12,6 @@ from difflib import ndiff
 import json
 import re
 from xml.parsers import expat
-from xml.sax.saxutils import escape, quoteattr, unescape
 
 from lxml import etree
 
@@ -74,6 +73,36 @@ USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
 # http://w3c.github.io/html/syntax.html#void-elements
 # Only two void tags are actually used in LEGI
 VOID_ELEMENTS = {'br', 'hr'}
+
+
+ESCAPE_TABLE = [('&', '&amp;'), ('<', '&lt;'), ('>', '&gt;')]
+ESCAPE_ATTR_TABLE = ESCAPE_TABLE + [('"', '&#34;')]
+
+
+def escape(s, table=ESCAPE_TABLE):
+    """Escape &, <, and > in a string of data.
+    """
+    for c, r in table:
+        if c in s:
+            s = s.replace(c, r)
+    return s
+
+
+def unescape(s):
+    """Unescape &amp;, &lt;, and &gt; in a string of data.
+    """
+    if '&' not in s:
+        return s
+    return s.replace('&gt;', '>').replace('&lt;', '<').replace('&amp;', '&')
+
+
+def quoteattr(s, table=ESCAPE_ATTR_TABLE):
+    """Escape and quote an attribute value.
+    """
+    for c, r in table:
+        if c in s:
+            s = s.replace(c, r)
+    return '"%s"' % s
 
 
 bad_space_re = re.compile(r"[dl]['’] \w| [,.]", re.I | re.U)
