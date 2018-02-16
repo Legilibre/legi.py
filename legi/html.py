@@ -25,7 +25,7 @@ from .utils import connect_db, group_by_2, input, ascii_spaces_re
 
 
 # An immutable type representing the opening of an HTML element
-StartTag = namedtuple('StartTag', 'tag void style dropped')
+StartTag = namedtuple('StartTag', 'tag void style dropped parent')
 
 # String of ascii whitespace
 ASCII_SPACES = ' \t\n\r\f\v'
@@ -62,7 +62,7 @@ DEFAULT_STYLE = {
 KEEP_EMPTY = {'body', 'br', 'hr', 'td', 'th'}
 
 # A fake StartTag which holds the default styles
-INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True)
+INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True, None)
 
 # Set of attributes that should always be dropped
 USELESS_ATTRIBUTES = {'charoff', 'id'}
@@ -128,14 +128,14 @@ class HTMLCleaner(object):
         self.drop_line_breaks = True
         self.last_trimmable_node = None
         self.out = []
-        self.tag_stack = [INVISIBLE_ROOT_TAG]
+        self.current_tag = INVISIBLE_ROOT_TAG
         self.text_chunks = []
 
     def start(self, tag, attrs):
         # Add start tag to stack and output
         void = tag in VOID_ELEMENTS
         attrs_str = ''
-        parent = self.tag_stack[-1]
+        parent = self.current_tag
         parent_styles = parent.style
         new_styles = {}
         if attrs:
@@ -174,19 +174,20 @@ class HTMLCleaner(object):
             not attrs_str and tag in USELESS_WITHOUT_ATTRIBUTES or
             tag == 'br' and self.drop_line_breaks
         )
-        start_tag = StartTag(tag, void, styles, dropped)
+        start_tag = StartTag(tag, void, styles, dropped, parent)
         if not dropped:
             # Process queued text chunks
             if self.text_chunks:
-                self.handle_text(parent, start_tag)
+                self.handle_text(next_tag=start_tag)
             # Add start tag to output
             self.out.append('<' + tag + attrs_str + ('/>' if void else '>'))
-        self.tag_stack.append(start_tag)
+        self.current_tag = start_tag
 
     def end(self, tag):
-        start_tag = self.tag_stack.pop()
+        start_tag = self.current_tag
         # Don't add an end tag if the start tag was self-closed or skipped
         if start_tag.void or start_tag.dropped:
+            self.current_tag = start_tag.parent
             return
         # Clean up empty elements
         collapsed = False
@@ -209,10 +210,11 @@ class HTMLCleaner(object):
                         # Reset last_trimmable_node (we don't need to restore
                         # its previous value)
                         self.last_trimmable_node = None
+                    self.current_tag = start_tag.parent
                     return
         # Process queued text chunks
         if self.text_chunks:
-            self.handle_text(start_tag)
+            self.handle_text()
         # Handle whitespace collapsing
         if tag in TRIM_AROUND_ELEMENTS:
             # Drop tail space
@@ -221,6 +223,8 @@ class HTMLCleaner(object):
                 self.out[i] = self.out[i][:-1]
             # Enable dropping the next space
             self.at_segment_start = True
+        # Update current_tag
+        self.current_tag = start_tag.parent
         # Add end tag to output
         if not collapsed:
             self.out.append('</%s>' % tag)
@@ -230,14 +234,14 @@ class HTMLCleaner(object):
         # chunks in a list and assemble them when we're ready
         self.text_chunks.append(text)
 
-    def handle_text(self, current_tag, next_tag=None):
+    def handle_text(self, next_tag=None):
         text = ''.join(self.text_chunks)
         self.text_chunks = []
         if not text:
             return
         # Collapse spaces, unless we're inside a <pre>
         # https://www.w3.org/TR/css-text-3/#white-space-processing
-        if current_tag.style['.collapse-spaces']:
+        if self.current_tag.style['.collapse-spaces']:
             text = ascii_spaces_re.sub(' ', text)
             # Handle spaces around closing tags
             i = self.last_trimmable_node
