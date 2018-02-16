@@ -109,31 +109,33 @@ class HTMLCleaner(object):
         parent = self.tag_stack[-1]
         parent_styles = parent.style
         new_styles = {}
-        for k, v in group_by_2(attrs):
-            # Skip useless attributes
-            if k in USELESS_ATTRIBUTES:
-                continue
-            # Skip obsolete list style attribute
-            if k == 'type' and tag in {'ul', 'ol'}:
-                continue
-            # Normalize the value
-            v = v.strip()
-            if k.endswith('color'):
-                v = v.lower()
-                if v.startswith('rgb('):
-                    v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
-                elif len(v) == 6 and v.isdigit():
-                    v = '#' + v
-                else:
-                    v = COLORS_MAP.get(v, v)
-            # Skip redundant styles
-            parent_style = parent_styles.get(k)
-            if parent_style == v:
-                continue
-            if parent_style:
-                new_styles[k] = v
-            # Add to output
-            attrs_str += ' %s=%s' % (k, quoteattr(v))
+        if attrs:
+            is_list_tag = tag in {'ul', 'ol'}
+            for k, v in group_by_2(attrs):
+                # Skip useless attributes
+                if k in USELESS_ATTRIBUTES:
+                    continue
+                # Skip obsolete list style attribute
+                if is_list_tag and k == 'type':
+                    continue
+                # Normalize the value
+                v = v.strip()
+                if k.endswith('color'):
+                    v = v.lower()
+                    if v.startswith('rgb('):
+                        v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
+                    elif len(v) == 6 and v.isdigit():
+                        v = '#' + v
+                    else:
+                        v = COLORS_MAP.get(v, v)
+                # Skip redundant styles
+                parent_style = parent_styles.get(k)
+                if parent_style == v:
+                    continue
+                if parent_style:
+                    new_styles[k] = v
+                # Add to output
+                attrs_str += ' %s=%s' % (k, quoteattr(v))
         if tag == 'pre':
             new_styles['.collapse-spaces'] = False
         styles = dict(parent_styles, **new_styles) if new_styles else parent_styles
