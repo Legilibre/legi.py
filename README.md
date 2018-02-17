@@ -73,6 +73,22 @@ Le module `normalize` corrige les titres de textes qui ne sont pas parfaitement
 La "factorisation" connecte entre elles les différentes version d'un même texte.
 La base LEGI n'a pas d'identifiant qui remplisse réellement ce rôle.
 
+### Nettoyage des contenus
+
+Le module `html` permet de nettoyer les contenus des textes. Il supprime :
+
+- les espaces redondantes (*whitespace collapse*), sauf à l'intérieur des `<pre>`
+- les attributs inutiles, par exemple `id` et `dir="ltr"`
+- les éléments inutiles, par exemple un `<span>` sans attributs
+- les éléments vides, sauf `<td>` et `<th>`
+
+En février 2018 il détecte 78 millions de caractères inutiles dans LEGI.
+
+Cette fonctionnalité n'est pas activée par défaut car elle est « destructrice »
+et récente. Vous pouvez nettoyer tout l'HTML d'une base en exécutant la commande
+`python -m legi.html clean legi.sqlite` (les modifications ne sont enregistrées
+que si vous entrez `y` à la fin).
+
 ### Détection d'anomalies
 
 Le module `anomalies` est conçu pour détecter les incohérences dans les données afin de les signaler à la DILA. Le résultat est visible sur [anomalies.legilibre.fr][anomalies]. (`cron/anomalies-cron.sh` est le script qui génère ce mini-site.)

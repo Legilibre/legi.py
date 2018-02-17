@@ -18,6 +18,8 @@ import traceback
 from unicodedata import combining, normalize
 
 
+PY2 = str is bytes
+
 input = getattr(builtins, 'raw_input', input)
 
 
@@ -61,7 +63,7 @@ ROW_FACTORIES = {
 }
 
 
-def connect_db(address, row_factory=None, create_schema=True, update_schema=True):
+def connect_db(address, row_factory=None, create_schema=True, update_schema=True, pragmas=()):
     db = DB(address)
     db.address = address
     if row_factory:
@@ -102,6 +104,11 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         r = run_migrations(db)
         if r == '!RECREATE!':
             return connect_db(address, row_factory=row_factory, create_schema=True)
+
+    for pragma in pragmas:
+        query = "PRAGMA " + pragma
+        result = db.one(query)
+        print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
 
     return db
 
@@ -185,6 +192,18 @@ def run_migrations(db):
     return n - v
 
 
+def group_by_2(iterable):
+    iterable = iterable.__iter__()
+    next = iterable.next if PY2 else iterable.__next__
+    while True:
+        a = next()
+        try:
+            b = next()
+        except StopIteration:
+            raise ValueError("iterable returned an odd number of items")
+        yield (a, b)
+
+
 nonalphanum_re = re.compile(r'[^a-z0-9]')
 
 
@@ -220,6 +239,7 @@ def reconstruct_path(dossier, cid, sous_dossier, id):
     return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
 
 
+ascii_spaces_re = re.compile(r'[ \t\n\r\f\v]+')
 nonword_re = re.compile(r'\W', re.U)
 spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)
