@@ -15,6 +15,8 @@ DILA_LEGI_DIR = '/LEGI'
 
 
 def download_legi(dst_dir):
+    if not os.path.exists(dst_dir):
+        os.mkdir(dst_dir)
     local_files = {filename: {} for filename in os.listdir(dst_dir)}
     ftph = ftplib.FTP()
     ftph.connect(DILA_FTP_HOST, DILA_FTP_PORT)
