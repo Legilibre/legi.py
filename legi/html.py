@@ -55,6 +55,7 @@ DEFAULT_STYLE = {
     'clear': 'none',
     'color': '#000000',
     'dir': 'ltr',
+    'size': '3',  # https://developer.mozilla.org/docs/Web/HTML/Element/font
     'valign': 'baseline',
 }
 
@@ -162,6 +163,11 @@ class HTMLCleaner(object):
                 if parent_style == v:
                     continue
                 if parent_style:
+                    if k == 'size':
+                        size = int(v)
+                        # Skip 0 (invalid) and 4 through 7 (enlarged text)
+                        if size == 0 or size > 3:
+                            continue
                     new_styles[k] = v
                 # Add to output
                 attrs_str += ' %s=%s' % (k, quoteattr(v))
@@ -480,9 +486,16 @@ if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('command', choices=['analyze', 'clean'])
     p.add_argument('db')
+    p.add_argument('--font-size', default='keep-small', choices=['drop', 'keep-small', 'preserve'],
+                   help="what to do with the `size` attribute of `font` elements")
     p.add_argument('--skip-checks', default=False, action='store_true',
                    help="skips checking the result of HTML cleaning")
     args = p.parse_args()
+
+    if args.font_size == 'drop':
+        USELESS_ATTRIBUTES.add('size')
+    elif args.font_size == 'preserve':
+        DEFAULT_STYLE.pop('size')
 
     db = connect_db(args.db)
     try:
