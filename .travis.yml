@@ -5,6 +5,11 @@ branches:
   only:
     - master
 
+addons:
+  apt:
+    packages:
+      - libarchive13
+
 install:
   - sqlite3 --version
   - pip install tox
