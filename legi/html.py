@@ -65,7 +65,7 @@ KEEP_EMPTY = {'body', 'br', 'hr', 'td', 'th'}
 INVISIBLE_ROOT_TAG = StartTag(None, None, DEFAULT_STYLE, True, None)
 
 # Set of attributes that should always be dropped
-USELESS_ATTRIBUTES = {'charoff', 'id'}
+USELESS_ATTRIBUTES = {'charoff', 'face', 'id'}
 
 # Set of elements that should be dropped if they don't have any attributes
 USELESS_WITHOUT_ATTRIBUTES = {'font', 'span'}
