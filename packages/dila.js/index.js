@@ -192,34 +192,18 @@ const getTexteArticle = async ({ id, cid }) => {
       cid
     })
     .first();
-  //console.log("article", id, cid, article);
   if (article && article.bloc_textuel) {
-    // console.log("article.bloc_textuel", article.bloc_textuel);
     return cleanStr(article.bloc_textuel);
   }
   return "";
-  // (article && article.bloc_textuel && (await cleanStr(article.bloc_textuel))) || "";
-
-  // texte = article[1]
-  // articles.forEach(article => {
-  //   article.id
-  // })
-  // .const article articles.find(a => a.id)
 };
 
-// articles = db.all("""
-//         SELECT id, bloc_textuel
-//         FROM articles
-//         WHERE cid = '{0}'
-//     """.format(cid))
-
 const cleanStr = async str => {
-  return await stripHtml(str).then(x =>
-    x
-      .toString()
-      .replace(/\n\n\n+/g, "\n\n")
-      .trim()
-  );
+  const breaked = str
+    .replace(/<p>/g, "\n")
+    .replace(/<br\s?\/?>/g, "\n\n")
+    .replace(/<\/p>/g, "");
+  return await stripHtml(breaked).then(x => x.toString().trim());
 };
 
 const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) => {
@@ -234,18 +218,13 @@ const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) =
     .join("");
   return Promise.all(
     sections.map(async section => {
-      // console.log("section", section);
       const typeSection = section.element.substring(4, 8);
-      //console.log("section", section.element);
       if (typeSection === "SCTA") {
-        // get
-        // console.log("scta");
         const tsection = await knex
           .select("titre_ta")
           .from("sections")
           .where("id", section.element)
           .first();
-        //return tsection.titre_ta;
         const content = await getSectionsText({ debut, fin, cid, parent: section.element, depth: depth + 1 });
         return [
           `
@@ -254,9 +233,7 @@ ${heading} ${tsection.titre_ta}
 ${content.join("\n")}
 `
         ];
-        // texte = creer_sections(texte, niveau+1, relement, version_texte, sql, rarborescence, format, dossier, db, cache)
       } else if (typeSection === "ARTI") {
-        // console.log("arti");
         const article = await knex
           .select("id", "section", "num", "date_debut", "date_fin", "bloc_textuel", "cid")
           .from("articles")
@@ -269,7 +246,6 @@ ${heading} Article ${article.num}
 
 ${texteArticle}`
         ];
-        //        return "yy";
       } else {
         return ["?"];
       }
@@ -278,15 +254,12 @@ ${texteArticle}`
 };
 
 const getSections = ({ debut, fin, cid, parent = false }) => {
-  // console.log("getSections", debut, fin, id);
   const sections = knex
     .select("*")
-    //.debug()
     .table("sommaires")
     .where("cid", cid)
     .andWhere("debut", "<=", debut)
     .andWhere(function() {
-      //console.log("ok2");
       return this.where("fin", ">=", fin)
         .orWhere("fin", "2999-01-01")
         .orWhere("etat", "VIGUEUR");
@@ -299,12 +272,8 @@ const getSections = ({ debut, fin, cid, parent = false }) => {
       }
     })
     .orderBy("position");
-  //.catch(e => []);
-  //console.log("sections", sections);
-  // console.log("ok");
+
   return sections;
-  //console.log("sommaires", sommaires);
-  //return sommaires;
 };
 
 const getVersionsDates = async id => {
@@ -315,17 +284,11 @@ const getVersionsDates = async id => {
     .where("cid", id)
     .orderBy("debut");
 
-  // dates uniques
   const debuts = new Set(versions.map(x => x.debut));
   const fins = new Set(versions.map(x => x.fin));
   const versionsDates = Array.from(debuts.add(fins));
-  //.slice(0, 10);
-  //.slice(0, 10);
   versionsDates.sort();
   return versionsDates;
-
-  // console.log("versions", versionsDates);
-  // console.log("versions", versionsDates.length);
 };
 
 const pAll = all => Promise.all(all);
@@ -351,9 +314,6 @@ const getTexteByDate = (id, date) =>
     fin: date,
     cid: id
   }).then(arr => arr.join("\n\n"));
-// console.log(`from ${debut} to ${fin}`);
-// fs.writeFileSync(`./history/${fin}.md`, text);
-//  return Promise.resolve(text);
 
 const getTexteHistory = async id => {
   let texte = await knex
@@ -371,8 +331,6 @@ const getTexteHistory = async id => {
 
   const versionsDates = await getVersionsDates(texteId);
 
-  console.log(`id ${id} cid ${texteId}`);
-
   const allVersions = await versionsDates.map((debut, i) => async () => {
     if (i >= versionsDates.length - 2) {
       return Promise.resolve();
@@ -381,20 +339,15 @@ const getTexteHistory = async id => {
     const path = `./history/${fin}.md`;
 
     if (!fs.existsSync(path)) {
-      // console.log(`from ${debut} to ${fin}`);
       const text = await getSectionsText({
         debut,
         fin,
         cid: texteId,
         parent: false
       }).then(arr => arr.join("\n\n"));
-      console.log(`from ${debut} to ${fin}`);
       fs.writeFileSync(`./history/${fin}.md`, text);
       return Promise.resolve(text);
     }
-    // } else {
-    //   console.log("skip", fin);
-    // }
   });
 
   sequential(allVersions)
