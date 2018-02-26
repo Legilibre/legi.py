@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "knex": "^0.14.2",
+    "rehype-minify-whitespace": "^2.0.3",
+    "remark": "^9.0.0",
+    "remark-strip-html": "^1.0.0",
     "sqlite3": "^3.1.13"
   }
 }

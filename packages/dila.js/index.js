@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const db = "../legilibre/legi.py-docker/tarballs/legilibre.sqlite";
 /*
 todo : handle dates
@@ -10,6 +12,14 @@ articles :
   date_debut:
 
 */
+
+const remark = require("remark");
+const strip = require("remark-strip-html");
+
+const stripHtml = content =>
+  remark()
+    .use(strip)
+    .process(content);
 
 const knex = require("knex")({
   client: "sqlite3",
@@ -171,7 +181,6 @@ const getStructure = async cid => {
 const test = async () => {
   const cdt = await getCodePI();
   const structure = await getStructure(cdt.cid);
-  console.log("structure", JSON.stringify(structure, null, 2));
 };
 
 const getTexteArticle = async ({ id, cid }) => {
@@ -184,8 +193,12 @@ const getTexteArticle = async ({ id, cid }) => {
     })
     .first();
   //console.log("article", id, cid, article);
-
-  return (article && article.bloc_textuel) || "";
+  if (article && article.bloc_textuel) {
+    // console.log("article.bloc_textuel", article.bloc_textuel);
+    return cleanStr(article.bloc_textuel);
+  }
+  return "";
+  // (article && article.bloc_textuel && (await cleanStr(article.bloc_textuel))) || "";
 
   // texte = article[1]
   // articles.forEach(article => {
@@ -200,13 +213,25 @@ const getTexteArticle = async ({ id, cid }) => {
 //         WHERE cid = '{0}'
 //     """.format(cid))
 
-const getSectionsText = async ({ debut, fin, cid, parent = false }) => {
+const cleanStr = async str => {
+  return await stripHtml(str).then(x =>
+    x
+      .toString()
+      .replace(/\n\n\n+/g, "\n\n")
+      .trim()
+  );
+};
+
+const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) => {
   const sections = await getSections({
     debut,
     fin,
     cid,
     parent
   }).catch(console.log);
+  const heading = Array.from({ length: depth })
+    .fill("#")
+    .join("");
   return Promise.all(
     sections.map(async section => {
       // console.log("section", section);
@@ -221,7 +246,14 @@ const getSectionsText = async ({ debut, fin, cid, parent = false }) => {
           .where("id", section.element)
           .first();
         //return tsection.titre_ta;
-        return await getSectionsText({ debut, fin, cid, parent: section.element });
+        const content = await getSectionsText({ debut, fin, cid, parent: section.element, depth: depth + 1 });
+        return [
+          `
+${heading} ${tsection.titre_ta}
+
+${content.join("\n")}
+`
+        ];
         // texte = creer_sections(texte, niveau+1, relement, version_texte, sql, rarborescence, format, dossier, db, cache)
       } else if (typeSection === "ARTI") {
         // console.log("arti");
@@ -231,7 +263,12 @@ const getSectionsText = async ({ debut, fin, cid, parent = false }) => {
           .where("id", section.element)
           .first();
         const texteArticle = await getTexteArticle({ cid, id: article.id });
-        return [texteArticle];
+        return [
+          `
+${heading} Article ${article.num}
+
+${texteArticle}`
+        ];
         //        return "yy";
       } else {
         return ["?"];
@@ -281,7 +318,9 @@ const getVersionsDates = async id => {
   // dates uniques
   const debuts = new Set(versions.map(x => x.debut));
   const fins = new Set(versions.map(x => x.fin));
-  const versionsDates = Array.from(debuts.add(fins)).slice(0, 5);
+  const versionsDates = Array.from(debuts.add(fins));
+  //.slice(0, 10);
+  //.slice(0, 10);
   versionsDates.sort();
   return versionsDates;
 
@@ -289,7 +328,34 @@ const getVersionsDates = async id => {
   // console.log("versions", versionsDates.length);
 };
 
-const getTexte = async id => {
+const pAll = all => Promise.all(all);
+
+const timeout = delay => x => new Promise((resolve, reject) => setTimeout(() => resolve(x), delay));
+
+const sequential = (promises, { results = [] } = {}) => {
+  const promise = promises.pop();
+  return promise().then(sequenceResult => {
+    if (promises.length) {
+      return sequential(promises, {
+        results: [...results, sequenceResult],
+        promises
+      });
+    }
+    return results;
+  });
+};
+
+const getTexteByDate = (id, date) =>
+  getSectionsText({
+    debut: date,
+    fin: date,
+    cid: id
+  }).then(arr => arr.join("\n\n"));
+// console.log(`from ${debut} to ${fin}`);
+// fs.writeFileSync(`./history/${fin}.md`, text);
+//  return Promise.resolve(text);
+
+const getTexteHistory = async id => {
   let texte = await knex
     .table("textes_versions")
     .where("id", id)
@@ -305,114 +371,64 @@ const getTexte = async id => {
 
   const versionsDates = await getVersionsDates(texteId);
 
-  return await Promise.all(
-    // for each revision
-    versionsDates.map(async (debut, i) => {
-      if (i > versionsDates.length - 2) {
-        return Promise.resolve();
-      }
-      const fin = versionsDates[i + 1];
+  console.log(`id ${id} cid ${texteId}`);
+
+  const allVersions = await versionsDates.map((debut, i) => async () => {
+    if (i >= versionsDates.length - 2) {
+      return Promise.resolve();
+    }
+    const fin = versionsDates[i + 1];
+    const path = `./history/${fin}.md`;
+
+    if (!fs.existsSync(path)) {
+      // console.log(`from ${debut} to ${fin}`);
       const text = await getSectionsText({
         debut,
         fin,
         cid: texteId,
         parent: false
       }).then(arr => arr.join("\n\n"));
-      //console.log("getSectionsText", text);
-      return text;
-    })
-  )
-    .then((res, i) => res.slice(0, -1))
+      console.log(`from ${debut} to ${fin}`);
+      fs.writeFileSync(`./history/${fin}.md`, text);
+      return Promise.resolve(text);
+    }
+    // } else {
+    //   console.log("skip", fin);
+    // }
+  });
+
+  sequential(allVersions)
+    //.then(console.log)
+    .catch(console.log);
+  //)
+
+  /*
+    promises.then((res, i) => res.slice(0, -1))
     .then(versions => {
-      versions.forEach((v, i) => {
-        console.log("v", versionsDates[i], v.length);
-        //console.log("");
+      const byDate = versions.reduce(
+        (a, c, i) => ({
+          ...a,
+          ...(c && { [versionsDates[i]]: c })
+        }),
+        {}
+      );
+      Object.keys(byDate).forEach(date => {
+        console.log("byDate", date);
+        fs.writeFileSync(`./history/${date}.md`, byDate[date]);
       });
-      //return versions;
-      // console.log("versions", versions);
-      // console.log("i", i);
-      // console.log("versions", versions[i]);
-      // console.log("text", text);
+      // const fs =require('fs');
+      // fs.writeFileSync(`./${}`);
+      return byDate;
     });
+    */
 };
-//return sections
-//   let texte = "";
-//   return Promise.all(
-//     sections.map(async section => {
-//       // console.log("section", section);
-//       const typeSection = section.element.substring(4, 8);
-//       //console.log("section", section.element);
-//       if (typeSection === "SCTA") {
-//         // get
-//         console.log("scta");
-//         const tsection = await knex
-//           .select("titre_ta", "commentaire")
-//           .from("sections")
-//           .where("id", section.element);
-//         texte += "SCTA";
-//         return texte;
-//         // texte = creer_sections(texte, niveau+1, relement, version_texte, sql, rarborescence, format, dossier, db, cache)
-//       } else if (typeSection === "ARTI") {
-//         console.log("arti");
-//         texte += "ARTI";
-//         const article = await knex
-//           .select("id", "section", "num", "date_debut", "date_fin", "bloc_textuel", "cid")
-//           .from("articles")
-//           .where("id", section.element);
 
-//         const texteArticle = await getTexteArticle(id, article.id);
-//         console.log("texteArticle", texteArticle);
-//         return texteArticle;
-//       } else {
-//         text += "?";
-//         return "?";
-//       }
-//     })
-//   );
-//   console.log("texte", texte);
-//   return texte;
-// })
-
-//);
-
-//   return revisions;
-// };
-
-//return getVersions(texteId);
-
-//console.log("revision", revisions);
-
-//contenu = creer_sections(contenu, 1, None, (debut,fin), sql, [], format, dossier, db, cache)
-
-//console.log("debuts", debuts, fins);
-
-// console.log("sections", sections);
-
-// .where(function() {
-//   this.where('id', 1).orWhere('id', '>', 10)
-// })
-
-//   sql = sql_texte + " AND debut <= '{0}' AND ( fin >= '{1}' OR fin == '2999-01-01' OR etat == 'VIGUEUR' )".format(debut,fin)
-
-// sql_section_parente = "parent = '{0}'".format(parent)
-// if parent == None:
-//     sql_section_parente = "parent IS NULL OR parent = ''"
-
-// sections = db.all("""
-//     SELECT *
-//     FROM sommaires
-//     WHERE ({0})
-//       AND ({1})
-//     ORDER BY position
-// """.format(sql_section_parente, sql))
-
-//console.log("sommaires", sommaires);
-//console.log("texte", texte);
-//};
-
-getTexte("LEGITEXT000006069414")
-  .then(x => console.log(x)) //(JSON.stringify(x, null, 2)))
+getTexteByDate("LEGITEXT000006069414", "25/12/2017")
+  .then(console.log)
   .catch(console.log);
+//getTexteHistory("LEGITEXT000006069414")
+//.then(x => console.log(x)) //(JSON.stringify(x, null, 2)))
+//.catch(console.log);
 
 //dumpStructure();
 
