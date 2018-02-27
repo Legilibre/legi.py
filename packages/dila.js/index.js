@@ -21,11 +21,17 @@ const stripHtml = content =>
     .use(strip)
     .process(content);
 
+// const knex = require("knex")({
+//   client: "sqlite3",
+//   connection: {
+//     filename: db
+//   }
+// });
+
 const knex = require("knex")({
-  client: "sqlite3",
-  connection: {
-    filename: db
-  }
+  client: "pg",
+  connection: "postgresql://postgres:test@127.0.0.1:5433/legi",
+  searchPath: ["knex", "public"]
 });
 
 const getCode = titre =>
@@ -122,7 +128,10 @@ const getTableNameFromLegiId = id => {
 
 // serial-chain promises
 const serial = promises =>
-  promises.reduce((chain, c) => chain.then(res => c.then(cur => [...res, cur])), Promise.resolve([]));
+  promises.reduce(
+    (chain, c) => chain.then(res => c.then(cur => [...res, cur])),
+    Promise.resolve([])
+  );
 
 const getEntryDetails = async entry => {
   const table = getTableNameFromLegiId(entry.element);
@@ -162,8 +171,13 @@ const getEntryStructure = async ({ cid, entry }) => {
 };
 
 const getStructure = async cid => {
-  const versions = await knex.table("textes_versions").where("cid", cid);
-  const firstVersion = versions[0];
+  const firstVersion = await knex
+    .table("textes_versions")
+    .where("cid", cid)
+    .first();
+  if (!firstVersion) {
+    return [];
+  }
   const sommaire = await knex
     .table("sommaires")
     .where({ cid, _source: `struct/${firstVersion.id}` })
@@ -206,6 +220,27 @@ const cleanStr = async str => {
   return await stripHtml(breaked).then(x => x.toString().trim());
 };
 
+const getTitreSection = id =>
+  knex
+    .select("titre_ta")
+    .from("sections")
+    .where("id", id)
+    .first()
+    .then(r => r.titre_ta);
+
+const getArticle = id =>
+  knex
+    .select("id", "num")
+    .from("articles")
+    .where("id", id)
+    .first();
+
+const getContent = ({ heading, titre, content }) => `
+${heading} ${titre}
+
+${content}
+`;
+
 const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) => {
   const sections = await getSections({
     debut,
@@ -220,37 +255,29 @@ const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) =
     sections.map(async section => {
       const typeSection = section.element.substring(4, 8);
       if (typeSection === "SCTA") {
-        const tsection = await knex
-          .select("titre_ta")
-          .from("sections")
-          .where("id", section.element)
-          .first();
-        const content = await getSectionsText({ debut, fin, cid, parent: section.element, depth: depth + 1 });
-        return [
-          `
-${heading} ${tsection.titre_ta}
-
-${content.join("\n")}
-`
-        ];
+        const titre_ta = await getTitreSection(section.element);
+        const content = await getSectionsText({
+          debut,
+          fin,
+          cid,
+          parent: section.element,
+          depth: depth + 1
+        });
+        return getContent({ heading, titre: titre_ta, content: content.join("\n") });
       } else if (typeSection === "ARTI") {
-        const article = await knex
-          .select("id", "section", "num", "date_debut", "date_fin", "bloc_textuel", "cid")
-          .from("articles")
-          .where("id", section.element)
-          .first();
+        const article = await getArticle(section.element);
         const texteArticle = await getTexteArticle({ cid, id: article.id });
-        return [
-          `
-${heading} Article ${article.num}
-
-${texteArticle}`
-        ];
+        return getContent({
+          heading,
+          titre: `Article ${article.num}`,
+          content: texteArticle
+        });
       } else {
-        return ["?"];
+        return "?";
       }
     })
-  ).then(arr => arr.reduce((a, c) => [...a, ...c], []));
+  );
+  //.then(arr => arr.reduce((a, c) => [...a, ...c], []));
 };
 
 const getSections = ({ debut, fin, cid, parent = false }) => {
@@ -295,19 +322,6 @@ const pAll = all => Promise.all(all);
 
 const timeout = delay => x => new Promise((resolve, reject) => setTimeout(() => resolve(x), delay));
 
-const sequential = (promises, { results = [] } = {}) => {
-  const promise = promises.pop();
-  return promise().then(sequenceResult => {
-    if (promises.length) {
-      return sequential(promises, {
-        results: [...results, sequenceResult],
-        promises
-      });
-    }
-    return results;
-  });
-};
-
 const getTexteByDate = (id, date) =>
   getSectionsText({
     debut: date,
@@ -350,7 +364,8 @@ const getTexteHistory = async id => {
     }
   });
 
-  sequential(allVersions)
+  //serial
+  serial(allVersions)
     //.then(console.log)
     .catch(console.log);
   //)
@@ -376,9 +391,15 @@ const getTexteHistory = async id => {
     */
 };
 
-getTexteByDate("LEGITEXT000006069414", "25/12/2017")
+// travail : LEGITEXT000006072050
+// propriété intel. LEGITEXT000006069414
+
+getTexteByDate("LEGITEXT000006072050", "25/12/2017")
   .then(console.log)
-  .catch(console.log);
+  .catch(console.log)
+  .then(() => {
+    knex.destroy();
+  });
 //getTexteHistory("LEGITEXT000006069414")
 //.then(x => console.log(x)) //(JSON.stringify(x, null, 2)))
 //.catch(console.log);
