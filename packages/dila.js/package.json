@@ -12,11 +12,16 @@
     "url": "https://github.com/revolunet/legi.js/issues"
   },
   "dependencies": {
+    "boxen": "^1.3.0",
+    "flow-bin": "^0.66.0",
     "knex": "^0.14.2",
     "pg": "^7.4.1",
     "rehype-minify-whitespace": "^2.0.3",
     "remark": "^9.0.0",
     "remark-strip-html": "^1.0.0",
     "sqlite3": "^3.1.13"
+  },
+  "devDependencies": {
+    "eslint-config-google": "^0.9.1"
   }
 }

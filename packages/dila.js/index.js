@@ -31,7 +31,8 @@ const stripHtml = content =>
 const knex = require("knex")({
   client: "pg",
   connection: "postgresql://postgres:test@127.0.0.1:5433/legi",
-  searchPath: ["knex", "public"]
+  searchPath: ["knex", "public"],
+  pool: { min: 2, max: 20 }
 });
 
 const getCode = titre =>
@@ -130,6 +131,13 @@ const getTableNameFromLegiId = id => {
 const serial = promises =>
   promises.reduce(
     (chain, c) => chain.then(res => c.then(cur => [...res, cur])),
+    Promise.resolve([])
+  );
+
+// serial-chain promises
+const serial2 = promises =>
+  promises.reduce(
+    (chain, c) => chain.then(res => c().then(cur => [...res, cur])),
     Promise.resolve([])
   );
 
@@ -242,7 +250,7 @@ ${content}
 `;
 
 const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) => {
-  const sections = await getSections({
+  const sections = await getSommaire({
     debut,
     fin,
     cid,
@@ -280,9 +288,9 @@ const getSectionsText = async ({ debut, fin, cid, parent = false, depth = 1 }) =
   //.then(arr => arr.reduce((a, c) => [...a, ...c], []));
 };
 
-const getSections = ({ debut, fin, cid, parent = false }) => {
-  const sections = knex
-    .select("*")
+const getSommaire = ({ debut, fin, cid, parent = false }) =>
+  knex
+    .select("element")
     .table("sommaires")
     .where("cid", cid)
     .andWhere("debut", "<=", debut)
@@ -299,9 +307,6 @@ const getSections = ({ debut, fin, cid, parent = false }) => {
       }
     })
     .orderBy("position");
-
-  return sections;
-};
 
 const getVersionsDates = async id => {
   const versions = await knex
@@ -350,22 +355,25 @@ const getTexteHistory = async id => {
       return Promise.resolve();
     }
     const fin = versionsDates[i + 1];
-    const path = `./history/${fin}.md`;
-
-    if (!fs.existsSync(path)) {
+    const filePath = `./history/code-du-travail/${fin}.md`;
+    console.log(filePath);
+    if (!fs.existsSync(filePath)) {
       const text = await getSectionsText({
         debut,
         fin,
         cid: texteId,
         parent: false
       }).then(arr => arr.join("\n\n"));
-      fs.writeFileSync(`./history/${fin}.md`, text);
+      fs.writeFileSync(filePath, text);
       return Promise.resolve(text);
+    } else {
+      return Promise.resolve(fs.readFileSync(filePath).toString());
     }
   });
 
   //serial
-  serial(allVersions)
+  //console.log("allVersions", allVersions);
+  serial2(allVersions)
     //.then(console.log)
     .catch(console.log);
   //)
@@ -394,15 +402,15 @@ const getTexteHistory = async id => {
 // travail : LEGITEXT000006072050
 // propriété intel. LEGITEXT000006069414
 
-getTexteByDate("LEGITEXT000006072050", "25/12/2017")
-  .then(console.log)
-  .catch(console.log)
-  .then(() => {
-    knex.destroy();
-  });
-//getTexteHistory("LEGITEXT000006069414")
-//.then(x => console.log(x)) //(JSON.stringify(x, null, 2)))
-//.catch(console.log);
+// getTexteByDate("LEGITEXT000006072050", "25/12/2017")
+//   .then(console.log)
+//   .catch(console.log)
+//   .then(() => {
+//     knex.destroy();
+//   });
+getTexteHistory("LEGITEXT000006072050")
+  .then(console.log) //(JSON.stringify(x, null, 2)))
+  .catch(console.log);
 
 //dumpStructure();
 
