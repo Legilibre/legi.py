@@ -1,14 +1,29 @@
 # legi.js
 
-### convertir la DB en Postgres
+Une API NodeJS pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py).
 
-Avec [pgloader](https://github.com/dimitri/pgloader)
+## Usage
+
+```js
+const legi = require('legi');
+
+
+
+```
+
+### A propos de legi.py
+
+legi.py est un module python qui génère une base sqlite à partir de la base LEGI, normalise et consolide les données. [plus d'infos ici](https://github.com/Legilibre/legi.py)
+
+Une image docker pour builder et maintenir ce fichier soi-même est dispo ici : [legi.py-docker](https://github.com/revolunet/legi.py-docker)
+
+### Utiliser Postgres
+
+Convertir la base legilibre.sqlite dans Postgres pour de meilleures performances
+
+⚠️ Utiliser [pgloader](https://github.com/dimitri/pgloader) avec le paramètre `--cast "type day to varchar"`
 
 ```sh
-# lancer PostgreSQL
-docker run -v $PWD/data:/var/lib/postgresql/data -e POSTGRES_PASSWORD=test -p 5433:5432 -d postgres
-
-# lancer la version
-pgloader --cast "type day to varchar" ../legilibre/legi.py-docker/tarballs/legilibre.sqlite postgresql://postgres:test@127.0.0.1:5434/legi
-
+# lancer pgloader en local
+pgloader --cast "type day to varchar" legilibre.sqlite postgresql://postgres:test@127.0.0.1:5433/legi
 ```

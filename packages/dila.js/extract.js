@@ -1,11 +1,12 @@
+const memoize = require("fast-memoize");
+
 //
 // i have a DB full of small content that i need to arrange hierachically; i was wondering if "converting" the data to a tree
 //
-
+//const normalizeWhitespace = require("normalize-html-whitespace");
 const knexConfig = require("./knexfile");
-const boxen = require("boxen");
 
-const knex = require("knex")(knexConfig[process.env.NODE_ENV] || knexConfig.postgres);
+const knex = require("knex")(knexConfig);
 
 const serial = promises =>
   promises.reduce(
@@ -13,88 +14,116 @@ const serial = promises =>
     Promise.resolve([])
   );
 
-const getTexteArticle = async ({ id, cid }) => {
-  const article = await knex
-    .select("bloc_textuel")
-    .table("articles")
-    .where({
-      id,
-      cid
-    })
-    .first();
-  if (article && article.bloc_textuel) {
-    return article.bloc_textuel;
-  }
-  return "";
-};
+const serialExec = promises =>
+  promises.reduce(
+    (chain, c) => chain.then(res => c().then(cur => [...res, cur])),
+    Promise.resolve([])
+  );
 
-const getArticle = id =>
+// const getTexteArticle = async ({ id, cid }) => {
+//   const article = await knex
+//     .select("bloc_textuel")
+//     .table("articles")
+//     .where({
+//       id,
+//       cid
+//     })
+//     .first();
+//   // todo: cleanup
+//   if (article && article.bloc_textuel) {
+//     return article.bloc_textuel;
+//   }
+//   return "";
+// };
+
+const getArticle = memoize(filters =>
   knex
-    .select("id", "num")
+    .select("*")
     .from("articles")
-    .where("id", id)
-    .first();
+    .where(filters)
+    .first()
+);
 
-const cleanUpTitreSection = t =>
-  t
-    .replace(/&#13;/g, "")
-    .replace(/\n/g, " ")
-    .trim();
+const getArticleById = memoize(id => getArticle({ id }));
 
-const getTitreSection = id =>
+// const cleanUpTitreSection = t =>
+//   t
+//     .replace(/&#13;/g, "")
+//     .replace(/\n/g, " ")
+//     .trim();
+
+const getSection = memoize(id =>
   knex
-    .select("titre_ta")
+    .select("*")
     .from("sections")
     .where("id", id)
     .first()
-    .then(r => cleanUpTitreSection(r.titre_ta));
+);
 
-const getSommaire = filters => {
+// const getTitreSection = id =>
+//   knex
+//     .select("titre_ta")
+//     .from("sections")
+//     .where("id", id)
+//     .first()
+//     .then(r => cleanUpTitreSection(r.titre_ta));
+
+const getSommaire = memoize(filters => {
   const sommaireFilters = {
     ...filters
   };
-  delete sommaireFilters.fin; // ?????
+  delete sommaireFilters.date; // ?????
 
   return (
     knex
       .table("sommaires")
       //.debug()
       .where(sommaireFilters)
-      .andWhere("debut", "<=", filters.fin)
+      .andWhere("debut", "<=", filters.date)
       .andWhere(function() {
-        return this.where("fin", ">=", filters.fin)
+        return this.where("fin", ">=", filters.date)
           .orWhere("fin", "2999-01-01")
           .orWhere("etat", "VIGUEUR");
       })
       .orderBy("position")
       .catch(console.log)
   );
-};
+});
 
+//replace(/<br\s?\/?>/g, "\n");
+
+// generates a syntax-tree structure
+// https://github.com/syntax-tree/unist
 const getSections = async ({ ...filters }) => {
   if (!filters.parent) {
     filters.parent = null;
   }
   const sommaire = await getSommaire(filters);
-  // if (filters.parent === "LEGISCTA000018535721") {
-  //   console.log("sommaire", sommaire);
-  // }
   return (
     sommaire &&
     Promise.all(
       sommaire.map(async section => {
+        //   console.log("section");
         if (section.element.match(/^LEGISCTA/)) {
+          const sectionData = await getSection(section.element);
           return {
-            title: await getTitreSection(section.element),
+            type: "section",
+            data: sectionData,
             children: await getSections({ ...filters, parent: section.element })
           };
         } else if (section.element.match(/^LEGIARTI/)) {
-          const article = await getArticle(section.element);
-          const texteArticle = await getTexteArticle({ cid: filters.cid, id: article.id });
-          return {
-            title: `Article ${article.num}`,
-            html: texteArticle
+          const article = await getArticleById(section.element);
+          const texteArticle = await getArticle({ cid: article.cid, id: article.id });
+          const data = {
+            titre: `Article ${article.num}`,
+            ...texteArticle
           };
+          return {
+            type: "article",
+            data
+          };
+        } else {
+          console.log("invalid section ?", section);
         }
       })
     )
@@ -109,12 +138,17 @@ const r = (s, times = 5) =>
 const logSections = (node, d = 0) => {
   node.children &&
     node.children.forEach(n => {
-      if (!n.title.match(/^Article.*/)) console.log(r("  ", d), n.title);
-      logSections(n, d + 1);
+      if (n.titre.match(/^Article.*/)) {
+        console.log(r("  ", d), n.titre);
+        n.bloc_textuel && console.log(r("  ", d + 1), n.bloc_textuel, "\n\n");
+      } else {
+        console.log(r("  ", d), n.titre);
+        logSections(n, d + 1);
+      }
     });
 };
 
-const extract = async ({ id, fin = new Date().toLocaleDateString() }) => {
+const extract = async ({ id, date = new Date().toLocaleDateString() }) => {
   const text = await knex
     .select("cid", "titre", "titrefull", "date_publi")
     .table("textes_versions")
@@ -122,28 +156,51 @@ const extract = async ({ id, fin = new Date().toLocaleDateString() }) => {
       id: id,
       etat: "VIGUEUR"
     })
-    .andWhere("date_debut", "<=", fin)
-    .andWhere("date_fin", ">=", fin)
+    .andWhere("date_debut", "<=", date)
+    .andWhere("date_fin", ">=", date)
     .orderBy("date_publi", "desc")
     .first()
     .catch(console.log);
 
-  const title = `${text.titre} : ${fin}`;
-
-  console.log(boxen(title, { padding: 1 }));
-
   const tree = {
-    children: await getSections({ cid: text.cid, fin })
+    type: "code",
+    id,
+    date,
+    children: (text && (await getSections({ cid: text.cid, date }))) || []
   };
 
-  logSections(tree);
+  //logSections(tree);
+  //  knex.destroy();
+  return tree;
 };
 
+const getDates = async id => {
+  const versions = await knex
+    .select("debut", "fin")
+    //.debug()
+    .table("sommaires")
+    .where("cid", id)
+    .orderBy("debut");
+
+  const allVersions = Array.from(versions.reduce((a, c) => a.add(c.debut).add(c.fin), new Set()));
+
+  allVersions.sort();
+
+  return allVersions;
+};
+
+module.exports = {
+  extract,
+  getDates,
+  serial,
+  serialExec,
+  getSections
+};
 // travail : LEGITEXT000006072050
 // propriété intel. LEGITEXT000006069414
 // ordonnance travail : JORFTEXT000000465978
 
-extract({ id: "LEGITEXT000006072050" }).then(() => knex.destroy());
+//extract({ id: "LEGITEXT000006072050" }).then(() => knex.destroy());
 
 //select * from sommaires where parent="LEGISCTA000018535721" and (etat="VIGUEUR" or fin>=date() or fin="2999-01-01") and debut <= date()
 
