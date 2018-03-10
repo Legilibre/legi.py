@@ -31,7 +31,12 @@ const legi = new Legi("legi1.sqlite");
 //   .then(JSONlog)
 //   .catch(console.log);
 
+// legi
+//   .getJORF("JORFTEXT000000465978")
+//   .then(JSONlog)
+//   .catch(console.log);
+
 legi
-  .getJORF("JORFTEXT000000465978")
+  .getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" })
   .then(JSONlog)
   .catch(console.log);

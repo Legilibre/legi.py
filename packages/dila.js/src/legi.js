@@ -24,7 +24,7 @@ const legi = dbPath => {
 
   const getArticleById = memoize(id => getArticle({ id }));
 
-  const getSection = memoize(id =>
+  const getSectionData = memoize(id =>
     knex
       .select("*")
       .from("sections")
@@ -75,7 +75,7 @@ const legi = dbPath => {
       type: "code",
       date,
       data: text,
-      children: (text && (await getSections({ cid: text.cid, date }))) || []
+      children: (text && (await getSection({ cid: text.cid, date }))) || []
     };
 
     return tree;
@@ -123,7 +123,7 @@ const legi = dbPath => {
 
   // generates a syntax-tree structure
   // https://github.com/syntax-tree/unist
-  const getSections = async ({ ...filters }) => {
+  const getSection = async ({ ...filters }) => {
     if (!filters.parent) {
       filters.parent = null;
     }
@@ -134,11 +134,11 @@ const legi = dbPath => {
         sommaire.map(async section => {
           //   console.log("section");
           if (section.element.match(/^LEGISCTA/)) {
-            const sectionData = await getSection(section.element);
+            const sectionData = await getSectionData(section.element);
             return {
               type: "section",
               data: sectionData,
-              children: await getSections({ ...filters, parent: section.element })
+              children: await getSection({ ...filters, parent: section.element })
             };
           } else if (section.element.match(/^LEGIARTI/)) {
             const article = await getArticleById(section.element);
@@ -182,6 +182,7 @@ const legi = dbPath => {
     getCodeDates,
     getCodesList,
     getJORF,
+    getSection,
     close,
     knex
   };
