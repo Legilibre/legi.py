@@ -4,7 +4,7 @@ legi.py est un module python qui peut :
 - mettre à jour automatiquement et incrémentalement cette base de données
 - normaliser les titres des textes
 - connecter les différentes versions d'un texte entre elles
-- analyser les données pour détecter les anomaliées ([listées sur cette page][anomalies])
+- analyser les données pour détecter les anomalies ([listées sur cette page][anomalies])
 
 Avoir les lois françaises dans une base SQL permet aussi d'autres choses qui ne
 sont pas encore implémentées directement dans legi.py, par exemple générer des
