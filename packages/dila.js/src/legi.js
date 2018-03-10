@@ -96,7 +96,7 @@ const legi = dbPath => {
     return allVersions;
   };
 
-  const extractJORF = async id => {
+  const getJORF = async id => {
     const version = await knex
       .table("textes_versions")
       .where({ cid: id })
@@ -109,11 +109,15 @@ const legi = dbPath => {
       id,
       type: "texte",
       data: version,
-      children: articles.map(a => ({
-        id: a.id,
-        type: "article",
-        data: a
-      }))
+      children: await articles.map(async a => {
+        const article = await getArticleById(a.id);
+        return {
+          id: a.id,
+          type: "article",
+          data: a,
+          children: [article]
+        };
+      })
     };
   };
 
@@ -177,6 +181,7 @@ const legi = dbPath => {
     getCode: (...args) => extractVersion(getCodeParams(args)),
     getCodeDates,
     getCodesList,
+    getJORF,
     close,
     knex
   };

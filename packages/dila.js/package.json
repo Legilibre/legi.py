@@ -1,5 +1,6 @@
 {
-  "name": "legi.js",
+  "name": "legi",
+  "description": "Une API NodeJS *Promise-based* pour requêter une base issue de legi.py",
   "version": "1.0.0",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",

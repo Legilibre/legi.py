@@ -1,9 +1,10 @@
 # legi.js
 
-API NodeJS *Promise-based* pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py)
+Une API NodeJS *Promise-based* pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py)
 
-Utilise [knex.js](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
+Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
 
+Vous pouvez récupérer une version du fichier SQLite au 8 Mars 2018 ici : https://drive.google.com/open?id=1h3Q0EaxsPdP6jAkeKZplfgtXbsG4vALW (700Mo)
 
 ## Usage
 
@@ -15,21 +16,25 @@ const legi = new Legi('/path/to/legi.sqlite');
 // liste des codes disponibles (105)
 const textes = await legi.getCodesList();
 
-// version à date du jour
+// version d'un code à date du jour
 const codeDuTravail = await legi.getCode("LEGITEXT000006072050")
 
-// version à une date donnée
+// version d'un code à une date donnée
 const codeDesMedailles = await legi.getCode({ id: "LEGITEXT000006070666", date: "2012-03-05" })
 
 // liste des versions d'un texte
 const versionsDispos = await legi.getCodeDates("LEGITEXT000006072050");
+
+// texte du JORF
+const arrete = legi.getJORF("JORFTEXT000000465978")
+
 ```
 
 Plus d'exemples dans [./examples.js](./examples.js)
 
 ### A propos de legi.py
 
-legi.py est un module python qui génère une base sqlite à partir de la base LEGI, normalise et consolide les données. [plus d'infos ici](https://github.com/Legilibre/legi.py)
+legi.py est un module python qui génère une base sqlite à partir de la base LEGI, normalise et consolide les données. [plus d'infos ici](https://github.com/Legilibre/legi.py).
 
 Une image docker pour builder et maintenir ce fichier soi-même est dispo ici : [legi.py-docker](https://github.com/revolunet/legi.py-docker)
 
