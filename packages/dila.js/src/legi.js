@@ -105,19 +105,19 @@ const legi = dbPath => {
       .table("articles")
       .where({ cid: id })
       .orderBy("num");
+
+    const children = articles.map(a => ({
+      id: a.id,
+      type: "article",
+      data: a,
+      children: []
+    }));
+
     return {
       id,
       type: "texte",
       data: version,
-      children: await articles.map(async a => {
-        const article = await getArticleById(a.id);
-        return {
-          id: a.id,
-          type: "article",
-          data: a,
-          children: [article]
-        };
-      })
+      children
     };
   };
 
