@@ -30,7 +30,7 @@ const actual = map(section, function(node) {
       type: "element",
       tagName: "p",
       properties: {
-        style: "font-weight:bold"
+        style: "font-weight: bold"
       },
       children: [
         {
@@ -45,7 +45,7 @@ const actual = map(section, function(node) {
       type: "element",
       tagName: "p",
       properties: {
-        style: "font-weight:bold"
+        style: "font-weight: bold"
       },
       children: [
         {

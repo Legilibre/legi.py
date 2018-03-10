@@ -1,15 +1,31 @@
 # legi.js
 
-Une API NodeJS pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py).
+API NodeJS *Promise-based* pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py)
+
+Utilise [knex.js](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
+
 
 ## Usage
 
 ```js
-const legi = require('legi');
+const Legi = require('legi');
 
+const legi = new Legi('/path/to/legi.sqlite');
 
+// liste des codes disponibles (105)
+const textes = await legi.getCodesList();
 
+// version à date du jour
+const codeDuTravail = await legi.getCode("LEGITEXT000006072050")
+
+// version à une date donnée
+const codeDesMedailles = await legi.getCode({ id: "LEGITEXT000006070666", date: "2012-03-05" })
+
+// liste des versions d'un texte
+const versionsDispos = await legi.getCodeDates("LEGITEXT000006072050");
 ```
+
+Plus d'exemples dans [./examples.js](./examples.js)
 
 ### A propos de legi.py
 

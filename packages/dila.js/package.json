@@ -18,6 +18,7 @@
     "eslint-plugin-prettier": "^2.6.0",
     "fast-memoize": "^2.3.0",
     "flow-bin": "^0.66.0",
+    "hast-util-to-html": "^3.1.0",
     "html-to-text": "^4.0.0",
     "humanize-duration": "^3.12.1",
     "knex": "^0.14.2",

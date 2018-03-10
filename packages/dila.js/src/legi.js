@@ -1,37 +1,5 @@
 const memoize = require("fast-memoize");
-
-//const knexRequire = require("knex");
-//let knex;
-
-const serial = promises =>
-  promises.reduce(
-    (chain, c) => chain.then(res => c.then(cur => [...res, cur])),
-    Promise.resolve([])
-  );
-
-const serialExec = promises =>
-  promises.reduce(
-    (chain, c) => chain.then(res => c().then(cur => [...res, cur])),
-    Promise.resolve([])
-  );
-
-const repeat = (s, times = 5) =>
-  Array.from({ length: times })
-    .fill(s)
-    .join("");
-
-const logSections = (node, d = 0) => {
-  node.children &&
-    node.children.forEach(n => {
-      if (n.titre.match(/^Article.*/)) {
-        console.log(repeat("  ", d), n.titre);
-        n.bloc_textuel && console.log(repeat("  ", d + 1), n.bloc_textuel, "\n\n");
-      } else {
-        console.log(repeat("  ", d), n.titre);
-        logSections(n, d + 1);
-      }
-    });
-};
+const knexRequire = require("knex");
 
 // default sqlite config
 const getKnexConfig = dbPath => ({
@@ -44,7 +12,7 @@ const getKnexConfig = dbPath => ({
 });
 
 const legi = dbPath => {
-  const knex = require("knex")(getKnexConfig(dbPath)); //.debug();
+  const knex = knexRequire(getKnexConfig(dbPath)); //.debug();
 
   const getArticle = memoize(filters =>
     knex
@@ -85,6 +53,8 @@ const legi = dbPath => {
         .catch(console.log)
     );
   });
+
+  const getCodesList = () => knex.table("textes_versions").where({ nature: "CODE" });
 
   const extractVersion = async ({ date = new Date().toLocaleDateString(), ...filters }) => {
     const text = await knex
@@ -198,24 +168,24 @@ const legi = dbPath => {
     return isSingleString ? { id: params[0] } : params[0];
   };
 
+  const close = () => {
+    console.log("destroy");
+    knex.destroy();
+  };
+
   return {
     getCode: (...args) => extractVersion(getCodeParams(args)),
-    getCodeDates
+    getCodeDates,
+    getCodesList,
+    close,
+    knex
   };
 };
 
-exports = module.exports = legi;
-/* {
-  extract,
-  getDates,
-  serial,
-  serialExec,
-  getSections,
-  extractJORF,
-  setDatabase: (dbPath = "./legi.sqlite") => {
-    knex = knexRequire(getKnexConfig(dbPath));
+class Legi {
+  constructor(dbPath = "./legi.sqlite") {
+    return legi(dbPath);
   }
-};
+}
 
-exports.setDatabase();
-*/
+module.exports = Legi;
