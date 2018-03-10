@@ -1,5 +1,14 @@
 # legi.js
 
+
+[![npm](https://img.shields.io/npm/v/legi.svg)](https://www.npmjs.com/package/legi)
+![license](https://img.shields.io/npm/l/legi.svg)
+[![github-issues](https://img.shields.io/github/issues/revolunet/legi.svg)](https://github.com/revolunet/legi/issues)
+
+
+![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)
+
+
 Une API NodeJS *Promise-based* pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py)
 
 Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
