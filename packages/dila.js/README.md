@@ -3,7 +3,7 @@
 
 [![npm](https://img.shields.io/npm/v/legi.svg)](https://www.npmjs.com/package/legi)
 ![license](https://img.shields.io/npm/l/legi.svg)
-[![github-issues](https://img.shields.io/github/issues/revolunet/legi.svg)](https://github.com/revolunet/legi/issues)
+[![github-issues](https://img.shields.io/github/issues/revolunet/legi.js.svg)](https://github.com/revolunet/legi.js/issues)
 
 
 ![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)
