@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",
+  "files": ["src", "examples.js"],
+  "main": "./src",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/revolunet/legi.js.git"
