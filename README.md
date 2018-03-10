@@ -1,10 +1,10 @@
-legi.py est un module python qui peut:
+legi.py est un module python qui peut :
 
 - créer une base de données SQLite à partir des archives de la base LEGI
-- mettre à jour automatiquement et incrémentalement cette BDD
+- mettre à jour automatiquement et incrémentalement cette base de données
 - normaliser les titres des textes
 - connecter les différentes versions d'un texte entre elles
-- analyser les données pour détecter [les anomalies][anomalies]
+- analyser les données pour détecter les anomaliées ([listées sur cette page][anomalies])
 
 Avoir les lois françaises dans une base SQL permet aussi d'autres choses qui ne
 sont pas encore implémentées directement dans legi.py, par exemple générer des
@@ -16,14 +16,14 @@ en vigueur][tweet-texte-plus-ancien], etc.
 ## Installation
 
 Vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python
-nécessaires:
+nécessaires :
 
     git clone https://github.com/Legilibre/legi.py.git
     cd legi.py
     python -m ensurepip
     pip install -r requirements.txt
 
-legi.py a aussi besoin de [`libarchive`][libarchive]. Pour l'installer sur Ubuntu:
+legi.py a aussi besoin de [`libarchive`][libarchive]. Pour l'installer sur Ubuntu :
 
     sudo apt-get install libarchive13
 
@@ -39,7 +39,7 @@ La première étape est de télécharger les archives LEGI depuis
 
     python -m legi.download ./tarballs
 
-La deuxième étape est la conversion des archives en base SQLite:
+La deuxième étape est la conversion des archives en base SQLite :
 
     python -m legi.tar2sqlite legi.sqlite ./tarballs
 
@@ -55,7 +55,7 @@ La taille du fichier SQLite créé est environ 3,3Go (en février 2017).
 automatiquement les archives qu'il a déjà traité. En général la DILA publie une
 nouvelle archive à la fin de chaque jour ouvré, vous pouvez donc programmer
 votre machine pour mettre à jour la BDD du mardi au samedi pendant la nuit, par
-exemple avec [cron][cron]:
+exemple avec [cron][cron] :
 
     0 1 * * 2-6 ID=legi chronic ~/chemin/vers/legi.py/cron/cron.sh
 
@@ -93,7 +93,7 @@ que si vous entrez `y` à la fin).
 
 Le module `anomalies` est conçu pour détecter les incohérences dans les données afin de les signaler à la DILA. Le résultat est visible sur [anomalies.legilibre.fr][anomalies]. (`cron/anomalies-cron.sh` est le script qui génère ce mini-site.)
 
-Pour détecter les anomalies actuellement présentes dans la base:
+Pour détecter les anomalies actuellement présentes dans la base :
 
     python -m legi.anomalies legi.sqlite
 
