@@ -8,8 +8,7 @@
 
 ![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)
 
-
-Une API NodeJS *Promise-based* pour requêter une base issue de [legi.py](https://github.com/Legilibre/legi.py)
+Une API NodeJS pour requêter les textes de loi issus d'une base [legi.py](https://github.com/Legilibre/legi.py)
 
 Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
 
@@ -35,7 +34,7 @@ const codeDesMedailles = await legi.getCode({ id: "LEGITEXT000006070666", date: 
 const versionsDispos = await legi.getCodeDates("LEGITEXT000006072050");
 
 // texte du JORF
-const arrete = legi.getJORF("JORFTEXT000000465978")
+const arrete = await legi.getJORF("JORFTEXT000000465978")
 
 ```
 
@@ -44,8 +43,6 @@ Plus d'exemples dans [./examples.js](./examples.js)
 ### A propos de legi.py
 
 legi.py est un module python qui génère une base sqlite à partir de la base LEGI, normalise et consolide les données. [plus d'infos ici](https://github.com/Legilibre/legi.py).
-
-Une image docker pour builder et maintenir ce fichier soi-même est dispo ici : [legi.py-docker](https://github.com/revolunet/legi.py-docker)
 
 ### Utiliser Postgres
 
@@ -57,3 +54,9 @@ Convertir la base legilibre.sqlite dans Postgres pour de meilleures performances
 # lancer pgloader en local
 pgloader --cast "type day to varchar" legilibre.sqlite postgresql://postgres:test@127.0.0.1:5433/legi
 ```
+
+### Related
+
+ - https://github.com/Legilibre/legi.py
+ - https://github.com/Legilibre/Archeo-Lex
+ - https://github.com/revolunet/legi.py-docker
