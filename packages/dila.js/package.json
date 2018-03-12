@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",
-  "files": ["src", "examples.js"],
+  "files": [
+    "src",
+    "examples.js"
+  ],
   "main": "./src",
   "repository": {
     "type": "git",
@@ -15,6 +18,7 @@
     "url": "https://github.com/revolunet/legi.js/issues"
   },
   "dependencies": {
+    "@z0mt3c/clean-html": "^1.0.3",
     "eslint": "^4.18.2",
     "eslint-config-google": "^0.9.1",
     "eslint-config-prettier": "^2.9.0",
@@ -25,18 +29,30 @@
     "html-to-text": "^4.0.0",
     "humanize-duration": "^3.12.1",
     "knex": "^0.14.2",
+    "normalize-html-whitespace": "^0.2.0",
     "ora": "^2.0.0",
     "ora-promise": "^1.0.0",
     "pg": "^7.4.1",
     "prettier": "1.11.1",
     "prettier-eslint-cli": "^4.7.1",
+    "rehype-document": "^2.0.1",
     "rehype-minify-whitespace": "^2.0.3",
+    "rehype-parse": "^4.1.0",
+    "rehype-remark": "^3.0.0",
+    "rehype-stringify": "^3.0.0",
     "remark": "^9.0.0",
+    "remark-parse": "^5.0.0",
+    "remark-rehype": "^3.0.0",
+    "remark-stringify": "^5.0.0",
     "remark-strip-html": "^1.0.0",
     "rm": "^0.1.8",
     "sqlite3": "^3.1.13",
+    "string-collapse-white-space": "^3.2.8",
+    "unified": "^6.1.6",
     "unist-util-find": "^1.0.1",
     "unist-util-map": "^1.0.3",
-    "unist-util-select": "^1.5.0"
+    "unist-util-modify-children": "^1.1.1",
+    "unist-util-select": "^1.5.0",
+    "vfile-reporter": "^4.0.0"
   }
 }
