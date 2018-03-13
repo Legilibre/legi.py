@@ -8,56 +8,29 @@ const markdown = require("./src/markdown");
 const html = require("./src/html");
 
 // liste des codes disponibles
-// legi
-//   .getCodesList()
-//   .then(JSONlog)
+const codesDispo = () => legi.getCodesList();
 
-// const texte1 = legi
-//   .getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" })
-//   .then(JSONlog)
+// code du travail au format unist (~3min)
+const codeDuTravail = () => legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
 
-// // get all available dates for a given text
-// const texte2 = legi
-//   .getCodeDates("LEGITEXT000006072050")
-//   .then(JSONlog)
+// liste des versions du code du travail (dates)
+const versionsDuCodeDuTravail = () => legi.getCodeDates("LEGITEXT000006072050");
 
-// // generate all version of a given text
-// const getAllVersions = async id => {
-//   const dates = await legi.getCodeDates(id);
-//   return serialExec(dates.map(date => () => legi.getCode({ id, date })));
-// };
+// générer toutes les version d'un texte au format unist (très long)
+const getAllVersions = async id => {
+  const dates = await legi.getCodeDates(id);
+  return serialExec(dates.map(date => () => legi.getCode({ id, date })));
+};
 
-// getAllVersions("LEGITEXT000006070666")
-//   .then(JSONlog)
+// ordonnance au format unist
+const getOrdonnance12Mars2007 = () => legi.getJORF("JORFTEXT000000465978");
 
-// legi
-//   .getJORF("JORFTEXT000000465978")
-//   .then(JSONlog)
+// section d'un texte au format unist
+const getPremierePartieCodeDuTravail = () =>
+  legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
 
-//
-// legi
-//   .getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" })
-//   .then(JSONlog)
+// conversion d'un tree unist en markdown
+const toMarkdown = () => legi.getCode("LEGITEXT000006069414").then(markdown);
 
-// conversion en markdown
-// legi.getCode("LEGITEXT000006069414").then(node => {
-//   markdown(node)
-//     .then(console.log)
-// })
-// conversion en html
-legi.getCode("LEGITEXT000006069414").then(node => {
-  html(node).then(console.log);
-});
-
-// toHTML(node)
-//   .then(console.log)
-//   .catch(e => console.log("e", e));
-//});
-// .then(nodeToMdast)
-// .then(stringifyMdast)
-// //.then(stringify)
-// .then(console.log)
-// .catch(e => console.log("e", e));
-/*
-  stringify : compter les mots par année
-*/
+// conversion d'un tree unist en html
+const toHtml = () => legi.getCode("LEGITEXT000006069414").then(html);

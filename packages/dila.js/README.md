@@ -21,20 +21,26 @@ const Legi = require('legi');
 
 const legi = new Legi('/path/to/legi.sqlite');
 
-// liste des codes disponibles (105)
-const textes = await legi.getCodesList();
+// liste des codes disponibles
+legi.getCodesList();
 
-// version d'un code à date du jour
-const codeDuTravail = await legi.getCode("LEGITEXT000006072050")
+// code du travail au format unist (~3min)
+legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
 
-// version d'un code à une date donnée
-const codeDesMedailles = await legi.getCode({ id: "LEGITEXT000006070666", date: "2012-03-05" })
+// liste des versions du code du travail (dates)
+legi.getCodeDates("LEGITEXT000006072050");
 
-// liste des versions d'un texte
-const versionsDispos = await legi.getCodeDates("LEGITEXT000006072050");
+// ordonnance au format unist
+legi.getJORF("JORFTEXT000000465978");
 
-// texte du JORF
-const arrete = await legi.getJORF("JORFTEXT000000465978")
+// section d'un texte au format unist
+legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
+
+// conversion d'un tree unist en markdown
+legi.getCode("LEGITEXT000006069414").then(markdown);
+
+// conversion d'un tree unist en html
+legi.getCode("LEGITEXT000006069414").then(html);
 
 ```
 
@@ -59,4 +65,5 @@ pgloader --cast "type day to varchar" legilibre.sqlite postgresql://postgres:tes
 
  - https://github.com/Legilibre/legi.py
  - https://github.com/Legilibre/Archeo-Lex
+ - https://github.com/Legilibre/legi-php
  - https://github.com/revolunet/legi.py-docker
