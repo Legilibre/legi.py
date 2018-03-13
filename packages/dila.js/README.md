@@ -16,6 +16,8 @@ Vous pouvez récupérer une version du fichier SQLite au 8 Mars 2018 ici : https
 
 ## Usage
 
+Promise-based API
+
 ```js
 const Legi = require('legi');
 
@@ -24,22 +26,24 @@ const legi = new Legi('/path/to/legi.sqlite');
 // liste des codes disponibles
 legi.getCodesList();
 
-// code du travail au format unist (~3min)
+// code du travail (~3min)
 legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
 
 // liste des versions du code du travail (dates)
 legi.getCodeDates("LEGITEXT000006072050");
 
-// ordonnance au format unist
+// ordonnance
 legi.getJORF("JORFTEXT000000465978");
 
-// section d'un texte au format unist
+// section d'un texte
 legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
 
-// conversion d'un tree unist en markdown
+// conversion en markdown
+const markdown = require('legi/markdown')
 legi.getCode("LEGITEXT000006069414").then(markdown);
 
-// conversion d'un tree unist en html
+// conversion en html
+const html = require('legi/html')
 legi.getCode("LEGITEXT000006069414").then(html);
 
 ```
