@@ -45,7 +45,7 @@ const legi = dbPath => {
         .where(sommaireFilters)
         .andWhere("debut", "<=", filters.date)
         .andWhere(function() {
-          return this.where("fin", ">=", filters.date)
+          return this.where("fin", ">", filters.date)
             .orWhere("fin", "2999-01-01")
             .orWhere("etat", "VIGUEUR");
         })
@@ -65,7 +65,7 @@ const legi = dbPath => {
       })
       .andWhere(filters)
       .andWhere("date_debut", "<=", date)
-      .andWhere("date_fin", ">=", date)
+      .andWhere("date_fin", ">", date)
       .orderBy("date_publi", "desc")
       .first()
       .catch(console.log);
