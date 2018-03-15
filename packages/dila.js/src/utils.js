@@ -30,11 +30,14 @@ const logSections = (node, d = 0) => {
     });
 };
 
+const range = (start, end) => Array.from({ length: end - start }, (k, v) => start + v);
+
 const JSONlog = data => console.log(JSON.stringify(data, null, 2)) && data;
 
 module.exports = {
   serial,
   serialExec,
+  range,
   repeat,
   JSONlog
 };
