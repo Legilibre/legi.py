@@ -39,11 +39,11 @@ legi.getJORF("JORFTEXT000000465978");
 legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
 
 // conversion en markdown
-const markdown = require('legi/markdown')
+const markdown = require('legi/src/markdown')
 legi.getCode("LEGITEXT000006069414").then(markdown);
 
 // conversion en html
-const html = require('legi/html')
+const html = require('legi/src/html')
 legi.getCode("LEGITEXT000006069414").then(html);
 
 ```

@@ -193,7 +193,5 @@ class Legi {
     return legi(dbPath);
   }
 }
-Legi.markdown = require("./markdown");
-Legi.html = require("./html");
 
 module.exports = Legi;
