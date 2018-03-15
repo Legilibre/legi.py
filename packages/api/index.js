@@ -1,8 +1,11 @@
 const express = require("express");
 const memoize = require("fast-memoize");
+const gzip = require("express-gzip");
+
 const Legi = require("legi");
 
 const app = express();
+app.use(gzip);
 
 const legi = new Legi();
 
