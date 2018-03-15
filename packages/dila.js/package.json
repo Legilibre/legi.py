@@ -1,7 +1,7 @@
 {
   "name": "legi",
   "description": "Une API NodeJS pour requêter les textes de loi issus d'une base legi.py",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",
   "files": [
