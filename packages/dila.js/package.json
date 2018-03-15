@@ -34,7 +34,6 @@
     "knex": "^0.14.2",
     "lexis-count": "^1.0.3",
     "mocha": "^5.0.4",
-    "normalize-html-whitespace": "^0.2.0",
     "ora": "^2.0.0",
     "ora-promise": "^1.0.0",
     "pg": "^7.4.1",
@@ -50,13 +49,11 @@
     "remark-rehype": "^3.0.0",
     "remark-stringify": "^5.0.0",
     "remark-strip-html": "^1.0.0",
-    "rm": "^0.1.8",
     "sqlite3": "^3.1.13",
     "unified": "^6.1.6",
     "unist-util-find": "^1.0.1",
     "unist-util-map": "^1.0.3",
     "unist-util-modify-children": "^1.1.1",
-    "unist-util-select": "^1.5.0",
-    "vfile-reporter": "^4.0.0"
+    "unist-util-select": "^1.5.0"
   }
 }
