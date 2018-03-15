@@ -1,0 +1,19 @@
+{
+  "name": "legi-api",
+  "version": "1.0.0",
+  "author": "Julien Bouquillon <julien@revolunet.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/revolunet/legi-api.git"
+  },
+  "homepage": "https://revolunet.github.io/legi-api/",
+  "bugs": {
+    "url": "https://github.com/revolunet/legi-api/issues"
+  },
+  "dependencies": {
+    "express": "^4.16.3",
+    "fast-memoize": "^2.3.2",
+    "legi": "^1.1.0"
+  }
+}
