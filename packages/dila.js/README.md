@@ -21,6 +21,7 @@ Promise-based API
 ```js
 const Legi = require('legi');
 
+// defaults to ./legi.sqlite
 const legi = new Legi('/path/to/legi.sqlite');
 
 // liste des codes disponibles

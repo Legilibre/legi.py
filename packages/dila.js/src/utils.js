@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 // 1-1 promise
 const serial = promises =>
   promises.reduce(
@@ -32,12 +34,19 @@ const logSections = (node, d = 0) => {
 
 const range = (start, end) => Array.from({ length: end - start }, (k, v) => start + v);
 
+const read = path => fs.readFileSync(path).toString();
+const write = (dst, content) => fs.writeFileSync(dst, JSON.stringify(content, null, 2));
+
+const JSONread = path => JSON.parse(read(path));
 const JSONlog = data => console.log(JSON.stringify(data, null, 2)) && data;
 
 module.exports = {
   serial,
+  read,
+  write,
   serialExec,
   range,
   repeat,
+  JSONread,
   JSONlog
 };
