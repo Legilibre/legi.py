@@ -31,7 +31,7 @@ const getHeading = ({ text, depth = 1 }) => ({
   children: [
     {
       type: "text",
-      value: text
+      value: text || ""
     }
   ]
 });
@@ -75,7 +75,10 @@ const nodeMap = {
 // convert section/article nodes to mdast
 const nodeToMdast = async (node, depth = 0) => {
   const children =
-    (node.children && (await Promise.all(node.children.map(n => nodeToMdast(n, depth + 1))))) || [];
+    (node.children &&
+      node.children.map &&
+      (await Promise.all(node.children.map(n => nodeToMdast(n, depth + 1))))) ||
+    [];
   const res = await (nodeMap[node.type] || nodeMap.default)(node, children, depth);
   return res;
 };

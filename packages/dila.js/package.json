@@ -4,14 +4,18 @@
   "version": "1.1.3",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",
-  "files": [
-    "src",
-    "examples.js"
-  ],
+  "files": ["src", "examples.js"],
   "scripts": {
-    "test": "mocha --timeout 30000"
+    "test": "jest",
+    "test-watch": "jest --watch",
+    "jest-html": "jest-html"
   },
   "main": "./src",
+  "jest": {
+    "verbose": true,
+    "collectCoverage": true,
+    "snapshotSerializers": ["jest-html"]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/revolunet/legi.js.git"
@@ -33,7 +37,6 @@
     "humanize-duration": "^3.12.1",
     "knex": "^0.14.2",
     "lexis-count": "^1.0.3",
-    "mocha": "^5.0.4",
     "ora": "^2.0.0",
     "ora-promise": "^1.0.0",
     "pg": "^7.4.1",
@@ -51,9 +54,14 @@
     "remark-strip-html": "^1.0.0",
     "sqlite3": "^3.1.13",
     "unified": "^6.1.6",
+    "unist-util-filter": "^0.2.1",
     "unist-util-find": "^1.0.1",
     "unist-util-map": "^1.0.3",
     "unist-util-modify-children": "^1.1.1",
     "unist-util-select": "^1.5.0"
+  },
+  "devDependencies": {
+    "jest": "^22.4.3",
+    "jest-html": "^1.3.5"
   }
 }

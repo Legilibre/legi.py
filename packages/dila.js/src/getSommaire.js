@@ -1,4 +1,4 @@
-const getSommaire = (knex, { filters }) => {
+const getSommaire = (knex, filters) => {
   const sommaireFilters = {
     ...filters
   };

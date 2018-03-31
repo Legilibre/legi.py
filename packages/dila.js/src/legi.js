@@ -14,59 +14,16 @@ const getKnexConfig = dbPath => ({
 const legi = dbPath => {
   const knex = knexRequire(getKnexConfig(dbPath)); //.debug();
 
-  const getCodesList = () => knex.table("textes_versions").where({ nature: "CODE" });
-
-  const getJORF = async id => {
-    const version = await knex
-      .table("textes_versions")
-      .where({ cid: id })
-      .first();
-    const articles = await knex
-      .table("articles")
-      .where({ cid: id })
-      .orderBy("num");
-
-    const children = articles.map(a => ({
-      id: a.id,
-      type: "article",
-      data: a,
-      children: []
-    }));
-
-    return {
-      id,
-      type: "texte",
-      data: version,
-      children
-    };
-  };
-
-  // const getCodeId = code => {
-  //   if (code.match(/^LEGITEXT/)) {
-  //     return code;
-  //   }
-  //   // todo: fuse
-  //   return CODES[code];
-  // };
-
-  // const getCodeParams = params => {
-  //   const isSingleString = params.length === 1 && typeof params[0] === "string";
-  //   return isSingleString ? { id: params[0] } : params[0];
-  // };
-
-  const close = () => {
-    console.log("destroy");
-    knex.destroy();
-  };
+  // tasty curry
+  const knexify = module => params => module(knex, params);
 
   return {
-    getCode: params => require("./getCode")(knex, params),
-    //=> extractVersion(getCodeParams(args)),
-    getCodeDates: ({ id }) => require("./getCodeDates")(knex, { id }),
-    getCodesList,
-    getJORF,
-    getSection: filters => require("./getSection")(knex, { filters }),
-    close,
+    getCode: knexify(require("./getCode")),
+    getCodeDates: knexify(require("./getCodeDates")),
+    getCodesList: knexify(require("./getCodesList")),
+    getJORF: knexify(require("./getJORF")),
+    getSection: knexify(require("./getSection")),
+    close: knex.destroy,
     knex
   };
 };

@@ -1,8 +1,8 @@
-const extractVersion = require("./extractVersion");
+const extractText = require("./extractText");
 
-const getCodeParams = params => {
-  const isSingleString = params.length === 1 && typeof params[0] === "string";
-  return isSingleString ? { id: params[0] } : params[0];
+const getCodeParams = filters => {
+  const isSingleString = typeof filters === "string";
+  return isSingleString ? { id: filters } : filters;
 };
 
-module.exports = (knex, ...args) => extractVersion(knex, getCodeParams(args));
+module.exports = (knex, filters) => extractText(knex, getCodeParams(filters));

@@ -10,23 +10,18 @@ const getSectionData = (knex, filters) =>
 
 // generates a syntax-tree structure
 // https://github.com/syntax-tree/unist
-const getSection = async (knex, { filters }) => {
+const getSection = async (knex, filters) => {
   if (!filters.parent) {
     filters.parent = null;
   }
-  const sommaire = await getSommaire(knex, { filters: filters });
+  const sommaire = await getSommaire(knex, filters);
   return (
     sommaire &&
     Promise.all(
       sommaire.map(async section => {
         //   console.log("section");
         if (section.element.match(/^LEGISCTA/)) {
-          const sectionData = await getSectionData(knex, { id: section.element });
-          return {
-            type: "section",
-            data: sectionData,
-            children: await getSection(knex, { filters: { ...filters, parent: section.element } })
-          };
+          return await getSection(knex, { ...filters, parent: section.element });
         } else if (section.element.match(/^LEGIARTI/)) {
           const article = await getArticle(knex, { id: section.element });
           const texteArticle = await getArticle(knex, { cid: article.cid, id: article.id });
@@ -39,10 +34,22 @@ const getSection = async (knex, { filters }) => {
             data
           };
         } else {
+          return {
+            id: section.element
+          };
           console.log("invalid section ?", section);
         }
       })
     )
+      .then(async children => {
+        const sectionData = await getSectionData(knex, { id: filters.parent });
+        return {
+          type: "section",
+          data: sectionData || {},
+          children
+        };
+      })
+      .catch(console.log)
   );
 };
 

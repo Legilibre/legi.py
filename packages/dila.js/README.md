@@ -66,6 +66,11 @@ Convertir la base legilibre.sqlite dans Postgres pour de meilleures performances
 pgloader --cast "type day to varchar" legilibre.sqlite postgresql://postgres:test@127.0.0.1:5433/legi
 ```
 
+## Todo
+
+ - versions et liens dans getArticle
+ - caching middleware
+
 ### Related
 
  - https://github.com/Legilibre/legi.py

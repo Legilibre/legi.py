@@ -23,7 +23,7 @@ const extractText = async (
     type: "code",
     date,
     data: textData,
-    children: (textData && (await getSection(knex, { filters: { cid: textData.cid, date } }))) || []
+    children: (textData && [await getSection(knex, { cid: textData.cid, date })]) || []
   };
 
   if (showVersions) {
