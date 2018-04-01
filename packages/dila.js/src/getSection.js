@@ -3,7 +3,10 @@ const getArticle = require("./getArticle");
 
 const getSectionData = (knex, filters) =>
   knex
-    .select("*")
+    .clearSelect()
+    .clearWhere()
+    .clearOrder()
+    .select()
     .from("sections")
     .where(filters)
     .first();
@@ -15,11 +18,13 @@ const getSection = async (knex, filters) => {
     filters.parent = null;
   }
   const sommaire = await getSommaire(knex, filters);
+  if (!sommaire.map) {
+    return sommaire;
+  }
   return (
     sommaire &&
     Promise.all(
       sommaire.map(async section => {
-        //   console.log("section");
         if (section.element.match(/^LEGISCTA/)) {
           return await getSection(knex, { ...filters, parent: section.element });
         } else if (section.element.match(/^LEGIARTI/)) {

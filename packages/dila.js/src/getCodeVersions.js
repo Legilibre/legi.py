@@ -1,9 +1,12 @@
 const getCodeVersions = (knex, filters) => {
   return (
     knex
+      .clearSelect()
+      .clearWhere()
+      .clearOrder()
       .select("debut", "fin")
       //.debug()
-      .table("sommaires")
+      .from("sommaires")
       .where(filters)
       .orderBy("debut")
   );

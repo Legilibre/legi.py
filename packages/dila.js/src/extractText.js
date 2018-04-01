@@ -5,15 +5,19 @@ const extractText = async (
   knex,
   { date = new Date().toLocaleDateString(), showVersions = false, ...filters }
 ) => {
+  console.log("filters", filters)
   const textData = await knex
+    .clearSelect()
+    .clearWhere()
+    .clearOrder()
     .select("cid", "titre", "titrefull", "date_publi")
-    .table("textes_versions")
+    .from("textes_versions")
     .where({
       etat: "VIGUEUR"
     })
-    .andWhere(filters)
     .andWhere("date_debut", "<=", date)
     .andWhere("date_fin", ">", date)
+    .andWhere(filters)
     .orderBy("date_publi", "desc")
     .first()
     .catch(console.log);
