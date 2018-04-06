@@ -8,8 +8,8 @@ legi.getCodesList();
 // code du travail (~3min)
 legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
 
-// liste des versions du code du travail (dates)
-legi.getCodeDates("LEGITEXT000006072050");
+// liste des versions du code du travail
+legi.getCodeVersions("LEGITEXT000006072050");
 
 // ordonnance
 legi.getJORF("JORFTEXT000000465978");

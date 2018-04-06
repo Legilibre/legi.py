@@ -25,31 +25,31 @@ const Legi = require('legi');
 const legi = new Legi('/path/to/legi.sqlite');
 
 // liste des codes disponibles
-legi.getCodesList();
+legi.getCodesList().then(console.log);
 
 // code du travail (~3min)
-legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
+legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" }).then(console.log);
 
-// liste des versions du code du travail (dates)
-legi.getCodeDates("LEGITEXT000006072050");
+// liste des versions du code du travail
+legi.getCodeVersions("LEGITEXT000006072050").then(console.log);
 
-// ordonnance
-legi.getJORF("JORFTEXT000000465978");
+// journal officiel
+legi.getJORF("JORFTEXT000000465978").then(console.log);
 
 // section d'un texte
-legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
+legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" }).then(console.log);
 
 // conversion en markdown
-const markdown = require('legi/src/markdown')
-legi.getCode("LEGITEXT000006069414").then(markdown);
+const markdown = require('legi/src/markdown');
+legi.getCode("LEGITEXT000006069414").then(markdown).then(console.log);
 
 // conversion en html
-const html = require('legi/src/html')
-legi.getCode("LEGITEXT000006069414").then(html);
+const html = require('legi/src/html');
+legi.getCode("LEGITEXT000006069414").then(html).then(console.log);
 
 ```
 
-Plus d'exemples dans [./examples.js](./examples.js)
+Plus d'exemples dans [./examples](./examples)
 
 ### A propos de legi.py
 

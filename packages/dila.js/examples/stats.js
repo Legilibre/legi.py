@@ -6,12 +6,8 @@ const Legi = require("../src/Legi");
 const legi = new Legi();
 const { range, JSONread } = require("../src/utils");
 
-const buildYears = async id => buildDates(id, range(1977, 2019).map(y => `${y}-01-01`));
-
 const getPath = (id = "LEGITEXT000006072050", date = "2018-01-01") =>
   `./history/code-du-travail/${id}-${date}.json`;
-
-const count = tree => {};
 
 const filterAllBy = (tree, predicate) => {
   const results = [];
@@ -23,6 +19,7 @@ const filterAllBy = (tree, predicate) => {
 };
 
 // volumétrie par an
+// utilise un export crée précédemment pour + de rapidité (todo)
 const getYearStats = year => {
   const content = JSONread(getPath("LEGITEXT000006072050", `${year}-01-01`));
   return {
@@ -32,6 +29,7 @@ const getYearStats = year => {
   };
 };
 
+// stats par an sur le code du travail
 const results = range(1977, 2019).map(getYearStats);
 
 //console.log(JSON.stringify(results, null, 2));

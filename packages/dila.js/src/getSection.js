@@ -29,14 +29,13 @@ const getSection = async (knex, filters) => {
           return await getSection(knex, { ...filters, parent: section.element });
         } else if (section.element.match(/^LEGIARTI/)) {
           const article = await getArticle(knex, { id: section.element });
-          const texteArticle = await getArticle(knex, { cid: article.cid, id: article.id });
-          const data = {
-            titre: `Article ${article.num}`,
-            ...texteArticle
-          };
+          const texteArticle = await getArticle(knex, { cid: article.cid, id: section.element });
           return {
             type: "article",
-            data
+            data: {
+              titre: `Article ${article.num}`,
+              ...texteArticle
+            }
           };
         } else {
           return {

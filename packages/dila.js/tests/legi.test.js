@@ -4,12 +4,16 @@ const html = require("../src/html");
 
 const legi = new Legi("./legi.sqlite");
 
+afterAll(() => {
+  legi.close();
+});
+
 // medailles LEGITEXT000006070666
 // travail LEGITEXT000006072050
 // PI LEGITEXT000006069414
 const CODE_TEST = "LEGITEXT000006070666";
 
-jest.setTimeout(10000);
+jest.setTimeout(20000);
 
 it("getSection", async () => {
   expect.assertions(1);
@@ -34,9 +38,12 @@ it("getCodesList", async () => {
   expect(JSON.stringify(res)).toMatchSnapshot();
 });
 
-it("getCodeDates", async () => {
-  expect.assertions(1);
-  const res = await legi.getCodeDates({ cid: CODE_TEST });
+it("getCodeVersions", async () => {
+  expect.assertions(4);
+  const res = await legi.getCodeVersions({ cid: CODE_TEST });
+  expect(typeof res.length).not.toBe("undefined");
+  expect(typeof res).toBe("object");
+  expect(res.length).toBeGreaterThan(10);
   expect(JSON.stringify(res)).toMatchSnapshot();
 });
 

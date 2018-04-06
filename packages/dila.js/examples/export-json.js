@@ -1,9 +1,9 @@
 const fs = require("fs");
 const spinner = require("ora-promise");
 
-const Legi = require("./src/Legi");
+const Legi = require("../src/Legi");
 
-const { serialExec, range } = require("./src/utils");
+const { serialExec, range } = require("../src/utils");
 
 const legi = new Legi();
 
@@ -33,4 +33,5 @@ const buildAllVersions = async id => buildDates(id, await getDates(id));
 // pour un range donné
 const buildYears = async id => buildDates(id, range(1977, 2019).map(y => `${y}-01-01`));
 
-buildYears("LEGITEXT000006072050");
+// extrait le code du travail
+buildYears("LEGITEXT000006072050").then(() => legi.close());
