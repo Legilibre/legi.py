@@ -10,7 +10,7 @@
 
 Une API NodeJS pour requêter les textes de loi issus d'une base [legi.py](https://github.com/Legilibre/legi.py)
 
-Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre.
+Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre, de HTML, ou de markdown
 
 Vous pouvez récupérer une version du fichier SQLite au 8 Mars 2018 ici : https://drive.google.com/open?id=1h3Q0EaxsPdP6jAkeKZplfgtXbsG4vALW (700Mo)
 
@@ -59,12 +59,7 @@ legi.py est un module python qui génère une base sqlite à partir de la base L
 
 Convertir la base legilibre.sqlite dans Postgres pour de meilleures performances
 
-⚠️ Utiliser [pgloader](https://github.com/dimitri/pgloader) avec le paramètre `--cast "type day to varchar"`
-
-```sh
-# lancer pgloader en local
-pgloader --cast "type day to varchar" legilibre.sqlite postgresql://postgres:test@127.0.0.1:5433/legi
-```
+Exemple avec l'[image docker](https://github.com/revolunet/legi.py-docker)
 
 ## Todo
 
