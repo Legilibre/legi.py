@@ -1,4 +1,4 @@
-# legi.js
+# legi.js [![experimental](http://badges.github.io/stability-badges/dist/experimental.svg)](http://github.com/badges/stability-badges)
 
 
 [![npm](https://img.shields.io/npm/v/legi.svg)](https://www.npmjs.com/package/legi)
@@ -8,11 +8,13 @@
 
 ![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)
 
-Une API NodeJS pour requêter les textes de loi issus d'une base [legi.py](https://github.com/Legilibre/legi.py)
+Une API NodeJS pour requêter les textes de loi bruts issus d'une base [legi.py](https://github.com/Legilibre/legi.py)
 
 Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre, de HTML, ou de markdown
 
-Vous pouvez récupérer une version du fichier SQLite au 8 Mars 2018 ici : https://drive.google.com/open?id=1h3Q0EaxsPdP6jAkeKZplfgtXbsG4vALW (700Mo)
+Par défaut l'API utilisateur un serveur de dev pour fournir les textes.
+
+Vous pouvez utiliser votre propre base de données en récupérant une version du fichier SQLite au 8 Mars 2018 ici : https://drive.google.com/open?id=1h3Q0EaxsPdP6jAkeKZplfgtXbsG4vALW (700Mo), ou faire tourner votre serveur PostgreSQL avec [legi-docker](https://github.com/revolunet/legi-docker)
 
 ## Usage
 
@@ -55,20 +57,14 @@ Plus d'exemples dans [./examples](./examples)
 
 legi.py est un module python qui génère une base sqlite à partir de la base LEGI, normalise et consolide les données. [plus d'infos ici](https://github.com/Legilibre/legi.py).
 
-### Utiliser Postgres
-
-Convertir la base legilibre.sqlite dans Postgres pour de meilleures performances
-
-Exemple avec l'[image docker](https://github.com/revolunet/legi.py-docker)
 
 ## Todo
 
  - versions et liens dans getArticle
- - caching middleware
 
 ### Related
 
  - https://github.com/Legilibre/legi.py
  - https://github.com/Legilibre/Archeo-Lex
  - https://github.com/Legilibre/legi-php
- - https://github.com/revolunet/legi.py-docker
+ - https://github.com/revolunet/legi-docker
