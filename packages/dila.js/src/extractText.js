@@ -23,7 +23,7 @@ const extractText = async (
 
   // todo: codes metadatas: ajouter la liste des version dispos
   const tree = {
-    type: "code",
+    type: "text",
     date,
     data: textData,
     children: (textData && [await getSection(knex, { cid: textData.cid, date })]) || []

@@ -23,7 +23,7 @@ const getJORF = async (knex, id) => {
 
   return {
     id,
-    type: "texte",
+    type: "text",
     data: version,
     children
   };

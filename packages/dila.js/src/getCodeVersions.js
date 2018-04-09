@@ -13,7 +13,7 @@ const getCodeVersions = (knex, filters) => {
       .from("sommaires")
       .where(filters2)
       //.groupBy("debut", "fin", "cid")
-      .orderBy("debut")
+      .orderBy("debut", "titre")
   );
 };
 

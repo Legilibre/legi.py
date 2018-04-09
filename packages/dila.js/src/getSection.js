@@ -1,5 +1,17 @@
 const getSommaire = require("./getSommaire");
-const getArticle = require("./getArticle");
+const getArticleData = require("./getArticle");
+
+const getArticle = async (knex, id) => {
+  const article = await getArticleData(knex, { id });
+  const texteArticle = await getArticleData(knex, { cid: article.cid, id });
+  return {
+    type: "article",
+    data: {
+      titre: `Article ${article.num}`,
+      ...texteArticle
+    }
+  };
+};
 
 const getSectionData = (knex, filters) =>
   knex
@@ -17,7 +29,14 @@ const getSection = async (knex, filters) => {
   if (!filters.parent) {
     filters.parent = null;
   }
-  const sommaire = await getSommaire(knex, filters);
+  const sommaire = await getSommaire(knex, {
+    ...filters,
+    id: undefined,
+    parent: filters.id || filters.parent
+  });
+  if (!sommaire) {
+    return;
+  }
   if (!sommaire.map) {
     return sommaire;
   }
@@ -26,17 +45,9 @@ const getSection = async (knex, filters) => {
     Promise.all(
       sommaire.map(async section => {
         if (section.element.match(/^LEGISCTA/)) {
-          return await getSection(knex, { ...filters, parent: section.element });
+          return await getSection(knex, { ...filters, id: undefined, parent: section.element });
         } else if (section.element.match(/^LEGIARTI/)) {
-          const article = await getArticle(knex, { id: section.element });
-          const texteArticle = await getArticle(knex, { cid: article.cid, id: section.element });
-          return {
-            type: "article",
-            data: {
-              titre: `Article ${article.num}`,
-              ...texteArticle
-            }
-          };
+          return await getArticle(knex, section.element);
         } else {
           return {
             id: section.element
@@ -46,7 +57,7 @@ const getSection = async (knex, filters) => {
       })
     )
       .then(async children => {
-        const sectionData = await getSectionData(knex, { id: filters.parent });
+        const sectionData = await getSectionData(knex, { id: filters.parent || filters.parent });
         return {
           type: "section",
           data: sectionData || {},
