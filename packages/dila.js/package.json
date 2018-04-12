@@ -13,8 +13,8 @@
   "main": "./src",
   "jest": {
     "verbose": true,
-    "collectCoverage": true,
-    "snapshotSerializers": ["<rootDir>/node_modules/snapshot-diff/serializer.js"]
+    "collectCoverage": false,
+    "snapshotSerializers": []
   },
   "repository": {
     "type": "git",
@@ -35,7 +35,7 @@
     "hast-util-to-html": "^3.1.0",
     "html-to-text": "^4.0.0",
     "humanize-duration": "^3.12.1",
-    "knex": "github:tgriesser/knex#0a1976d8fdf041b1b3d8ee15a7a08542464a4da9",
+    "knex": "^0.14.5",
     "lexis-count": "^1.0.3",
     "ora": "^2.0.0",
     "ora-promise": "^1.0.0",

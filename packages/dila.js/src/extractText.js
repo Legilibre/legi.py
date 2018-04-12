@@ -6,6 +6,7 @@ const extractText = async (
   { date = new Date().toLocaleDateString(), showVersions = false, ...filters }
 ) => {
   const textData = await knex
+    //.debug()
     .clearSelect()
     .clearWhere()
     .clearOrder()
