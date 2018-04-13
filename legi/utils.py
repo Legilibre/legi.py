@@ -261,3 +261,12 @@ def partition(l, predicate):
         else:
             b.append(e)
     return a, b
+
+
+def show_match(m, n=30):
+    m_start, m_end = m.span()
+    before = max(m.string.rfind(' ', 0, m_start - n), 0) if m_start > n else 0
+    before = ('[…]' if before > 0 else '') + m.string[before:m_start]
+    after = m.string.find(' ', m_end + n)
+    after = m.string[m_end:] if after == -1 else m.string[m_end:after+1] + '[…]'
+    return '%s{%s}%s' % (before, m.string[m_start:m_end], after)
