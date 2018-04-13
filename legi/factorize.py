@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 from lxml import etree
 
-from .normalize import main as normalize
+from .normalize import normalize_text_titles
 from .utils import connect_db
 
 
@@ -117,6 +117,8 @@ def factorize_by(db, key):
 
 
 def main(db):
+    print("> Factorisation des textes...")
+
     connect_by_nature_num(db)
 
     db.run("""
@@ -250,9 +252,7 @@ if __name__ == '__main__':
                     UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
                 """)
             if db.one("SELECT id FROM textes_versions WHERE titrefull_s IS NULL LIMIT 1"):
-                print("> Normalisation des titres...")
-                normalize(db)
-                print("> Factorisation des textes...")
+                normalize_text_titles(db)
             main(db)
     except KeyboardInterrupt:
         pass

@@ -82,6 +82,7 @@ article_num_multi = (
 
 
 article_num_re = re.compile(article_num)
+article_num_extra_re = re.compile(r"\b(?:%s)\b" % article_num_extra, re.I)
 article_titre_re = re.compile(article_titre)
 
 

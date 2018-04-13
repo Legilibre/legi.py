@@ -11,7 +11,8 @@ ROMAN_NUMERALS = (
     ('IV', 4), ('I', 1)
 )
 
-ROMAN_PATTERN = r"M{0,4}(?:C[MD]|D?C{0,3})(?:X[CL]|L?X{0,3})(?:I[XV]|V?I{0,3})"
+ROMAN_PATTERN_SIMPLE = r"M{0,4}(?:C[MD]|D?C{0,3})(?:X[CL]|L?X{0,3})(?:I[XV]|V?I{0,3})"
+ROMAN_PATTERN = r"(?=[MDCLXVI]+\b)%s" % ROMAN_PATTERN_SIMPLE
 
 
 def decimal_to_roman(i):

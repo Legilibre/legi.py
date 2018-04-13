@@ -242,6 +242,19 @@ def reconstruct_path(dossier, cid, sous_dossier, id):
     return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
 
 
+def mimic_case(old_word, new_word):
+    """
+    >>> print(mimic_case('EtAt', 'état'))
+    ÉtAt
+    """
+    if len(old_word) != len(new_word):
+        raise ValueError("lengths don't match")
+    return ''.join([
+        new_word[i].upper() if old_word[i].isupper() else new_word[i].lower()
+        for i in range(len(old_word))
+    ])
+
+
 ascii_spaces_re = re.compile(r'[ \t\n\r\f\v]+')
 nonword_re = re.compile(r'\W', re.U)
 spaces_re = re.compile(r'\s+', re.U)

@@ -320,6 +320,25 @@ def clean_html(html, cleaner=HTMLCleaner()):
     return cleaner.close()[6:-7]
 
 
+first_paragraph_re = re.compile(r"^(?:<p(?: [^>]+)?>(.+?)</p>|(.+?)<br/><br/>)(.*)")
+
+
+def split_first_paragraph(html):
+    """Extract the content of the first paragraph from an HTML snippet.
+
+    Returns a two-tuple `(first_paragraph, rest)`.
+
+    >>> split_first_paragraph('<br/><p align="center">Foobar</p>')
+    ('Foobar', '')
+    >>> split_first_paragraph('First line<br/>Second line<br/><br/><p>Lorem <b>ipsum</b></p>')
+    ('First line\nSecond line', '<p>Lorem <b>ipsum</b></p>')
+    """
+    m = first_paragraph_re.match(clean_html(html))
+    if m:
+        return (m.group(1) or m.group(2)).replace('<br/>', '\n').strip(), m.group(3)
+    return '', ''
+
+
 strip_re = re.compile(r"<.+?>|[ \t\n\r\f\v]+", re.S)
 
 
