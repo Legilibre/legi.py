@@ -95,6 +95,7 @@ def anomalies_sections(db, err):
           JOIN sections s ON s.id = so.parent
          WHERE etat NOT LIKE 'MODIF%'
            AND lower(num) NOT LIKE 'annexe%'
+           AND so.cid = s.cid
       GROUP BY s.id, num, debut, etat
         HAVING count(*) > 1
     """)
