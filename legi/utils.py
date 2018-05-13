@@ -255,7 +255,7 @@ def mimic_case(old_word, new_word):
     ])
 
 
-ascii_spaces_re = re.compile(r'[ \t\n\r\f\v]+')
+ascii_spaces_re = re.compile(r'(?: {2}| *[\t\n\r\f\v])[ \t\n\r\f\v]*')
 nonword_re = re.compile(r'\W', re.U)
 spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)
