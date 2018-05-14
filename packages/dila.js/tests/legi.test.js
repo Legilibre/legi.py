@@ -3,8 +3,9 @@
 const Legi = require("../src");
 const markdown = require("../src/markdown");
 const html = require("../src/html");
+const knexConfig = require("../src/knexfile");
 
-const legi = new Legi("./legi.sqlite");
+const legi = new Legi(knexConfig.test);
 
 afterAll(() => {
   legi.close();

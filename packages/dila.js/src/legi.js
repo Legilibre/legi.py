@@ -3,7 +3,7 @@ const knexRequire = require("knex");
 
 const defaultKnexConfig = require("./knexfile");
 
-const legi = (dbPath, knexConfig = {}) => {
+const legi = (knexConfig = {}) => {
   const knex = knexRequire({
     ...defaultKnexConfig,
     ...knexConfig

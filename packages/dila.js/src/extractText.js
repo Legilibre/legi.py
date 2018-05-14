@@ -1,6 +1,12 @@
 const getSection = require("./getSection");
 const getCodeDates = require("./getCodeDates");
 
+//
+// extrait l'arbre d'un texte à une date donnée
+// utilise legi.textes_versions pour récupérer la version en date
+// puis construit les sections et le contenu
+//
+
 const extractText = async (
   knex,
   { date = new Date().toLocaleDateString(), showVersions = false, ...filters }

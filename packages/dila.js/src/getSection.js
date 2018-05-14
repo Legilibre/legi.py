@@ -3,6 +3,9 @@ const getArticleData = require("./getArticle");
 
 const getArticle = async (knex, id) => {
   const article = await getArticleData(knex, { id });
+  if (!article) {
+    return null;
+  }
   const texteArticle = await getArticleData(knex, { cid: article.cid, id });
   return {
     type: "article",
@@ -23,8 +26,10 @@ const getSectionData = (knex, filters) =>
     .where(filters)
     .first();
 
+//
 // generates a syntax-tree structure
 // https://github.com/syntax-tree/unist
+//
 const getSection = async (knex, filters) => {
   if (!filters.parent) {
     filters.parent = null;

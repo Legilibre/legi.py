@@ -12,7 +12,7 @@ Une API NodeJS pour requêter les textes de loi bruts issus d'une base [legi.py]
 
 Utilise [knex](https://github.com/tgriesser/knex/) et le standard [unist](https://github.com/syntax-tree/unist) pour représenter les textes sous forme d'arbre, de HTML, ou de markdown
 
-Par défaut l'API utilisateur un serveur de dev pour fournir les textes.
+Par défaut l'API utilisateur utilise un serveur de dev public pour fournir les textes.
 
 Vous pouvez utiliser votre propre base de données en récupérant une version du fichier SQLite au 8 Mars 2018 ici : https://drive.google.com/open?id=1h3Q0EaxsPdP6jAkeKZplfgtXbsG4vALW (700Mo), ou faire tourner votre serveur PostgreSQL avec [legi-docker](https://github.com/revolunet/legi-docker)
 
@@ -23,8 +23,7 @@ Promise-based API
 ```js
 const Legi = require('legi');
 
-// defaults to ./legi.sqlite
-const legi = new Legi('/path/to/legi.sqlite');
+const legi = new Legi();
 
 // liste des codes disponibles
 legi.getCodesList().then(console.log);
@@ -49,6 +48,17 @@ legi.getCode("LEGITEXT000006069414").then(markdown).then(console.log);
 const html = require('legi/src/html');
 legi.getCode("LEGITEXT000006069414").then(html).then(console.log);
 
+```
+
+Pour utiliser votre propres serveur ou fichier sqlite, spécifiez une [config knex](http://knexjs.org/#Installation-client) :
+
+```js
+const legi = new Legi({
+  client: "sqlite3",
+  connection: {
+    filename: "legi.sqlite"
+  }
+});
 ```
 
 Plus d'exemples dans [./examples](./examples)
