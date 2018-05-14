@@ -6,6 +6,8 @@ const Legi = require("../src/Legi");
 const legi = new Legi();
 const { range, JSONread } = require("../src/utils");
 
+// utilise les données issues de export-json.js
+
 const getPath = (id = "LEGITEXT000006072050", date = "2018-01-01") =>
   `./history/code-du-travail/${id}-${date}.json`;
 

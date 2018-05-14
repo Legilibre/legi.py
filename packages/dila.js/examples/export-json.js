@@ -3,7 +3,7 @@ const spinner = require("ora-promise");
 
 const Legi = require("../src/Legi");
 
-const { serialExec, range } = require("../src/utils");
+const { serialExec, range, JSONlog } = require("../src/utils");
 
 const legi = new Legi();
 
@@ -27,11 +27,14 @@ const buildDates = (id, dates) =>
     })
   );
 
-// ecrit les fichiers pour toutes les dates connues d'un code
-const buildAllVersions = async id => buildDates(id, await getDates(id));
-
 // pour un range donné
 const buildYears = async id => buildDates(id, range(1977, 2019).map(y => `${y}-01-01`));
 
-// extrait le code du travail
-buildYears("LEGITEXT000006072050").then(() => legi.close());
+// extrait le code du travail sur X années
+//buildYears("LEGITEXT000006072050").then(() => legi.close());
+
+// extrait code des médaills
+extractDate("LEGITEXT000006070666", "2017-01-01")
+  .then(JSONlog)
+  .catch(console.log)
+  .then(legi.close);
