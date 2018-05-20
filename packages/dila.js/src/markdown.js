@@ -4,17 +4,20 @@ const condense = require("condense-whitespace");
 const rehypeParse = require("rehype-parse");
 const rehype2remark = require("rehype-remark");
 
-const cleanBlocArticle = html =>
-  html
-    .replace(/\n/g, "<br/>")
-    //.replace(/\n\n\n+/g, "<br/><br/>")
-    //.replace(/\n\n+/g, "<br/>")
-    //.replace(/\n/g, "<br/>")
-    .replace(/&#x26;#13;/gm, "")
-    .replace(/&amp;#x26;#13;/gm, "")
-    .replace(/&amp;#13;/gm, "")
-    .replace(/&#13;/gm, "")
-    .replace(/&(amp;)?#13;/gm, "");
+const cleanLegiText = html =>
+  (html &&
+    html
+      // .replace(/\n/g, "<br/>")
+      //.replace(/\n\n\n+/g, "<br/><br/>")
+      //.replace(/\n\n+/g, "<br/>")
+      //.replace(/\n/g, "<br/>")
+      .replace(/&#x26;#13;/gm, "")
+      .replace(/&amp;#x26;#13;/gm, "")
+      .replace(/&amp;#13;/gm, "")
+      .replace(/&#13;/gm, "")
+      .replace(/&(amp;)?#13;/gm, "")
+      .replace(/&amp;#13;/gm, "")) ||
+  "";
 
 const htmlToMdAst = async html => {
   const tree = unified()
@@ -27,7 +30,7 @@ const htmlToMdAst = async html => {
 
 const getHeading = ({ text, depth = 1 }) => ({
   type: "heading",
-  depth: depth,
+  depth: Math.min(6, depth),
   children: [
     {
       type: "text",
@@ -44,7 +47,7 @@ const nodeMap = {
   section: (node, children, depth) => ({
     type: "paragraph",
     children: [
-      getHeading({ text: node.data.titre_ta, depth }),
+      getHeading({ text: cleanLegiText(node.data.titre_ta), depth }),
       getBreak(),
       getBreak(),
       /* getBreak(),*/
@@ -59,7 +62,20 @@ const nodeMap = {
       getBreak(),
       getBreak(),
       // getBreak(),
-      await htmlToMdAst(await cleanBlocArticle(node.data.bloc_textuel)),
+      await htmlToMdAst(await cleanLegiText(node.data.bloc_textuel)),
+      ...children,
+      getBreak()
+    ]
+  }),
+  text: async (node, children, depth) => ({
+    type: "paragraph",
+    children: [
+      //...node,
+      getHeading({ text: node.data.titre, depth: 1 }),
+      getBreak(),
+      getBreak(),
+      // getBreak(),
+      //await htmlToMdAst(await cleanLegiText(node.data.bloc_textuel)),
       ...children,
       getBreak()
     ]
