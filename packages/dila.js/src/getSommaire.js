@@ -7,18 +7,20 @@ const getSommaire = (knex, filters) => {
   if (filters.id) {
     sommaireFilters.cid = filters.id;
   }
+  const today = new Date().toISOString().substring(0, 10);
+  const date = filters.date || today;
   return (
     knex
-      // .debug()
+      //.debug()
       .clearSelect()
       .clearWhere()
       .clearOrder()
       .select()
       .table("sommaires")
       .where(sommaireFilters)
-      .andWhere("debut", "<=", filters.date)
+      .andWhere("debut", "<=", date)
       .andWhere(function() {
-        return this.where("fin", ">", filters.date)
+        return this.where("fin", ">", date)
           .orWhere("fin", "2999-01-01")
           .orWhere("etat", "VIGUEUR");
       })
