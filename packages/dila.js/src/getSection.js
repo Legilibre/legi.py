@@ -17,7 +17,9 @@ const getArticle = async (knex, id) => {
 };
 
 const getSectionData = (knex, filters) =>
+  filters.id &&
   knex
+    //.debug()
     .clearSelect()
     .clearWhere()
     .clearOrder()
@@ -62,7 +64,7 @@ const getSection = async (knex, filters) => {
       })
     )
       .then(async children => {
-        const sectionData = await getSectionData(knex, { id: filters.parent || filters.parent });
+        const sectionData = await getSectionData(knex, { id: filters.id || filters.parent });
         return {
           type: "section",
           data: sectionData || {},
