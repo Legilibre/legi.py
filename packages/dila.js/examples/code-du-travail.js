@@ -1,9 +1,11 @@
 const Legi = require("../src/Legi");
+const markdown = require("../src/markdown");
 
 const legi = new Legi();
 
 // récupères le code du travail
-legi.getCode({ id: "LEGITEXT000006072050", date: "2018-01-01" }).then(tree => {
-  console.log(JSON.stringify(tree, null, 2));
-  legi.close();
-});
+legi
+  .getCode({ id: "LEGITEXT000006072050" })
+  .then(markdown)
+  .then(console.log)
+  .catch(console.log);
