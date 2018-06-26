@@ -60,6 +60,7 @@
     "remark-strip-html": "^1.0.0",
     "remove-accents": "^0.4.2",
     "sqlite3": "^3.1.13",
+    "string-similarity": "^1.2.0",
     "unified": "^6.1.6",
     "unist-util-filter": "^0.2.1",
     "unist-util-find": "^1.0.1",
