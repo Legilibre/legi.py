@@ -10,7 +10,7 @@ const defaultConfig = {
   },
   pool: {
     min: 0,
-    max: 50
+    max: 5
   }
 };
 
