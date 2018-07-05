@@ -5,7 +5,6 @@ Extracts LEGI tar archives into an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-from itertools import chain
 import fnmatch
 import json
 import os
@@ -502,10 +501,11 @@ def main():
 
     # Look for new archives in the given directory
     print("> last_update is", last_update)
-    archive_re = re.compile(r'(.+_)?(legi|LEGI)(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+')
+    archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
-    files = sorted(os.listdir(args.directory))
-    for archive_name in chain(fnmatch.filter(files, '*legi_*.tar.*'), fnmatch.filter(files, '*LEGI_*.tar.*')):
+    files = sorted([filename for filename in os.listdir(args.directory) 
+        if fnmatch.fnmatch(filename.lower(), '*legi_*.tar.*')])
+    for archive_name in files:
         m = archive_re.match(archive_name)
         if not m:
             print("unable to extract date from archive filename", archive_name)
