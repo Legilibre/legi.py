@@ -501,10 +501,12 @@ def main():
 
     # Look for new archives in the given directory
     print("> last_update is", last_update)
-    archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+')
+    archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
-    files = sorted(os.listdir(args.directory))
-    for archive_name in fnmatch.filter(files, '*legi_*.tar.*'):
+    files = sorted(
+        [filename for filename in os.listdir(args.directory) if fnmatch.fnmatch(filename.lower(), '*legi_*.tar.*')],
+        key=lambda s: s.lower())
+    for archive_name in files:
         m = archive_re.match(archive_name)
         if not m:
             print("unable to extract date from archive filename", archive_name)
