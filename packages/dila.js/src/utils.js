@@ -40,6 +40,29 @@ const write = (dst, content) => fs.writeFileSync(dst, JSON.stringify(content, nu
 const JSONread = path => JSON.parse(read(path));
 const JSONlog = data => console.log(JSON.stringify(data, null, 2)) && data;
 
+const cleanTitle = str =>
+  (str &&
+    str
+      .trim()
+      .replace(/&#13;/g, "")
+      .replace(/\n/g, " ")
+      .replace(/\s\s+/g, " ")
+      .replace(/\s+\.\s*$/g, " ")
+      .trim()) ||
+  "";
+
+const cleanData = (obj, titres = ["titre", "titrefull", "titre_ta"]) =>
+  (obj && {
+    ...Object.keys(obj).reduce(
+      (o, k) => ({
+        ...o,
+        [k]: titres.indexOf(k) > -1 ? cleanTitle(obj[k]) : obj[k]
+      }),
+      {}
+    )
+  }) ||
+  {};
+
 module.exports = {
   serial,
   read,
@@ -47,6 +70,8 @@ module.exports = {
   serialExec,
   range,
   repeat,
+  cleanTitle,
+  cleanData,
   JSONread,
   JSONlog
 };

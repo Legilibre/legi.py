@@ -1,5 +1,6 @@
 const getSection = require("./getSection");
 const getCodeDates = require("./getCodeDates");
+const { cleanData } = require("./utils");
 
 //
 // extrait l'arbre d'un texte à une date donnée
@@ -32,8 +33,8 @@ const extractText = async (
   const tree = {
     type: "text",
     date,
-    data: textData,
-    children: (textData && [await getSection(knex, { cid: textData.cid, date })]) || []
+    data: cleanData(textData),
+    children: (textData && (await getSection(knex, { cid: textData.cid, date })).children) || []
   };
 
   if (showVersions) {

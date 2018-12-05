@@ -1,5 +1,6 @@
 const getSommaire = require("./getSommaire");
 const getArticleData = require("./getArticle");
+const { cleanData } = require("./utils");
 
 const getArticle = async (knex, id) => {
   const article = await getArticleData(knex, { id });
@@ -9,10 +10,10 @@ const getArticle = async (knex, id) => {
   const texteArticle = await getArticleData(knex, { cid: article.cid, id });
   return {
     type: "article",
-    data: {
+    data: cleanData({
       titre: `Article ${article.num}`,
       ...texteArticle
-    }
+    })
   };
 };
 
@@ -67,8 +68,8 @@ const getSection = async (knex, filters) => {
         const sectionData = await getSectionData(knex, { id: filters.id || filters.parent });
         return {
           type: "section",
-          data: sectionData || {},
-          children
+          data: cleanData(sectionData) || {},
+          children: children.filter(Boolean) // prevent nulls
         };
       })
       .catch(console.log)
