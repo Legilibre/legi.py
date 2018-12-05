@@ -12,9 +12,21 @@
     "url": "https://github.com/revolunet/legi-api/issues"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.16.3",
-    "express-gzip": "0.0.1",
-    "fast-memoize": "^2.3.2",
-    "legi": "^1.1.0"
+    "sqlite3": "^4.0.4",
+    "unist-util-find": "^1.0.1",
+    "unist-util-map": "^1.0.4",
+    "unist-util-parents": "^1.0.1",
+    "unist-util-remove": "^1.0.1"
+  },
+  "main": "./src",
+  "scripts": {
+    "start": "node ./src",
+    "swagger": "swagger-codegen generate -i ./swagger.yml -l html2 -o ./docs/"
+  },
+  "devDependencies": {
+    "jest": "^22.4.3",
+    "swagger-codegen": "^0.1.1"
   }
 }
