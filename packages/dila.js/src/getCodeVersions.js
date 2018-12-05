@@ -3,18 +3,15 @@ const getCodeVersions = (knex, filters) => {
   if (typeof filters === "string") {
     filters2 = { cid: filters };
   }
-  return (
-    knex
-      .clearSelect()
-      .clearWhere()
-      .clearOrder()
-      //.distinct("debut", "fin")
-      .select()
-      .from("sommaires")
-      .where(filters2)
-      //.groupBy("debut", "fin", "cid")
-      .orderBy("debut", "titre")
-  );
+  return knex
+    .clearSelect()
+    .clearWhere()
+    .clearOrder()
+    .select("debut")
+    .distinct()
+    .from("sommaires")
+    .where(filters2)
+    .orderBy("debut");
 };
 
 module.exports = getCodeVersions;
