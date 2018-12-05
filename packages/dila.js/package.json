@@ -64,9 +64,12 @@
     "unified": "^6.1.6",
     "unist-util-filter": "^0.2.1",
     "unist-util-find": "^1.0.1",
+    "unist-util-flatmap": "^1.0.0",
     "unist-util-map": "^1.0.3",
     "unist-util-modify-children": "^1.1.1",
-    "unist-util-select": "^1.5.0"
+    "unist-util-parents": "^1.0.1",
+    "unist-util-remove": "^1.0.1",
+    "unist-util-select": "^2.0.0"
   },
   "devDependencies": {
     "jest": "^22.4.3",
