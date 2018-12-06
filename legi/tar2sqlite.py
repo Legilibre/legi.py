@@ -5,7 +5,7 @@ Extracts LEGI tar archives into an SQLite DB
 from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
-import fnmatch
+from fnmatch import fnmatch
 import json
 import os
 import re
@@ -20,7 +20,7 @@ except ImportError:
     tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
-from .utils import connect_db
+from .utils import connect_db, partition
 
 
 def count(d, k, c):
@@ -495,7 +495,7 @@ def main():
     if not args.skip_links and links_count == 0 and last_update is not None:
         args.skip_links = True
         print("> Warning: links will not be processed because this DB was built with --skip-links.")
-    elif args.skip_links and links_count > 0:
+    elif args.skip_links and has_links:
         print("> Deleting links...")
         db.run("DELETE FROM liens")
 
@@ -503,27 +503,26 @@ def main():
     print("> last_update is", last_update)
     archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
-    files = sorted(
-        [filename for filename in os.listdir(args.directory) if fnmatch.fnmatch(filename.lower(), '*legi_*.tar.*')],
-        key=lambda s: s.lower())
-    for archive_name in files:
-        m = archive_re.match(archive_name)
-        if not m:
-            print("unable to extract date from archive filename", archive_name)
-            continue
-        is_delta = not m.group('global')
-        if bool(last_update) ^ is_delta:
-            skipped += 1
-            continue
-        archive_date = m.group('date')
-        if last_update and archive_date <= last_update:
-            skipped += 1
-            continue
+    archives = sorted([
+        (m.group('date'), bool(m.group('global')), m.group(0)) for m in [
+            archive_re.match(fn) for fn in os.listdir(args.directory)
+            if fnmatch(fn.lower(), '*legi_*.tar.*')
+        ]
+    ])
+    most_recent_global = [t[0] for t in archives if t[1]][-1]
+    if last_update and most_recent_global > last_update:
+        print("> There is a new global archive, recreating the DB from scratch!")
+        db.close()
+        os.rename(db.address, db.address + '.back')
+        db = connect_db(args.db, pragmas=args.pragma)
+    archives, skipped = partition(
+        archives, lambda t: t[0] >= most_recent_global and t[0] > (last_update or '')
+    )
+    if skipped:
+        print("> Skipped %i old archives" % len(skipped))
 
-        # Okay, process this one
-        if skipped:
-            print("> Skipped %i old archives" % skipped)
-            skipped = 0
+    # Process the new archives
+    for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
         with db:
             process_archive(db, args.directory + '/' + archive_name, not args.skip_links)
