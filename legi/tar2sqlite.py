@@ -482,8 +482,8 @@ def main():
     # Check and record the data mode
     db_meta_raw = db.one("SELECT value FROM db_meta WHERE key = 'raw'")
     if args.raw:
-        versions_brutes = db.one("SELECT count(*) FROM textes_versions_brutes")
-        data_is_not_raw = versions_brutes > 0 or db_meta_raw is False
+        versions_brutes = bool(db.one("SELECT 1 FROM textes_versions_brutes LIMIT 1"))
+        data_is_not_raw = versions_brutes or db_meta_raw is False
         if data_is_not_raw:
             print("!> Can't honor --raw option, the data has already been modified previously.")
             raise SystemExit(1)
@@ -491,8 +491,8 @@ def main():
         db.insert('db_meta', dict(key='raw', value=args.raw))
 
     # Handle the --skip-links option
-    links_count = db.one("SELECT count(*) FROM liens")
-    if not args.skip_links and links_count == 0 and last_update is not None:
+    has_links = bool(db.one("SELECT 1 FROM liens LIMIT 1"))
+    if not args.skip_links and not has_links and last_update is not None:
         args.skip_links = True
         print("> Warning: links will not be processed because this DB was built with --skip-links.")
     elif args.skip_links and has_links:
