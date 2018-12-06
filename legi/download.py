@@ -26,6 +26,17 @@ def download_legi(dst_dir):
     common_files = [f for f in remote_files if f in local_files]
     missing_files = [f for f in remote_files if f not in local_files]
     remote_files = {filename: {} for filename in remote_files}
+    has_new_freemium = any(["Freemium_legi_global_" in name for name in remote_files])
+    has_old_freemium = any(["Freemium_legi_global_" in name for name in local_files])
+    # new Freemium file
+    if has_new_freemium and has_old_freemium:
+        print(
+            'A new global freemium archive is available. Empty the {} folder and remove your SQLite file.'
+            .format(dst_dir)
+        )
+        ftph.quit()
+        return
+
     for filename in common_files:
         local_files[filename]['size'] = os.path.getsize(
             os.path.join(dst_dir, filename)
