@@ -488,7 +488,7 @@ def main():
             print("!> Can't honor --raw option, the data has already been modified previously.")
             raise SystemExit(1)
     if db_meta_raw != args.raw:
-        db.insert('db_meta', dict(key='raw', value=args.raw))
+        db.insert('db_meta', dict(key='raw', value=args.raw), replace=True)
 
     # Handle the --skip-links option
     has_links = bool(db.one("SELECT 1 FROM liens LIMIT 1"))
