@@ -28,3 +28,6 @@ CREATE VIEW textes_versions_brutes_view AS
 
 -- migration #2
 !RECREATE!
+
+-- migration #3
+!RECREATE!

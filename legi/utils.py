@@ -248,3 +248,13 @@ word_re = re.compile(r'\w{2,}', re.U)
 def upper_words_percentage(s):
     words = word_re.findall(s)
     return len([w for w in words if w.isupper()]) / len(words)
+
+
+def partition(l, predicate):
+    a, b = [], []
+    for e in l:
+        if predicate(e):
+            a.append(e)
+        else:
+            b.append(e)
+    return a, b
