@@ -23,6 +23,7 @@ NATURE_MAP = {
     "DECRET": "Décret",
     "DECRET_LOI": "Décret-loi",
     "LOI_CONSTIT": "Loi constitutionnelle",
+    "LOI_LOCALE": "Loi locale",
     "LOI_ORGANIQUE": "Loi organique",
 }
 NATURE_MAP_R = {v.upper(): k for k, v in NATURE_MAP.items()}
