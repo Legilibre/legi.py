@@ -38,10 +38,9 @@ ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
-nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?' + \
-           r'|Loi( constitutionnelle| organique| locale)?|Ordonnance)'
-nature_strict_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?' + \
-                  r'|Loi( constitutionnelle| organique| locale)?|Ordonnance)'
+type_loi_p = r'(constitutionnelle|organique|locale)'
+nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
+nature_strict_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique|locale))', re.U | re.I)
 numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
