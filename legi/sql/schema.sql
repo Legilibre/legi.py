@@ -4,7 +4,7 @@ CREATE TABLE db_meta
 , value   blob
 );
 
-INSERT INTO db_meta (key, value) VALUES ('schema_version', 2);
+INSERT INTO db_meta (key, value) VALUES ('schema_version', 3);
 
 CREATE TABLE textes
 ( id            integer    primary key not null
