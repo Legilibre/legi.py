@@ -196,7 +196,10 @@ def group_by_2(iterable):
     iterable = iterable.__iter__()
     next = iterable.next if PY2 else iterable.__next__
     while True:
-        a = next()
+        try:
+            a = next()
+        except StopIteration:
+            return
         try:
             b = next()
         except StopIteration:
