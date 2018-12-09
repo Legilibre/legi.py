@@ -6,10 +6,9 @@ const find = require("unist-util-find");
 const getSection = (tree, id) =>
   find(tree, node => node.type === "section" && node.data.id === id);
 
-const inputFile = require("../../../../legi.js/2018-12-01.json");
-
-routes.get("/texte/:texteId/section/:id", async (req, res) => {
-  res.json(getSection(inputFile, req.params.id));
+routes.get("/texte/:texte/section/:section", async (req, res) => {
+  const data = require(`../../../../legi.js/codes/${req.params.texte}.json`);
+  res.json(getSection(data, req.params.section));
 });
 
 module.exports = routes;
