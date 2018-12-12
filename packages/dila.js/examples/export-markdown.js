@@ -15,7 +15,7 @@ const legi = new Legi({
 });
 
 // extract les datas d'un texte à une date YYYY-MM-DD avec spinner console
-const extractDate = (id, date) => spinner(`${id}`, () => legi.getCode({ id, date }));
+const extractDate = (id, date) => spinner(`${id}-${date}`, () => legi.getCode({ id, date }));
 
 // ecrit les fichiers un à un pour une liste de dates donnée [YYYY-MM-DD]
 const buildDates = (id, dates) =>
@@ -40,29 +40,8 @@ const buildYears = async id => buildDates(id, range(2010, 2019).map(y => `${y}-0
 // extrait le code du travail sur X années
 //buildYears("LEGITEXT000006072050").then(() => legi.close());
 
-// extrait tous les codes:
-const extractAllCodes = async () => {
-  const codes = await legi.getCodesList();
-  const codesData = await serialExec(
-    codes.map(code => () => {
-      const dst = `./codes/${code.id}.json`;
-      if (fs.existsSync(dst)) {
-        spinner(`${dst}: déjà existant`, () => Promise.resolve());
-        return Promise.resolve();
-      } else {
-        return extractDate(code.id, "2018-12-06").then(content => {
-          fs.writeFileSync(dst, JSON.stringify(content, null, 2));
-          return Promise.resolve();
-        });
-      }
-    })
-  );
-};
-
 // extrait code des médaills
-// extractDate("LEGITEXT000006072050", "2018-12-01")
-//   .then(JSONlog)
-//   .catch(console.log)
-//   .then(legi.close);
-
-extractAllCodes();
+extractDate("LEGITEXT000006072050", "2018-12-01")
+  .then(JSONlog)
+  .catch(console.log)
+  .then(legi.close);
