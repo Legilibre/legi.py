@@ -12,7 +12,7 @@ const getStructure = tree =>
   }));
 
 routes.get("/code/:code/structure", async (req, res) => {
-  const data = require(`../../legi.js/codes/${req.params.code}.json`);
+  const data = require(`../../../codes/${req.params.code}.json`);
   res.json(getStructure(data));
 });
 

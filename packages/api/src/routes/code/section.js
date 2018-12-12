@@ -17,7 +17,7 @@ const getSection = (tree, id) => {
 };
 
 routes.get("/code/:code/section/:section", async (req, res) => {
-  const data = require(`../../legi.js/codes/${req.params.code}.json`);
+  const data = require(`../../../codes/${req.params.code}.json`);
   res.json(getSection(data, req.params.section));
 });
 
