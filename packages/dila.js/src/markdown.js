@@ -1,6 +1,5 @@
 const unified = require("unified");
 const remarkStringify = require("remark-stringify");
-const condense = require("condense-whitespace");
 const rehypeParse = require("rehype-parse");
 const rehype2remark = require("rehype-remark");
 
@@ -43,11 +42,17 @@ const getBreak = () => ({
   type: "break"
 });
 
+const getSectionHeading = (node, depth) => {
+  const heading = [];
+  heading.push(getHeading({ text: cleanLegiText(node.data.titre_ta), depth }));
+  return heading;
+};
+
 const nodeMap = {
   section: (node, children, depth) => ({
     type: "paragraph",
     children: [
-      getHeading({ text: cleanLegiText(node.data.titre_ta), depth }),
+      ...getSectionHeading(node, depth),
       getBreak(),
       getBreak(),
       /* getBreak(),*/
@@ -89,13 +94,13 @@ const nodeMap = {
 
 // TODO
 // convert section/article nodes to mdast
-const nodeToMdast = async (node, depth = 0) => {
+const nodeToMdast = async (tree, depth = 0) => {
   const children =
-    (node.children &&
-      node.children.map &&
-      (await Promise.all(node.children.map(n => nodeToMdast(n, depth + 1))))) ||
+    (tree.children &&
+      tree.children.map &&
+      (await Promise.all(tree.children.map(n => nodeToMdast(n, depth + 1))))) ||
     [];
-  const res = await (nodeMap[node.type] || nodeMap.default)(node, children, depth);
+  const res = await (nodeMap[tree.type] || nodeMap.default)(tree, children, depth);
   return res;
 };
 
@@ -110,9 +115,9 @@ const DEFAULT_OPTIONS = {
 
 const toMarkdown = (node, options = DEFAULT_OPTIONS) => {
   if (options.tree) {
-    return nodeToMdast(node);
+    return nodeToMdast(parents(node));
   }
-  return nodeToMdast(node).then(stringifyMdast);
+  return nodeToMdast(parents(node)).then(stringifyMdast);
 };
 
 module.exports = toMarkdown;
