@@ -69,7 +69,8 @@
     "unist-util-modify-children": "^1.1.1",
     "unist-util-parents": "^1.0.1",
     "unist-util-remove": "^1.0.1",
-    "unist-util-select": "^2.0.0"
+    "unist-util-select": "^2.0.0",
+    "unist-util-visit-parents": "^2.0.1"
   },
   "devDependencies": {
     "jest": "^22.4.3",
