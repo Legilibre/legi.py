@@ -1,21 +1,8 @@
 const routes = require("express").Router();
-
 const find = require("unist-util-find");
-var parents = require("unist-util-parents");
+const parents = require("unist-util-parents");
 
-const getParents = node => {
-  const parents = [];
-  while ((node = node.parent)) {
-    if (node.data && node.data.id) {
-      parents.push({
-        id: node.data.id,
-        titre_ta: node.data.titre_ta
-      });
-    }
-  }
-  parents.reverse();
-  return parents;
-};
+const getParentSections = require("../../getParentSections");
 
 // extract basic text structure
 const getArticle = (tree, id) => {
@@ -24,13 +11,13 @@ const getArticle = (tree, id) => {
     node => node.type === "article" && node.data.id === id
   );
   if (article.parent) {
-    article.parents = getParents(article);
+    article.parents = getParentSections(article);
   }
   return article;
 };
 
 routes.get("/texte/:texte/article/:article", async (req, res) => {
-  const data = require(`../../../../legi.js/codes/${req.params.texte}.json`);
+  const data = require(`../../codes/${req.params.texte}.json`);
   res.json(getArticle(data, req.params.article));
 });
 
