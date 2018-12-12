@@ -16,8 +16,8 @@ const getArticle = (tree, id) => {
   return article;
 };
 
-routes.get("/texte/:texte/article/:article", async (req, res) => {
-  const data = require(`../../codes/${req.params.texte}.json`);
+routes.get("/code/:code/article/:article", async (req, res) => {
+  const data = require(`../../codes/${req.params.code}.json`);
   res.json(getArticle(data, req.params.article));
 });
 

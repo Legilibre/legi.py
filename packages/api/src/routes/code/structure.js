@@ -11,8 +11,8 @@ const getStructure = tree =>
     titre_ta: node.data.titre_ta || node.data.titre
   }));
 
-routes.get("/texte/:texte/structure", async (req, res) => {
-  const data = require(`../../legi.js/codes/${req.params.texte}.json`);
+routes.get("/code/:code/structure", async (req, res) => {
+  const data = require(`../../legi.js/codes/${req.params.code}.json`);
   res.json(getStructure(data));
 });
 

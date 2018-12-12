@@ -6,9 +6,9 @@ const pkg = require("../package.json");
 const app = express();
 app.use(cors());
 
-app.use("/", require("./routes/texte/structure"));
-app.use("/", require("./routes/texte/section"));
-app.use("/", require("./routes/texte/article"));
+app.use("/", require("./routes/code/structure"));
+app.use("/", require("./routes/code/section"));
+app.use("/", require("./routes/code/article"));
 
 app.get("/", (req, res) => res.send({ version: pkg.version, name: pkg.name }));
 
