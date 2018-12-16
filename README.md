@@ -41,7 +41,7 @@ La première étape est de télécharger les archives LEGI depuis
 
 La deuxième étape est la conversion des archives en base SQLite :
 
-    python -m legi.tar2sqlite legi.sqlite ./tarballs
+    python -m legi.tar2sqlite legi.sqlite ./tarballs [--raw]
 
 Cette opération peut prendre de quelques minutes à plusieurs heures selon votre
 machine et le nombre d'archives. Les deux caractéristiques importantes de votre
@@ -50,6 +50,9 @@ machine sont: le disque dur (un SSD est beaucoup plus rapide), et le processeur
 parallèle).
 
 La taille du fichier SQLite créé est environ 3,7Go (en décembre 2018).
+
+L'option `--raw` désactive le nettoyage des données, ajoutez-la si vous avez
+besoin des données LEGI brutes.
 
 `tar2sqlite` permet aussi de maintenir votre base de données à jour, il saute
 automatiquement les archives qu'il a déjà traité. En général la DILA publie une
