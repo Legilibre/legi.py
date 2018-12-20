@@ -320,7 +320,7 @@ first_paragraph_re = re.compile(r"^(?:<p(?: [^>]+)?>(.+?)</p>|(.+?)<br/><br/>)(.
 
 
 def split_first_paragraph(html):
-    """Extract the content of the first paragraph from an HTML snippet.
+    r"""Extract the content of the first paragraph from an HTML snippet.
 
     Returns a two-tuple `(first_paragraph, rest)`.
 
