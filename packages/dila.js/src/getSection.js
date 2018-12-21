@@ -1,21 +1,6 @@
 const getSommaire = require("./getSommaire");
-const getArticleData = require("./getArticle");
+const getArticle = require("./getArticle");
 const { cleanData } = require("./utils");
-
-const getArticle = async (knex, id) => {
-  const article = await getArticleData(knex, { id });
-  if (!article) {
-    return null;
-  }
-  const texteArticle = await getArticleData(knex, { cid: article.cid, id });
-  return {
-    type: "article",
-    data: cleanData({
-      titre: `Article ${article.num}`,
-      ...texteArticle
-    })
-  };
-};
 
 const getSectionData = (knex, filters) =>
   filters.id &&
@@ -33,6 +18,7 @@ const getSectionData = (knex, filters) =>
 // generates a syntax-tree structure
 // https://github.com/syntax-tree/unist
 //
+
 const getSection = async (knex, filters) => {
   if (!filters.parent) {
     filters.parent = null;
@@ -55,7 +41,7 @@ const getSection = async (knex, filters) => {
         if (section.element.match(/^LEGISCTA/)) {
           return await getSection(knex, { ...filters, id: undefined, parent: section.element });
         } else if (section.element.match(/^LEGIARTI/)) {
-          return await getArticle(knex, section.element);
+          return await getArticle(knex, { cid: section.cid, id: section.element });
         } else {
           return {
             id: section.element

@@ -29,6 +29,7 @@ const legi = (knexConfig = {}) => {
     getCodesList: knexify(require("./getCodesList")),
     getJORF: knexify(require("./getJORF")),
     getSection: knexify(require("./getSection")),
+    getLinks: knexify(require("./getLinks")),
     close: knex.destroy,
     knex
   };

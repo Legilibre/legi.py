@@ -1,4 +1,6 @@
-const getSommaire = (knex, filters) => {
+const getSommaire = async (knex, filters) => {
+  const today = new Date().toISOString().substring(0, 10);
+  const date = filters.date || today;
   const sommaireFilters = {
     ...filters
   };
@@ -7,8 +9,7 @@ const getSommaire = (knex, filters) => {
   if (filters.id) {
     sommaireFilters.cid = filters.id;
   }
-  const today = new Date().toISOString().substring(0, 10);
-  const date = filters.date || today;
+
   return (
     knex
       //.debug()
