@@ -79,7 +79,7 @@ DATA = [
 
 
 def test_normalize():
-    db = connect_db(':memory:', row_factory='namedtuple')
+    db = connect_db(':memory:', row_factory='Record')
     for row in DATA:
         db.insert("textes_versions", row)
     normalize_text_titles(db)

@@ -1,4 +1,3 @@
-from collections import namedtuple
 from contextlib import contextmanager
 from itertools import chain, repeat
 import os
@@ -45,13 +44,43 @@ def dict_factory(cursor, row):
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
-def namedtuple_factory(cursor, row):
-    return namedtuple('Record', [col[0] for col in cursor.description])(*row)
+class Record:
+    __slots__ = ('_cols', '_vals')
+
+    def __init__(self, cols, values):
+        self._cols = {col: i for i, col in enumerate(cols)}
+        self._vals = values
+
+    def __getitem__(self, key):
+        return self._vals[key if type(key) is int else self._cols[key]]
+
+    def __getattr__(self, col):
+        try:
+            return self._vals[self._cols[col]]
+        except KeyError:
+            raise AttributeError(col)
+
+    def __len__(self):
+        return len(self._vals)
+
+    def __repr__(self):
+        return ''.join('Record(', (
+            ', '.join(
+                '='.join(
+                    (col, repr(self._vals[i]))
+                    for col, i in self._cols
+                )
+            )
+        ), ')')
+
+
+def record_factory(cursor, row):
+    return Record((col[0] for col in cursor.description), row)
 
 
 ROW_FACTORIES = {
     'dict': dict_factory,
-    'namedtuple': namedtuple_factory,
+    'Record': record_factory,
     'Row': Row,
 }
 
