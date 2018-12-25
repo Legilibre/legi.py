@@ -643,7 +643,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
     orig_values = {}
     q = db.all("""
         SELECT id, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
-          FROM textes_versions
+          FROM textes_versions_brutes_view
     """)
     for row in q:
         text_id, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
