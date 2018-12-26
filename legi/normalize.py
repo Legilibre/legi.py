@@ -5,6 +5,7 @@ Normalizes LEGI data stored in an SQLite DB
 from argparse import ArgumentParser
 from collections import defaultdict
 from functools import reduce
+from html import escape, unescape
 import json
 import re
 
@@ -12,14 +13,45 @@ from .articles import (
     article_num, article_num_extra_re, article_num_multi, article_num_multi_sub,
     article_titre, legifrance_url_article,
 )
+from .french import get_clean_ordinal
 from .html import bad_space_re, drop_bad_space, split_first_paragraph
 from .roman import ROMAN_PATTERN as roman_num
+from .sections import (
+    legifrance_url_section, normalize_section_num, section_re, section_type_p,
+    sujet_re,
+)
 from .spelling import spellcheck
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
     ascii_spaces_re, connect_db, filter_nonalnum, mimic_case, nonword_re,
     show_match, strip_down, strip_prefix, upper_words_percentage,
 )
+
+
+dash_re = re.compile(r"[\u2012-\u2015]")
+
+
+missing_accent_re = re.compile(r"(Annexe|relatif)( a )(?=l'\w{3,} |la \w{3,} )", re.I)
+
+
+def add_accent(m):
+    return m.group(1) + mimic_case(m.group(2), ' à ')
+
+
+quotes_re = re.compile(r'(^| )"([^"]+)"(?=\W|$)', re.U)
+
+
+def replace_quotes(m):
+    return '%s« %s »' % (m.group(1), m.group(2).strip())
+
+
+upper_word_re = re.compile((
+    r"\b(?!AOC |FRA\. |%s(?:[ ,;:.)-]|$))(?:À|(?:[DL]')?[A-ZÀÂÇÈÉÊËÎÔÛÜ]{2,})\b"
+) % roman_num, re.U)
+
+
+def lower(m):
+    return m.group(0).lower()
 
 
 def normalize_article_numbers(db, dry_run=False, log_file=None):
@@ -29,23 +61,11 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
     article_num_multi_sub_re = re.compile(article_num_multi_sub)
     article_titre_partial_re = re.compile(r"^%s(?!\w)" % article_titre, re.U)
 
-    quotes_re = re.compile(r'(^| )"([^"]+)"(?=\W|$)', re.U)
-
-    def replace_quotes(m):
-        return '%s« %s »' % (m.group(1), m.group(2).strip())
-
     space_around_dash_re = re.compile((
         r"(?:[0-9]+|%(roman_num)s)(?:- | -)(?:[0-9]+|%(roman_num)s\b)"
     ) % dict(roman_num=roman_num))
 
     extraneous_dash_re = re.compile(r" -(%(article_num)s)" % globals())
-
-    upper_word_re = re.compile((
-        r"\b(?!AOC |FRA\. |%s(?:[ ,;:.)-]|$))(?:À|(?:[DL]')?[A-ZÀÂÇÈÉÊËÎÔÛÜ]{2,})\b"
-    ) % roman_num, re.U)
-
-    def lower(m):
-        return m.group(0).lower()
 
     WORD_CORRECTIONS = {
         'equivalence': 'équivalence',
@@ -403,6 +423,205 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
     print('Done. Result: ' + json.dumps(counts, indent=4, sort_keys=True))
 
 
+def normalize_section_titles(db, dry_run=False, log_file=None):
+    print("> Normalisation des titres de sections...")
+
+    counts = defaultdict(int)
+    def count(k, n=1):
+        counts[k] += n
+
+    changes = defaultdict(int)
+    def add_change(k):
+        if k[0].strip().rstrip('.') == k[1]:
+            # Simple trimming isn't worth logging
+            return
+        changes[k] += 1
+        if dry_run:
+            return
+        update_section({'titre_ta': k[1]})
+
+    def update_section(data):
+        if dry_run:
+            return
+        db.update('sections', {'id': section_id}, data)
+
+    multi_spaces_re = re.compile(r"(?: {2,}|\t+[ \t]*)")
+
+    def replace_multiple_spaces(m):
+        if len(m.group(0)) > 3 or '\t' in m.group(0):
+            count('replaced multiple spaces with newline')
+            return '\n'
+        count('collapsed multiple spaces')
+        return ' '
+
+    newlines_re = re.compile(r"(?: *\r?\n)+")
+
+    def replace_newline(m):
+        try:
+            next_char = m.string[m.end()]
+        except KeyError:
+            return ''
+        if (next_char.isalpha() and next_char.islower()) or next_char == ':':
+            count('replaced newline with space')
+            return ' '
+        if m.group(0) != '\n':
+            count('collapsed multiple newlines')
+        return '\n'
+
+    bad_separator_re = re.compile((
+        r"^(%(section_type_p)s (?:[0-9]+|%(roman_num)s)) : (-[0-9]+)(?= [A-ZÇÉ])"
+        # e.g. "Sous-section 8 : -1  Ministère …"
+    ) % dict(roman_num=roman_num, section_type_p=section_type_p))
+
+    def clean_num_match(m):
+        num = ' '.join(filter(None, [
+            get_clean_ordinal((m.group('ord') or '').rstrip()),
+            (m.group('type') or '').lower().replace('preambule', 'préambule'),
+            normalize_section_num(m.group('num') or '')
+        ]))
+        if m.group('ord') or m.group('type'):
+            num = num[0].upper() + num[1:]
+        return num
+
+    q = db.all("SELECT id, cid, titre_ta FROM sections")
+    for section_id, cid, titre_ta_o in q:
+        titre_ta = titre_ta_o
+        url = legifrance_url_section(section_id, cid)
+
+        if '&' in titre_ta:
+            assert '<' not in titre_ta, titre_ta
+            titre_ta = escape(unescape(titre_ta), quote=False)
+            count('unescaped HTML entities')
+
+        len_before = len(titre_ta)
+        titre_ta = titre_ta.strip(' \t\n\r\f\v:')
+        if titre_ta[-1] == '.' and titre_ta[-2] != '.':
+            titre_ta = titre_ta[:-1].rstrip()
+        if len(titre_ta) != len_before:
+            count('trimmed')
+            if not titre_ta:
+                count('empty')
+                if titre_ta != titre_ta_o:
+                    add_change((titre_ta_o, titre_ta))
+                continue
+        del len_before
+
+        titre_ta = multi_spaces_re.sub(replace_multiple_spaces, titre_ta)
+        titre_ta = newlines_re.sub(replace_newline, titre_ta)
+
+        titre_ta_before = titre_ta
+        titre_ta = dash_re.sub('-', titre_ta)
+        titre_ta = quotes_re.sub(replace_quotes, titre_ta)
+        if titre_ta != titre_ta_before:
+            count('replaced non-standard character(s)')
+        del titre_ta_before
+
+        if titre_ta in {'Annexe', 'Annexes'}:
+            if titre_ta != titre_ta_o:
+                add_change((titre_ta_o, titre_ta))
+            continue
+
+        if '\n' in titre_ta:
+            count('detected a bad section title (newline)')
+        elif '« Art.' in titre_ta:
+            count('detected a bad section title (article)')
+        elif titre_ta[0] in '"«':
+            count('detected a bad section title (quote)')
+
+        if titre_ta.startswith('A N N E X E'):
+            if titre_ta.startswith('A N N E X E S'):
+                titre_ta = 'ANNEXES' + titre_ta[13:]
+            else:
+                titre_ta = 'ANNEXE' + titre_ta[11:]
+            count('unspaced `A N N E X E`')
+
+        titre_ta, n = bad_separator_re.subn(r'\1\2', titre_ta)
+        if n:
+            count('removed bad separator', n)
+
+        titre_ta, n = missing_accent_re.subn(add_accent, titre_ta)
+        if n:
+            count('added missing accent', n)
+
+        if article_num_extra_re.search(titre_ta):
+            titre_ta = article_num_extra_re.sub(lower, titre_ta)
+            count('lowercased extra')
+
+        num, separator, sujet = [], None, None
+        num_end = 0
+        while True:
+            m = section_re.match(titre_ta, num_end)
+            if not m:
+                break
+            num.append(m)
+            num_end = m.end()
+            while num_end < len(titre_ta) and titre_ta[num_end] in ' ,;/|':
+                num_end += 1
+
+        if num:
+            num_end = num[-1].end()
+            if len(num) > 1:
+                count('multiple matches')
+            if num_end == len(titre_ta):
+                count('full match')
+            else:
+                sujet_match = sujet_re.match(titre_ta[num_end:])
+                if sujet_match:
+                    separator = sujet_match.string[:sujet_match.start(1)]
+                    separator = ascii_spaces_re.sub(' ', separator)
+                    sujet = sujet_match.group(1)
+                    if titre_ta[num_end-1].isalnum() and sujet[0].isupper():
+                        if separator in {' : ', ' - ', '. ', ') '}:
+                            pass
+                        elif separator == ' ':
+                            if not sujet[1].isupper():
+                                separator = ' : '
+                                count('added separator')
+                        elif separator[-1] != ' ':
+                            separator += ' '
+                            count('added space to separator')
+                        else:
+                            separator = ' : '
+                            count('replaced separator')
+                    count('good match')
+                elif len(num) == 1 and ' ' not in num[0].group(0).strip():
+                    # The initial match was probably a false positive, ignore it
+                    sujet = titre_ta
+                    num = None
+                    count('false match')
+                else:
+                    match = repr(show_match((titre_ta, (0, num_end))))
+                    print("Warning: partial match:", match, " ", url)
+                    count('partial match')
+                    sujet = titre_ta[num_end:]
+            if num:
+                num = ' '.join(map(clean_num_match, num))
+        else:
+            sujet = titre_ta
+            count('no match')
+
+        if num and upper_word_re.search(num):
+            print("Warning: still uppercase: %r" % num, " ", url)
+            count('still uppercase (num)')
+
+        if sujet and upper_words_percentage(sujet) > 0.2:
+            count('detected a bad section title (uppercase)')
+
+        titre_ta = ''.join(filter(None, (num, separator, sujet)))
+        if titre_ta != titre_ta_o:
+            add_change((titre_ta_o, titre_ta))
+
+    print("Done. Result: " + json.dumps(counts, indent=4, sort_keys=True))
+
+    if log_file:
+        log_file.write("# titres de sections\n")
+        for change, count in sorted(changes.items()):
+            if count == 1:
+                log_file.write('%r => %r\n' % change)
+            else:
+                log_file.write('%r => %r (%i×)\n' % (change[0], change[1], count))
+
+
 def normalize_text_titles(db, dry_run=False, log_file=None):
     print("> Normalisation des titres des textes...")
 
@@ -598,7 +817,9 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
-    p.add_argument('what', default='all', choices=['all', 'articles_num', 'textes_titres'])
+    p.add_argument('what', default='all', choices=[
+        'all', 'articles_num', 'sections_titres', 'textes_titres'
+    ])
     p.add_argument('--dry-run', action='store_true', default=False)
     p.add_argument('--log-path', default='/dev/null')
     args = p.parse_args()
@@ -609,6 +830,8 @@ if __name__ == '__main__':
         with db:
             if args.what in ('all', 'textes_titres'):
                 normalize_text_titles(db, dry_run=args.dry_run, log_file=log_file)
+            if args.what in ('all', 'sections_titres'):
+                normalize_section_titles(db, dry_run=args.dry_run, log_file=log_file)
             if args.what in ('all', 'articles_num'):
                 normalize_article_numbers(db, dry_run=args.dry_run, log_file=log_file)
             if args.dry_run:
