@@ -1,3 +1,5 @@
+# encoding: utf8
+
 """
 Extracts LEGI tar archives into an SQLite DB
 """
@@ -541,10 +543,12 @@ def main():
             print("logged", n_anomalies, "anomalies in", fpath)
 
     if not args.raw:
-        from .normalize import main as normalize
-        normalize(db)
+        from .normalize import normalize_text_titles
+        normalize_text_titles(db)
         from .factorize import main as factorize
         factorize(db)
+        from .normalize import normalize_article_numbers
+        normalize_article_numbers(db)
 
 
 if __name__ == '__main__':

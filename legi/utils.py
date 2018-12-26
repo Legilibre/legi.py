@@ -242,7 +242,20 @@ def reconstruct_path(dossier, cid, sous_dossier, id):
     return '/'.join((prefix, dossier, id_to_path(cid), sous_dossier, id+'.xml'))
 
 
-ascii_spaces_re = re.compile(r'[ \t\n\r\f\v]+')
+def mimic_case(old_word, new_word):
+    """
+    >>> print(mimic_case('EtAt', 'état'))
+    ÉtAt
+    """
+    if len(old_word) != len(new_word):
+        raise ValueError("lengths don't match")
+    return ''.join([
+        new_word[i].upper() if old_word[i].isupper() else new_word[i].lower()
+        for i in range(len(old_word))
+    ])
+
+
+ascii_spaces_re = re.compile(r'(?: {2}| *[\t\n\r\f\v])[ \t\n\r\f\v]*')
 nonword_re = re.compile(r'\W', re.U)
 spaces_re = re.compile(r'\s+', re.U)
 word_re = re.compile(r'\w{2,}', re.U)
@@ -261,3 +274,12 @@ def partition(l, predicate):
         else:
             b.append(e)
     return a, b
+
+
+def show_match(m, n=30):
+    m_start, m_end = m.span()
+    before = max(m.string.rfind(' ', 0, m_start - n), 0) if m_start > n else 0
+    before = ('[…]' if before > 0 else '') + m.string[before:m_start]
+    after = m.string.find(' ', m_end + n)
+    after = m.string[m_end:] if after == -1 else m.string[m_end:after+1] + '[…]'
+    return '%s{%s}%s' % (before, m.string[m_start:m_end], after)

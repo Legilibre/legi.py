@@ -1,7 +1,7 @@
 # coding: utf8
 from __future__ import division, print_function, unicode_literals
 
-from legi.normalize import main
+from legi.normalize import normalize_text_titles
 from legi.utils import connect_db
 
 
@@ -85,7 +85,7 @@ def test_normalize():
     db = connect_db(':memory:', row_factory='namedtuple')
     for row in DATA:
         db.insert("textes_versions", row)
-    main(db)
+    normalize_text_titles(db)
 
     data_brutes = list(db.all("SELECT * FROM textes_versions_brutes ORDER BY rowid"))
     data_norm = list(db.all("SELECT * FROM textes_versions ORDER BY rowid"))
