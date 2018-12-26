@@ -1,10 +1,6 @@
-# encoding: utf8
-
 """
 A module to handle dates from the French Republican Calendar
 """
-
-from __future__ import division, print_function, unicode_literals
 
 from datetime import date, timedelta
 

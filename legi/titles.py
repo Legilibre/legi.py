@@ -1,6 +1,6 @@
-# encoding: utf8
-
-from __future__ import division, print_function, unicode_literals
+"""
+Parsing of text titles.
+"""
 
 import re
 

@@ -1,5 +1,7 @@
 language: python
-python: "3.6"
+python:
+  - 3.6
+  - 3.7
 
 branches:
   only:
@@ -18,14 +20,6 @@ script: tox
 
 notifications:
   email: false
-  irc:
-    channels:
-      - "chat.freenode.net#legilibre"
-    on_failure: always
-    on_success: change
-    skip_join: true
-    template:
-      - "%{repository} (%{branch}:%{commit} by %{author}): %{message} (%{build_url})"
 
-dist: trusty
+dist: xenial
 sudo: false

@@ -1,10 +1,6 @@
-# encoding: utf8
-
 """
 Normalizes LEGI data stored in an SQLite DB
 """
-
-from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from functools import reduce

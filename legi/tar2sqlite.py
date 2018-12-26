@@ -1,10 +1,6 @@
-# encoding: utf8
-
 """
 Extracts LEGI tar archives into an SQLite DB
 """
-
-from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from fnmatch import fnmatch

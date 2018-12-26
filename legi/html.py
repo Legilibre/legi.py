@@ -1,10 +1,6 @@
-# encoding: utf8
-
 """
 This module handles the HTML provided in LEGI.
 """
-
-from __future__ import division, print_function, unicode_literals
 
 from argparse import ArgumentParser
 from collections import namedtuple
@@ -21,7 +17,7 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
-from .utils import connect_db, group_by_2, input, ascii_spaces_re
+from .utils import connect_db, group_by_2, ascii_spaces_re
 
 
 # An immutable type representing the opening of an HTML element
@@ -118,7 +114,7 @@ def is_start_of(s, tag):
     return s[0] == '<' and s[1:x+1] == tag and s[x+1] in ' >' and s[-2] != '/'
 
 
-class HTMLCleaner(object):
+class HTMLCleaner:
     """A parser target which returns cleaned HTML (as a string, not a tree).
 
     Doc: http://lxml.de/parsing.html#the-target-parser-interface
@@ -432,7 +428,7 @@ def diff_html(html_a, html_b):
     return '\n'.join(ndiff(a, b, None, None))
 
 
-class StatsCollector(object):
+class StatsCollector:
     """Collects stats about the HTML tags and attributes used in LEGI
     """
 

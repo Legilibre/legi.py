@@ -2,8 +2,6 @@
 A spellchecker for French text, based on the `enchant` package.
 """
 
-from __future__ import division, print_function, unicode_literals
-
 import re
 
 try:

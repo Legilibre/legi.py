@@ -2,8 +2,6 @@
 Conversion functions for roman numbers
 """
 
-from __future__ import division, print_function, unicode_literals
-
 
 ROMAN_NUMERALS = (
     ('M', 1000), ('CM', 900), ('D', 500), ('CD', 400), ('C', 100),

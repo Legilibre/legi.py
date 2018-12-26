@@ -2,8 +2,6 @@
 Downloads the LEGI tarballs from the official FTP server.
 """
 
-from __future__ import division, print_function, unicode_literals
-
 import argparse
 import ftplib
 import os

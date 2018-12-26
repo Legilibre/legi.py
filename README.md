@@ -27,7 +27,8 @@ legi.py a aussi besoin de [`libarchive`][libarchive]. Pour l'installer sur Ubunt
 
     sudo apt-get install libarchive13
 
-legi.py et les modules dont il dépend sont compatibles avec python 2 et 3.
+legi.py et les modules dont il dépend sont compatibles avec python 3.6 et 3.7,
+les versions antérieurs de python peuvent générer des erreurs.
 
 legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
 sous forme de paquet [sur PyPI][legi-pypi].

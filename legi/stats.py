@@ -2,8 +2,6 @@
 Compiles stats about a LEGI archive.
 """
 
-from __future__ import division, print_function, unicode_literals
-
 from argparse import ArgumentParser
 import json
 

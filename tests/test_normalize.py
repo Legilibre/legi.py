@@ -1,6 +1,3 @@
-# coding: utf8
-from __future__ import division, print_function, unicode_literals
-
 from legi.normalize import normalize_text_titles
 from legi.utils import connect_db
 

@@ -1,12 +1,3 @@
-# encoding: utf8
-
-from __future__ import division, print_function, unicode_literals
-
-try:
-    import builtins
-except ImportError:
-    import __builtin__ as builtins
-
 from collections import namedtuple
 from contextlib import contextmanager
 from itertools import chain, repeat
@@ -16,11 +7,6 @@ import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
 import traceback
 from unicodedata import combining, normalize
-
-
-PY2 = str is bytes
-
-input = getattr(builtins, 'raw_input', input)
 
 
 IGNORE = object()
@@ -194,7 +180,7 @@ def run_migrations(db):
 
 def group_by_2(iterable):
     iterable = iterable.__iter__()
-    next = iterable.next if PY2 else iterable.__next__
+    next = iterable.__next__
     while True:
         try:
             a = next()
@@ -210,11 +196,8 @@ def group_by_2(iterable):
 nonalphanum_re = re.compile(r'[^a-z0-9]')
 
 
-_unicode = getattr(builtins, 'unicode', str)
-
-
 def strip_accents(s):
-    return ''.join(c for c in normalize('NFKD', _unicode(s)) if not combining(c))
+    return ''.join(c for c in normalize('NFKD', s) if not combining(c))
 
 
 strip_down = lambda s: strip_accents(s).lower()
