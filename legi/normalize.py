@@ -3,6 +3,7 @@ Normalizes LEGI data stored in an SQLite DB
 """
 
 from argparse import ArgumentParser
+from collections import defaultdict
 from functools import reduce
 import json
 import re
@@ -21,7 +22,7 @@ from .utils import (
 )
 
 
-def normalize_article_numbers(db, dry_run=False, log_path=None):
+def normalize_article_numbers(db, dry_run=False, log_file=None):
     print("> Normalisation des numéros des articles...")
 
     article_num_multi_re = re.compile(article_num_multi)
@@ -130,20 +131,14 @@ def normalize_article_numbers(db, dry_run=False, log_path=None):
 
     range_re = re.compile(r"^\([0-9]+ à [0-9]+\)")
 
-    counts = {}
+    counts = defaultdict(int)
     def count(k, n=1):
-        try:
-            counts[k] += n
-        except KeyError:
-            counts[k] = n
+        counts[k] += n
 
-    changes = {}
+    changes = defaultdict(int)
     def add_change(k):
         assert k[0] != k[1]
-        try:
-            changes[k] += 1
-        except KeyError:
-            changes[k] = 1
+        changes[k] += 1
         if dry_run:
             return
         update_article({'num': k[1]})
@@ -397,18 +392,18 @@ def normalize_article_numbers(db, dry_run=False, log_path=None):
         if num != orig_num:
             add_change((orig_num, num))
 
-    if log_path:
-        with open(log_path, 'w') as log:
-            for change, count in sorted(changes.items()):
-                if count == 1:
-                    log.write('%r => %r\n' % change)
-                else:
-                    log.write('%r => %r (%i×)\n' % (change[0], change[1], count))
+    if log_file:
+        log_file.write("# numéros d'articles\n")
+        for change, count in sorted(changes.items()):
+            if count == 1:
+                log_file.write('%r => %r\n' % change)
+            else:
+                log_file.write('%r => %r (%i×)\n' % (change[0], change[1], count))
 
     print('Done. Result: ' + json.dumps(counts, indent=4, sort_keys=True))
 
 
-def normalize_text_titles(db, dry_run=False):
+def normalize_text_titles(db, dry_run=False, log_file=None):
     print("> Normalisation des titres des textes...")
 
     TEXTES_VERSIONS_BRUTES_BITS = {
@@ -420,13 +415,11 @@ def normalize_text_titles(db, dry_run=False):
         'date_texte': 32,
     }
 
-    update_counts = {}
+    update_counts = defaultdict(int)
     def count_update(k):
-        try:
-            update_counts[k] += 1
-        except KeyError:
-            update_counts[k] = 1
+        update_counts[k] += 1
 
+    changes = defaultdict(int)
     updates = {}
     orig_values = {}
     q = db.all("""
@@ -567,6 +560,10 @@ def normalize_text_titles(db, dry_run=False):
             count_update('nature')
             orig_values['nature'] = nature_o
             updates['nature'] = nature
+        for col, new_value in updates.items():
+            orig_value = orig_values[col]
+            assert new_value != orig_value
+            changes[(orig_value, new_value)] += 1
         if titrefull_s != titrefull_s_o:
             updates['titrefull_s'] = titrefull_s
         if updates:
@@ -589,6 +586,14 @@ def normalize_text_titles(db, dry_run=False):
     print('Done. Updated %i values: %s' %
           (sum(update_counts.values()), json.dumps(update_counts, indent=4)))
 
+    if log_file:
+        log_file.write("# titres de textes\n")
+        for change, count in sorted(changes.items()):
+            if count == 1:
+                log_file.write('%r => %r\n' % change)
+            else:
+                log_file.write('%r => %r (%i×)\n' % (change[0], change[1], count))
+
 
 if __name__ == '__main__':
     p = ArgumentParser()
@@ -599,12 +604,13 @@ if __name__ == '__main__':
     args = p.parse_args()
 
     db = connect_db(args.db)
+    log_file = open(args.log_path, 'w') if args.log_path else None
     try:
         with db:
             if args.what in ('all', 'textes_titres'):
-                normalize_text_titles(db, dry_run=args.dry_run)
+                normalize_text_titles(db, dry_run=args.dry_run, log_file=log_file)
             if args.what in ('all', 'articles_num'):
-                normalize_article_numbers(db, dry_run=args.dry_run, log_path=args.log_path)
+                normalize_article_numbers(db, dry_run=args.dry_run, log_file=log_file)
             if args.dry_run:
                 raise KeyboardInterrupt
     except KeyboardInterrupt:
