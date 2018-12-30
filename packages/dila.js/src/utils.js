@@ -38,20 +38,29 @@ const read = path => fs.readFileSync(path).toString();
 const write = (dst, content) => fs.writeFileSync(dst, JSON.stringify(content, null, 2));
 
 const JSONread = path => JSON.parse(read(path));
-const JSONlog = data => console.log(JSON.stringify(data, null, 2)) && data;
+const JSONlog = data => console.log(JSON.stringify(data, null, 2)) || data;
 
 const cleanTitle = str =>
   (str &&
     str
       .trim()
-      .replace(/&#13;/g, "")
+      .replace(/&#13;\s*/g, "")
       .replace(/\n/g, " ")
       .replace(/\s\s+/g, " ")
       .replace(/\s+\.\s*$/g, " ")
-      .trim()) ||
+      .trim()
+      // existing full whitespace patterns
+      .replace(/^<br\/><br\/><br\/><p><br\sclear="none"\/><\/p>$/, "")
+      .replace(/^<p><br\sclear="none"\/><\/p>$/, "")
+      // html extra br trim
+      .replace(/^((\s*<br\/>\s*)*)*/, "")
+      .replace(/((\s*<br\/>\s*)*)*$/, "")) ||
   "";
 
-const cleanData = (obj, titres = ["titre", "titrefull", "titre_ta"]) =>
+const cleanData = (
+  obj,
+  titres = ["titre", "titrefull", "titre_ta", "nota", "commentaire", "bloc_textuel"]
+) =>
   (obj && {
     ...Object.keys(obj).reduce(
       (o, k) => ({
@@ -63,15 +72,44 @@ const cleanData = (obj, titres = ["titre", "titrefull", "titre_ta"]) =>
   }) ||
   {};
 
+const sortByKey = key => (a, b) => {
+  const getValue = (obj, key) => {
+    if (key.indexOf(".") > -1) {
+      const [first, second] = key.split(".");
+      return obj[first][second];
+    } else {
+      return obj[key];
+    }
+  };
+  if (getValue(a, key) < getValue(b, key)) return -1;
+  if (getValue(a, key) > getValue(b, key)) return 1;
+  return 0;
+};
+
+const isSection = id => id.substring(0, 8) === "LEGISCTA";
+
+// transform flat rows to hierarchical tree
+const makeAst = (rows, parent = null) =>
+  rows
+    .filter(row => row.data.parent === parent)
+    .sort(sortByKey("data.position"))
+    .map(row => ({
+      ...row,
+      // add children nodes for sections
+      children: (isSection(row.data.id) && makeAst(rows, row.data.id)) || undefined
+    }));
+
 module.exports = {
   serial,
   read,
   write,
   serialExec,
+  makeAst,
   range,
   repeat,
   cleanTitle,
   cleanData,
   JSONread,
-  JSONlog
+  JSONlog,
+  sortByKey
 };

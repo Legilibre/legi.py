@@ -4,10 +4,7 @@
   "version": "1.2.0",
   "author": "Julien Bouquillon <julien@revolunet.com>",
   "license": "MIT",
-  "files": [
-    "src",
-    "examples.js"
-  ],
+  "files": ["src", "examples.js"],
   "scripts": {
     "test": "jest",
     "test-watch": "jest --watch",
@@ -17,7 +14,8 @@
   "jest": {
     "verbose": true,
     "collectCoverage": false,
-    "snapshotSerializers": []
+    "snapshotSerializers": [],
+    "testURL": "http://localhost/"
   },
   "repository": {
     "type": "git",
@@ -38,7 +36,7 @@
     "hast-util-to-html": "^3.1.0",
     "html-to-text": "^4.0.0",
     "humanize-duration": "^3.12.1",
-    "knex": "^0.14.5",
+    "knex": "^0.16.3",
     "leven": "^2.1.0",
     "lexis-count": "^1.0.3",
     "lodash.words": "^4.2.0",

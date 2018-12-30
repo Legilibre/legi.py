@@ -1,20 +1,12 @@
+const makeArticle = require("./makeArticle");
 const getArticleData = require("./getArticleData");
-const { cleanData } = require("./utils");
-const getLinks = require("./getLinks");
 
-const getArticle = async (knex, filters) => {
-  const article = await getArticleData(knex, filters);
+const getArticle = async (knex, { id }) => {
+  const article = await getArticleData(knex, { id });
   if (!article) {
     return null;
   }
-  return {
-    type: "article",
-    data: cleanData({
-      titre: `Article ${article.num}`,
-      ...article,
-      liens: getLinks(knex, article.id)
-    })
-  };
+  return makeArticle(article);
 };
 
 module.exports = getArticle;

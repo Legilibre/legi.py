@@ -1,4 +1,3 @@
-const memoize = require("fast-memoize");
 const knexRequire = require("knex");
 
 const defaultKnexConfig = require("./knexfile");
@@ -9,35 +8,24 @@ const legi = (knexConfig = {}) => {
     ...knexConfig
   });
 
-  // console.log(
-  //   JSON.stringify(
-  //     {
-  //       ...defaultKnexConfig,
-  //       ...knexConfig
-  //     },
-  //     null,
-  //     2
-  //   )
-  // );
-
   // tasty curry
   const knexify = module => params => module(knex, params);
 
+  // the public API methods handlers will receive current knex connection as 1st arg
   return {
     getCode: knexify(require("./getCode")),
-    getCodeVersions: knexify(require("./getCodeVersions")),
     getCodesList: knexify(require("./getCodesList")),
-    getJORF: knexify(require("./getJORF")),
+    getArticle: knexify(require("./getArticle")),
     getSection: knexify(require("./getSection")),
-    getLinks: knexify(require("./getLinks")),
-    close: knex.destroy,
+    getSommaire: knexify(require("./getSommaire")),
+    close: () => knex && knex.destroy(),
     knex
   };
 };
 
 class Legi {
-  constructor(dbPath = "./legi.sqlite") {
-    return legi(dbPath);
+  constructor(knexConfig) {
+    return legi(knexConfig);
   }
 }
 

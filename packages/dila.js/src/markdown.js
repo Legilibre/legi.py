@@ -2,6 +2,7 @@ const unified = require("unified");
 const remarkStringify = require("remark-stringify");
 const rehypeParse = require("rehype-parse");
 const rehype2remark = require("rehype-remark");
+const parents = require("unist-util-parents");
 
 const cleanLegiText = html =>
   (html &&
