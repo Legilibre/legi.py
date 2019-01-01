@@ -330,6 +330,8 @@ word_re = re.compile(r'\w{2,}', re.U)
 
 def upper_words_percentage(s):
     words = word_re.findall(s)
+    if not words:
+        return 0
     return len([w for w in words if w.isupper()]) / len(words)
 
 
