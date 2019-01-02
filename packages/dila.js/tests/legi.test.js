@@ -43,7 +43,6 @@ it("getSection: article pas encore en vigueur ne doit pas apparaitre", async () 
   expect(res).toMatchSnapshot();
 });
 
-/*
 it("getSection: article pas encore abrogé doit apparaitre", async () => {
   expect.assertions(2);
   const res = await legi.getSection({ id: "LEGISCTA000029978970", date: "2015-02-01" });
@@ -51,7 +50,6 @@ it("getSection: article pas encore abrogé doit apparaitre", async () => {
   expect(count).toBe(1);
   expect(res).toMatchSnapshot();
 });
-*/
 
 it("getSection: article abrogé ne doit pas apparaitre", async () => {
   expect.assertions(2);
