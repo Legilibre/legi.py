@@ -1,4 +1,5 @@
 const routes = require("express").Router();
+const legi = require("../../legi");
 
 const map = require("unist-util-map");
 
@@ -12,7 +13,10 @@ const getStructure = tree =>
   }));
 
 routes.get("/code/:code/structure", async (req, res) => {
-  const data = require(`../../../codes/${req.params.code}.json`);
+  const data = await legi.getSommaire({
+    cid: req.params.code,
+    date: "2018-12-01"
+  });
   res.json(getStructure(data));
 });
 
