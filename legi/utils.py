@@ -5,8 +5,9 @@ import os
 import os.path
 import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
+import sre_parse
 import traceback
-from unicodedata import combining, normalize
+from unicodedata import combining, decomposition, normalize
 
 
 IGNORE = object()
@@ -191,6 +192,89 @@ def group_by_2(iterable):
         except StopIteration:
             raise ValueError("iterable returned an odd number of items")
         yield (a, b)
+
+
+def add_accentless_fallbacks(pattern):
+    r"""Modifies a regexp pattern to also match accentless text.
+
+    >>> add_accentless_fallbacks(r'Arrêté')
+    'Arr[êe]t[ée]'
+    >>> add_accentless_fallbacks(r'foo|bar')
+    'foo|bar'
+    >>> add_accentless_fallbacks(r'm[êè]me')
+    'm[êèe]me'
+    >>> add_accentless_fallbacks(r'm[êèe]me')
+    'm[êèe]me'
+    >>> add_accentless_fallbacks(r'\[Décret')
+    '\\[D[ée]cret'
+    >>> add_accentless_fallbacks(r'\[(?P<blé>Décret[ée])?(?(blé) à | a )(?P=blé)')
+    '\\[(?P<blé>D[ée]cret[ée])?(?(blé) [àa] | a )(?P=blé)'
+    >>> add_accentless_fallbacks(r'(?# commenté )')
+    '(?# commenté )'
+    >>> add_accentless_fallbacks(r'[\]é]')
+    '[\\]ée]'
+    """
+    def remove_accent(c):
+        return chr(int(decomposition(c).split(' ', 1)[0], 16))
+
+    r = []
+    source = sre_parse.Tokenizer(pattern)
+    sourceget = source.get
+    while True:
+        this = source.next
+        if this is None:
+            break  # end of pattern
+        sourceget()
+
+        if this[0] == '\\':
+            r.append(this)
+        elif this == '[':
+            elements = []
+            accented = set()
+            while True:
+                this = sourceget()
+                if this in (None, ']'):
+                    break
+                elements.append(this)
+                if this[0] == '\\':
+                    continue
+                if decomposition(this):
+                    accented.add(this)
+            if accented:
+                elements_set = set(elements)
+                for c in sorted(accented):
+                    accentless = remove_accent(c)
+                    if accentless not in elements_set:
+                        elements.append(accentless)
+                        elements_set.add(accentless)
+            r.append('[')
+            r.extend(elements)
+            if this:
+                r.append(']')
+        elif this == '(' and source.match('?'):
+            this = sourceget()
+            if this is None:
+                this = ''
+            elif this == 'P':
+                if source.next == '<':
+                    # named group
+                    this += source.getuntil('>') + '>'
+                elif source.next == '=':
+                    # named backreference
+                    this += source.getuntil(')') + ')'
+            elif this == '#':
+                # comment
+                this += source.getuntil(')') + ')'
+            elif this == '(':
+                # conditional backreference group
+                this += source.getuntil(')') + ')'
+            r.append('(?' + this)
+        else:
+            if decomposition(this):
+                this = '[%s%s]' % (this, remove_accent(this))
+            r.append(this)
+
+    return ''.join(r)
 
 
 nonalphanum_re = re.compile(r'[^a-z0-9]')
