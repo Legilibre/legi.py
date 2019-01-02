@@ -100,7 +100,7 @@ def normalize_title(title):
 
 def parse_titre(titre, anomaly_callback, strict=False):
     m = (titre1_strict_re if strict else titre1_re).match(titre)
-    if not m:
+    if not m or m.end() == 0:
         return {}, 0
     d = m.groupdict()
     duplicates = set()
