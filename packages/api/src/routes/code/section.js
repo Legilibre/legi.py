@@ -5,16 +5,11 @@ const legi = require("../../legi");
 
 const getSectionData = memoize(
   (code, section) =>
-    legi
-      .getSection({
-        cid: code,
-        id: section,
-        date: "2018-12-01"
-      })
-      .then(res => {
-        console.log("res", res);
-        return res;
-      }),
+    legi.getSection({
+      cid: code,
+      id: section,
+      date: "2018-12-01"
+    }),
   { promise: true }
 );
 
