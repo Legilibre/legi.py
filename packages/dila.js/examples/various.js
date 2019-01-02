@@ -1,26 +1,54 @@
-const Legi = require("legi");
+const Legi = require("../src/Legi");
+const { JSONlog } = require("../src/utils");
+const html = require("../src/html");
+const markdown = require("../src/markdown");
 
-const legi = new Legi();
+const legi = new Legi({
+  client: "pg",
+  connection: {
+    host: "vps.revolunet.com",
+    port: 5444,
+    user: "legi",
+    password: "legi",
+    database: "legi"
+  }
+});
 
-// liste des codes disponibles
-legi.getCodesList();
+/*
+ code/xxx                       OK
+ code/xxx/article/xxx           OK
+ code/xxx/article/xxx/liens     NOK
+ code/xxx/article/xxx/versions  NOK
+ code/xxx/section/xxx           OK
+*/
 
-// code du travail (~3min)
-legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" });
+// get single section
+legi
+  .getSection({
+    id: "LEGISCTA000006088039"
+  })
+  .then(JSONlog)
+  .catch(console.log);
 
-// liste des versions du code du travail
-legi.getCodeVersions("LEGITEXT000006072050");
+// get single article
+legi
+  .getArticle({
+    id: "LEGIARTI000006398351"
+  })
+  .then(JSONlog)
+  .catch(console.log);
 
-// ordonnance
-legi.getJORF("JORFTEXT000000465978");
+// get full code in html format
+legi
+  .getCode({ cid: "LEGITEXT000006070666", date: "2018-12-01" })
+  .then(html)
+  .then(console.log)
+  .catch(console.log)
+  .then(() => legi.close());
 
-// section d'un texte
-legi.getSection({ parent: "LEGISCTA000006132321", date: "2018-05-03" });
-
-// conversion en markdown
-const markdown = require("legi/src/markdown");
-legi.getCode("LEGITEXT000006069414").then(markdown);
-
-// conversion en html
-const html = require("legi/src/html");
-legi.getCode("LEGITEXT000006069414").then(html);
+// get code sommaire
+legi
+  .getSommaire({ cid: "LEGITEXT000006072050", date: "2018-12-01" })
+  .then(console.log)
+  .catch(console.log)
+  .then(() => legi.close());

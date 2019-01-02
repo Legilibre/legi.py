@@ -33,7 +33,7 @@ const legi = new Legi();
 legi.getCodesList().then(console.log);
 
 // code du travail (~1min)
-legi.getCode({ id: "LEGITEXT000006072050", date: "2012-03-05" }).then(console.log);
+legi.getCode({ cid: "LEGITEXT000006072050", date: "2012-03-05" }).then(console.log);
 
 // section d'un texte
 legi.getSection({ id: "LEGISCTA000006132321", date: "2018-05-03" }).then(console.log);
@@ -41,14 +41,14 @@ legi.getSection({ id: "LEGISCTA000006132321", date: "2018-05-03" }).then(console
 // conversion en markdown
 const markdown = require("legi/src/markdown");
 legi
-  .getCode("LEGITEXT000006069414")
+  .getCode({ cid: "LEGITEXT000006069414", date: "2012-03-05" })
   .then(markdown)
   .then(console.log);
 
 // conversion en html
 const html = require("legi/src/html");
 legi
-  .getCode("LEGITEXT000006069414")
+  .getCode({ cid: "LEGITEXT000006069414", date: "2012-03-05" })
   .then(html)
   .then(console.log);
 ```
