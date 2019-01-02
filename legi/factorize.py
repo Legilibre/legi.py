@@ -1,7 +1,3 @@
-# encoding: utf8
-
-from __future__ import print_function, unicode_literals
-
 from argparse import ArgumentParser
 
 from lxml import etree

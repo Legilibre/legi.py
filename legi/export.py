@@ -2,8 +2,6 @@
 Functions that can be used to export the data stored in SQLite to other formats.
 """
 
-from __future__ import division, print_function, unicode_literals
-
 from argparse import ArgumentParser
 import json
 

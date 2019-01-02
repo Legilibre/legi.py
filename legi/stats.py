@@ -2,8 +2,6 @@
 Compiles stats about a LEGI archive.
 """
 
-from __future__ import division, print_function, unicode_literals
-
 from argparse import ArgumentParser
 import json
 
@@ -77,8 +75,8 @@ def main(args):
     print(json.dumps(r, indent=4, sort_keys=True))
 
 
-p = ArgumentParser()
-p.add_argument('archive')
-args = p.parse_args()
-
-main(args)
+if __name__ == '__main__':
+    p = ArgumentParser()
+    p.add_argument('archive')
+    args = p.parse_args()
+    main(args)
