@@ -10,6 +10,11 @@ import traceback
 from unicodedata import combining, decomposition, normalize
 
 
+if not hasattr(re, 'Match'):
+    # For Python 3.6
+    re.Match = type(re.compile('').match(''))
+
+
 IGNORE = object()
 NIL = object()
 ROOT = os.path.dirname(__file__) + '/'
