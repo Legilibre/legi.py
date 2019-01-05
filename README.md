@@ -69,8 +69,8 @@ exemple avec [cron][cron] :
 
 ### Normalisation des titres et numéros
 
-Le module `normalize` corrige les titres de textes et les numéros d'articles qui
-ne sont pas parfaitement « standards ».
+Le module `normalize` nettoie les titres et numéros des textes, des sections et
+des articles afin qu'ils soient plus « standards ».
 
 ### Factorisation des textes
 
