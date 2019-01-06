@@ -1,3 +1,7 @@
+"""
+This module provides tools to interact with SQLite databases.
+"""
+
 from itertools import chain, repeat
 import os
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
@@ -7,7 +11,65 @@ from .utils import patch_object, IGNORE, ROOT
 
 
 class DB(Connection):
-    pass
+
+    def __init__(self, address, row_factory=None):
+        Connection.__init__(self, address)
+        self.address = address
+        if row_factory:
+            if not callable(row_factory):
+                row_factory = ROW_FACTORIES[row_factory]
+            self.row_factory = row_factory
+
+    def all(self, *a, **kw):
+        to_dict = kw.get('to_dict', False)
+        with patch_object(self, 'row_factory', dict_factory if to_dict else IGNORE):
+            q = self.execute(*a)
+        return iter_results(q)
+
+    def one(self, *args, **kw):
+        to_dict = kw.get('to_dict', False)
+        with patch_object(self, 'row_factory', dict_factory if to_dict else IGNORE):
+            r = self.execute(*args).fetchone()
+            if r and len(r) == 1 and not to_dict:
+                r = r[0]
+            return r
+
+    def changes(self):
+        return self.one("SELECT changes()")
+
+    def insert(self, table, attrs, replace=False):
+        or_clause = 'OR REPLACE' if replace else ''
+        keys, values = zip(*attrs.items())
+        keys = ','.join(keys)
+        placeholders = ','.join(repeat('?', len(attrs)))
+        try:
+            self.execute(
+                f"INSERT {or_clause} INTO {table} ({keys}) VALUES ({placeholders})",
+                values
+            )
+        except IntegrityError:
+            print(table, *attrs.items(), sep='\n    ')
+            raise
+
+    def update(self, table, where, attrs):
+        placeholders, values = dict2sql(attrs)
+        where_placeholders, where_values = dict2sql(where, joiner=' AND ')
+        try:
+            self.execute(
+                f"UPDATE {table} SET {placeholders} WHERE {where_placeholders}",
+                values + where_values
+            )
+        except IntegrityError:
+            print(table, *chain(where.items(), attrs.items()), sep='\n    ')
+            raise
+
+    run = Connection.execute
+
+
+def dict2sql(d, joiner=', '):
+    keys, values = zip(*d.items())
+    placeholders = joiner.join(k+' = ?' for k in keys)
+    return placeholders, values
 
 
 def dict_factory(cursor, row):
@@ -56,34 +118,7 @@ ROW_FACTORIES = {
 
 
 def connect_db(address, row_factory=None, create_schema=True, update_schema=True, pragmas=()):
-    db = DB(address)
-    db.address = address
-    if row_factory:
-        if not callable(row_factory):
-            row_factory = ROW_FACTORIES[row_factory]
-        db.row_factory = row_factory
-    db.insert = inserter(db)
-    db.update = updater(db)
-    db.run = db.execute
-
-    def all(*a, **kw):
-        to_dict = kw.get('to_dict', False)
-        with patch_object(db, 'row_factory', dict_factory if to_dict else IGNORE):
-            q = db.execute(*a)
-        return iter_results(q)
-
-    db.all = all
-
-    def one(*args, **kw):
-        to_dict = kw.get('to_dict', False)
-        with patch_object(db, 'row_factory', dict_factory if to_dict else IGNORE):
-            r = db.execute(*args).fetchone()
-            if r and len(r) == 1 and not to_dict:
-                r = r[0]
-            return r
-
-    db.one = one
-    db.changes = lambda: one("SELECT changes()")
+    db = DB(address, row_factory=row_factory)
 
     if create_schema:
         try:
@@ -103,46 +138,6 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
 
     return db
-
-
-def inserter(conn):
-    def insert(table, attrs, replace=False):
-        or_clause = 'OR REPLACE' if replace else ''
-        keys, values = zip(*attrs.items())
-        keys = ','.join(keys)
-        placeholders = ','.join(repeat('?', len(attrs)))
-        try:
-            conn.execute("""
-                INSERT {0} INTO {1} ({2}) VALUES ({3})
-            """.format(or_clause, table, keys, placeholders), values)
-        except IntegrityError:
-            print(table, *attrs.items(), sep='\n    ')
-            raise
-    return insert
-
-
-def updater(conn):
-
-    def dict2sql(d, joiner=', '):
-        keys, values = zip(*d.items())
-        placeholders = joiner.join(k+' = ?' for k in keys)
-        return placeholders, values
-
-    def update(table, where, attrs):
-        placeholders, values = dict2sql(attrs)
-        where_placeholders, where_values = dict2sql(where, joiner=' AND ')
-        try:
-            conn.execute(
-                "UPDATE {0} SET {1} WHERE {2}".format(
-                    table, placeholders, where_placeholders
-                ),
-                values + where_values
-            )
-        except IntegrityError:
-            print(table, *chain(where.items(), attrs.items()), sep='\n    ')
-            raise
-
-    return update
 
 
 def iter_results(q):
