@@ -19,8 +19,9 @@ except ImportError:
     tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
+from .db import connect_db
 from .html import CleaningError, clean_html, remove_detected_soft_hyphens
-from .utils import connect_db, partition
+from .utils import partition
 
 
 SOUS_DOSSIER_MAP = {

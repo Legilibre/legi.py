@@ -2,8 +2,9 @@ from argparse import ArgumentParser
 from datetime import date, timedelta
 import sys
 
+from .db import connect_db
 from .titles import NATURE_MAP_R, parse_titre, spaces_re
-from .utils import connect_db, reconstruct_path, strip_down
+from .utils import reconstruct_path, strip_down
 
 
 def anomalies_date_fin_etat(db, err):

@@ -5,7 +5,7 @@ Functions that can be used to export the data stored in SQLite to other formats.
 from argparse import ArgumentParser
 import json
 
-from .utils import connect_db
+from .db import connect_db
 
 
 TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections'}

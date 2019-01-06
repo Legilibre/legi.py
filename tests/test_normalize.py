@@ -1,5 +1,5 @@
+from legi.db import connect_db
 from legi.normalize import normalize_text_titles
-from legi.utils import connect_db
 
 
 DATA = [

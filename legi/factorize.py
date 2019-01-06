@@ -2,8 +2,8 @@ from argparse import ArgumentParser
 
 from lxml import etree
 
+from .db import connect_db
 from .normalize import normalize_text_titles
-from .utils import connect_db
 
 
 def connect_by_nature_num(db):
