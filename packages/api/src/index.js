@@ -9,6 +9,7 @@ app.use(cors());
 app.use("/", require("./routes/code/structure"));
 app.use("/", require("./routes/code/section"));
 app.use("/", require("./routes/code/article"));
+app.use("/", require("./routes/codes"));
 
 app.get("/", (req, res) => res.send({ version: pkg.version, name: pkg.name }));
 
