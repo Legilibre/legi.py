@@ -17,7 +17,7 @@ const getSommaireData = memoize(
   code =>
     legi.getSommaire({
       cid: code,
-      date: "2018-12-01"
+      date: "2019-01-01"
     }),
   { promise: true }
 );
