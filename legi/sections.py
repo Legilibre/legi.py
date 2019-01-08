@@ -95,3 +95,20 @@ def normalize_section_num(num):
     if num_sd in SPECIAL_NUMS_MAP:
         num = SPECIAL_NUMS_MAP[num_sd]
     return num
+
+
+def reduce_section_title(titre_ta):
+    """Reduce a section title to its "first half".
+
+    >>> reduce_section_title("Titre 1er: Dispositions générales")
+    'Titre 1er'
+    >>> reduce_section_title("Première partie")
+    'Première partie'
+    >>> print(reduce_section_title("Dispositions finales"))
+    None
+
+    This function assumes that the section title has already been normalized.
+    """
+    m = section_re.match(titre_ta)
+    if m and (m.end() == len(titre_ta) or sujet_re.match(titre_ta, m.end())):
+        return m.group(0).rstrip('.°')
