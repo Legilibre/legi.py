@@ -177,7 +177,8 @@ def run_migrations(db):
     v = db.one("SELECT value FROM db_meta WHERE key = 'schema_version'") or 0
     if v == 0:
         db.insert('db_meta', dict(key='schema_version', value=v))
-    migrations = open(ROOT + 'sql/migrations.sql').read().split('\n\n-- migration #')
+    with open(ROOT + 'sql/migrations.sql') as f:
+        migrations = f.read().split('\n\n-- migration #')
     n = 0
     for m in migrations[1:]:
         n, sql = m.split('\n', 1)
