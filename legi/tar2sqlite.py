@@ -240,28 +240,28 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                              WHERE id = ?
                         """.format(table), (row_id,), to_dict=True)
                         data = {table: prev_row_dict}
-                        data['liens'] = list(db.all("""
+                        data['liens'] = db.list("""
                             SELECT *
                               FROM liens
                              WHERE src_id = ? AND NOT _reversed
                                 OR dst_id = ? AND _reversed
-                        """, (row_id, row_id), to_dict=True))
+                        """, (row_id, row_id), to_dict=True)
                         if table == 'sections':
-                            data['sommaires'] = list(db.all("""
+                            data['sommaires'] = db.list("""
                                 SELECT *
                                   FROM sommaires
                                  WHERE cid = ?
                                    AND parent = ?
                                    AND _source = 'section_ta_liens'
-                            """, (row_id, row_id), to_dict=True))
+                            """, (row_id, row_id), to_dict=True)
                         elif table == 'textes_structs':
                             source = 'struct/' + row_id
-                            data['sommaires'] = list(db.all("""
+                            data['sommaires'] = db.list("""
                                 SELECT *
                                   FROM sommaires
                                  WHERE cid = ?
                                    AND _source = ?
-                            """, (row_cid, source), to_dict=True))
+                            """, (row_cid, source), to_dict=True)
                         data = {k: v for k, v in data.items() if v}
                         insert('duplicate_files', {
                             'id': row_id,

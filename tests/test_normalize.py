@@ -84,8 +84,8 @@ def test_normalize():
         db.insert("textes_versions", row)
     normalize_text_titles(db)
 
-    data_brutes = list(db.all("SELECT * FROM textes_versions_brutes ORDER BY rowid"))
-    data_norm = list(db.all("SELECT * FROM textes_versions ORDER BY rowid"))
+    data_brutes = db.list("SELECT * FROM textes_versions_brutes ORDER BY rowid")
+    data_norm = db.list("SELECT * FROM textes_versions ORDER BY rowid")
 
     assert len(data_brutes) == 6
 

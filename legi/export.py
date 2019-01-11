@@ -8,7 +8,7 @@ import json
 from .db import connect_db
 
 
-TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections'}
+TYPES_MAP = {'ARTI': 'article', 'SCTA': 'section'}
 
 
 def iterate_everything(db):
@@ -40,35 +40,33 @@ def iterate_cid(db, cid):
     """, (cid,), to_dict=True)
     for version in textes_versions:
         yield ('texte_version', version)
-        sommaire = list(db.all("""
+        sommaire = db.deque("""
             SELECT *
               FROM sommaires
              WHERE cid = ?
                AND _source = 'struct/' || ?
-          ORDER BY position DESC
-        """, (cid, version['id']), to_dict=True))
-        # Note: `sommaire` is in reverse order, because python lists are better
-        # at adding elements at the end than at the beginning
+          ORDER BY position ASC
+        """, (cid, version['id']), to_dict=True)
         while True:
             try:
-                s_data = sommaire.pop()
+                s_data = sommaire.popleft()
             except IndexError:
                 break
             e_id = s_data['element']
-            table = TABLES_MAP[e_id[4:8]]
+            typ = TYPES_MAP[e_id[4:8]]
             e_data = db.one("""
                 SELECT *
-                  FROM {0}
+                  FROM {0}s
                  WHERE id = ?
-            """.format(table), (e_id,), to_dict=True)
-            yield (table[:-1], (s_data, e_data))
-            if table == 'sections':
+            """.format(typ), (e_id,), to_dict=True)
+            yield (typ, (s_data, e_data))
+            if typ == 'section':
                 sommaire.extend(db.all("""
                     SELECT *
                       FROM sommaires
                      WHERE cid = ?
                        AND parent = ?
-                  ORDER BY position DESC
+                  ORDER BY position ASC
                 """, (cid, e_id), to_dict=True))
 
 

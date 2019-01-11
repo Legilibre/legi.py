@@ -2,6 +2,7 @@
 This module provides tools to interact with SQLite databases.
 """
 
+from collections import deque
 from itertools import chain, repeat
 import os
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
@@ -43,6 +44,31 @@ class DB(Connection):
             while row:
                 yield row
                 row = fetchone()
+
+    def deque(self, *a, to_dict=False):
+        """This method queries the DB and returns all the rows as a deque.
+        """
+        return deque(self.all(*a, to_dict=to_dict))
+
+    def list(self, *a, to_dict=False):
+        """This method queries the DB and returns all the rows as a list.
+        """
+        if to_dict:
+            with patch_object(self, 'row_factory', dict_factory):
+                cursor = self.execute(*a)
+        else:
+            cursor = self.execute(*a)
+        rows = cursor.fetchall()
+        if rows:
+            if rows.__len__() > self.warning_threshold:
+                warnings.warn((
+                    "The query returned a lot of rows (%i), you should probably use "
+                    "the .all() method to iterate over the results instead of "
+                    "loading them all as one big list."
+                ) % rows.__len__(), ResourceWarning, stacklevel=2)
+            if not to_dict and rows[0].__len__() == 1:
+                return [row[0] for row in rows]
+        return rows
 
     def one(self, *args, to_dict=False):
         """This method queries the DB and returns a single row.
