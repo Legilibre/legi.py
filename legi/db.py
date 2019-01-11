@@ -6,38 +6,61 @@ from itertools import chain, repeat
 import os
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
 import traceback
+import warnings
 
 from .utils import patch_object, IGNORE, ROOT
 
 
 class DB(Connection):
+    __slots__ = ('address', 'warning_threshold')
 
-    def __init__(self, address, row_factory=None):
+    def __init__(self, address, row_factory=None, warning_threshold=100):
         Connection.__init__(self, address)
         self.address = address
         if row_factory:
             if not callable(row_factory):
                 row_factory = ROW_FACTORIES[row_factory]
             self.row_factory = row_factory
+        self.warning_threshold = warning_threshold
 
-    def all(self, *a, **kw):
-        to_dict = kw.get('to_dict', False)
-        with patch_object(self, 'row_factory', dict_factory if to_dict else IGNORE):
-            q = self.execute(*a)
-        return iter_results(q)
+    def all(self, *a, to_dict=False):
+        """This method queries the DB and yields the rows one by one.
+        """
+        if to_dict:
+            with patch_object(self, 'row_factory', dict_factory):
+                cursor = self.execute(*a)
+        else:
+            cursor = self.execute(*a)
+        fetchone = cursor.fetchone
+        row = fetchone()
+        if not row:
+            return
+        if not to_dict and row.__len__() == 1:
+            while row:
+                yield row[0]
+                row = fetchone()
+        else:
+            while row:
+                yield row
+                row = fetchone()
 
-    def one(self, *args, **kw):
-        to_dict = kw.get('to_dict', False)
+    def one(self, *args, to_dict=False):
+        """This method queries the DB and returns a single row.
+        """
         with patch_object(self, 'row_factory', dict_factory if to_dict else IGNORE):
             r = self.execute(*args).fetchone()
-            if r and len(r) == 1 and not to_dict:
+            if r and not to_dict and r.__len__() == 1:
                 r = r[0]
             return r
 
     def changes(self):
+        """This method returns the result of `SELECT changes()`.
+        """
         return self.one("SELECT changes()")
 
     def insert(self, table, attrs, replace=False):
+        """This method inserts one row into the DB.
+        """
         or_clause = 'OR REPLACE' if replace else ''
         keys, values = zip(*attrs.items())
         keys = ','.join(keys)
@@ -52,6 +75,8 @@ class DB(Connection):
             raise
 
     def update(self, table, where, attrs):
+        """This method updates one row in the DB.
+        """
         placeholders, values = dict2sql(attrs)
         where_placeholders, where_values = dict2sql(where, joiner=' AND ')
         try:
@@ -120,15 +145,6 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
         print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
 
     return db
-
-
-def iter_results(q):
-    while True:
-        r = q.fetchmany()
-        if not r:
-            return
-        for row in r:
-            yield row
 
 
 def run_migrations(db):

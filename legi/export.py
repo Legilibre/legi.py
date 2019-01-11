@@ -12,19 +12,19 @@ TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections'}
 
 
 def iterate_everything(db):
-    textes = [r[0] for r in db.all("SELECT id FROM textes")]
+    textes = db.all("SELECT id FROM textes")
     for texte_id in textes:
         for e in iterate_texte(db, texte_id):
             yield e
 
 
 def iterate_texte(db, texte_id):
-    versions = list(db.all("""
+    versions = db.list("""
         SELECT cid, id
           FROM textes_versions
          WHERE texte_id = ?
       ORDER BY date_debut ASC
-    """, (texte_id,), to_dict=True))
+    """, (texte_id,), to_dict=True)
     yield ('texte', {'temp_id': texte_id, 'versions': versions})
     for v in versions:
         for e in iterate_cid(db, v['cid']):
