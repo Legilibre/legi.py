@@ -3,7 +3,7 @@ This module handles the HTML provided in LEGI.
 """
 
 from argparse import ArgumentParser
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from difflib import context_diff, SequenceMatcher
 import json
 import re
@@ -17,7 +17,10 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
-from .utils import connect_db, group_by_2, ascii_spaces_re, escape_nonprintable
+from .spelling import INTRA_WORD_CHARS, fr_checker
+from .utils import (
+    connect_db, group_by_2, ascii_spaces_re, escape_nonprintable, show_match
+)
 
 
 # An immutable type representing the opening of an HTML element
@@ -107,6 +110,129 @@ bad_space_re = re.compile(r"[dl]['’] \w| [,.]", re.I | re.U)
 
 def drop_bad_space(m):
     return m.group(0).replace(' ', '')
+
+
+DASHES_HYPHENS_BAR = set("-\u2010\u2011\u2012\u2013\u2014\u2015")
+intra_word_p = r"[\w%s]" % re.escape(INTRA_WORD_CHARS)
+soft_hyphen_re = re.compile((
+    r"(%(intra_word_p)s*)( ?\u00AD ?)(%(intra_word_p)s*)"
+) % globals())
+
+
+ARTICLES_CACHE = {}
+WORD_LOOKUPS_CACHE = {}
+
+
+def soft_hyphen_replacer(db, cid, table, row_id, log_file):
+    """Returns a substitution function for the `soft_hyphen_re` regex.
+    """
+
+    def reduce_matches(matches):
+        """Reduces a list of matches to a single one.
+        """
+        if not matches:
+            return
+        counts = defaultdict(int)
+        for m in matches:
+            counts[m] += 1
+        if len(counts) == 1:
+            return matches[0]
+
+        def get_sort_key(t):
+            m, count = t
+            return (-int(fr_checker.check(m)), -count, m)
+
+        return sorted(counts.items(), key=get_sort_key)[0][0]
+
+    def search_words_in_text(word_before, word_after, html):
+        """Look for a word combo in an HTML snippet, and in related articles if necessary.
+        """
+        key = (word_before, word_after)
+        if key in WORD_LOOKUPS_CACHE.get(cid, ()):
+            return WORD_LOOKUPS_CACHE[cid][key]
+        word_re = re.compile(r'(?<!\w)%s(?: - | |-)?%s(?!\w)' % (
+            re.escape(word_before), re.escape(word_after)
+        ))
+
+        def search_in_db():
+            matches = []
+            if cid in ARTICLES_CACHE:
+                articles = ARTICLES_CACHE[cid]
+            else:
+                ARTICLES_CACHE.clear()  # only keep one text in the cache
+                articles = ARTICLES_CACHE[cid] = list(db.all("""
+                    SELECT a.bloc_textuel, a.nota
+                      FROM sommaires s
+                      JOIN articles a ON a.id = s.element
+                     WHERE s.cid = ?
+                """, (cid,), to_dict=True))
+            for row in articles:
+                for html in row.values():
+                    if html:
+                        matches.extend(word_re.findall(html))
+            return matches
+
+        r = reduce_matches(search_in_db())
+        WORD_LOOKUPS_CACHE.setdefault(cid, {}).__setitem__(key, r)
+        return r
+
+    def _replace_soft_hyphen(m):
+        word_before, shy, word_after = m[1], m[2], m[3]
+        dash_before, dash_after = False, False
+        if word_before and word_before[-1] in DASHES_HYPHENS_BAR:
+            dash_before = True
+            word_before = word_before[:-1]
+        if word_after and word_after[0] in DASHES_HYPHENS_BAR:
+            dash_after = True
+            word_after = word_after[1:]
+        joined_word = word_before + word_after
+        if word_before and word_after:
+            hyphened_word = word_before + '-' + word_after
+            digit_before, digit_after = word_before[-1].isdigit(), word_after[0].isdigit()
+            if digit_before or digit_after:
+                if digit_before and digit_after:
+                    # Example: 'en annexe 140 \xad 1.A. 3.' → 'en annexe 140-1.A. 3.'
+                    return hyphened_word
+                if ' ' in shy and digit_before and fr_checker.check(word_after):
+                    # Example: 'décret du 29 août 1991 \xadpréparations diététiques'
+                    return word_before + ' - ' + word_after
+                return hyphened_word
+            matched_word = search_words_in_text(word_before, word_after, m.string)
+            if matched_word:
+                return matched_word
+            if fr_checker.check(joined_word):
+                # The soft hyphen is inside a known word
+                if dash_before or dash_after:
+                    # There was also a hard hyphen, keep it
+                    return hyphened_word
+                return joined_word
+            if len(word_before) > 1 and not word_before.islower():
+                if fr_checker.is_proper_noun(hyphened_word):
+                    # Example: 'Vieille \xad Eglise-en-Yvelines'
+                    return hyphened_word
+                elif word_after[0].islower() and fr_checker.is_proper_noun(joined_word):
+                    # Example: 'Ruf \xad fieux'
+                    return joined_word
+            if ' ' not in shy and fr_checker.check(hyphened_word):
+                # Example: 'quatre-vingt\xaddix'
+                return hyphened_word
+        else:
+            hyphened_word = None
+        if dash_before or dash_after:
+            return m[0].replace('\u00AD', '')
+        # Not sure how this soft hyphen should be replaced, let's keep it as-is
+        return m[0]
+
+    def replace_soft_hyphen(m):
+        replaced = _replace_soft_hyphen(m)
+        if log_file:
+            if replaced == m[0]:
+                print(row_id, repr(show_match(m, n=15)), '=', file=log_file)
+            else:
+                print(row_id, repr(show_match(m, n=15)), '→', repr(replaced), file=log_file)
+        return replaced
+
+    return replace_soft_hyphen
 
 
 def is_start_of(s, tag):
@@ -335,20 +461,24 @@ def split_first_paragraph(html):
     return '', ''
 
 
-strip_re = re.compile(r"<.+?>|[ \t\n\r\f\v]+", re.S)
+strip_re = re.compile(r"<[^>]+>|[ \t\n\r\f\v\u00AD]+")
 
 
-def clean_all_html_in_db(db, check=True, dry_run=False):
+def clean_all_html_in_db(db, check=True, dry_run=False, log_file=None):
     stats = {'cleaned': 0, 'delta': 0, 'total': 0}
+    soft_hyphens = defaultdict(list)
 
     def clean_row(table, row):
         row_id = row.pop('id')
+        cid = row.pop('cid')
         update = {}
         for col, html in row.items():
             stats['total'] += 1
             if not html:
                 continue
             html_c = clean_html(html)
+            if '\u00AD' in html_c:
+                soft_hyphens[cid].append((table, row_id, col, html_c))
             if html_c == html:
                 continue
             update[col] = html_c
@@ -399,19 +529,48 @@ def clean_all_html_in_db(db, check=True, dry_run=False):
 
     # Articles
     print("Cleaning articles...")
-    q = db.all("SELECT id, bloc_textuel, nota FROM articles", to_dict=True)
+    q = db.all("SELECT id, cid, bloc_textuel, nota FROM articles", to_dict=True)
     for row in tqdm(q):
         clean_row('articles', row)
     # Textes
     print("Cleaning textes_versions...")
     q = db.all("""
-        SELECT id, visas, signataires, tp, nota, abro, rect
+        SELECT id, cid, visas, signataires, tp, nota, abro, rect
           FROM textes_versions
     """, to_dict=True)
     for row in tqdm(q):
         clean_row('textes_versions', row)
 
     # Print stats
+    print("Done.")
+    print("Cleaned %(cleaned)i HTML fragments, out of %(total)i. Char delta = %(delta)i." % stats)
+
+    # Clean the detected soft hyphens
+    remove_detected_soft_hyphens(db, soft_hyphens, dry_run=dry_run, log_file=log_file)
+
+
+def remove_detected_soft_hyphens(db, soft_hyphens, dry_run=False, log_file=None):
+    """Remove soft hyphens detected while cleaning HTML.
+
+    The removal of soft hyphens is a separate step because we need to be able to
+    search surrounding articles.
+    """
+    if not soft_hyphens:
+        return
+    print("Cleaning detected soft hyphens...")
+    stats = {'cleaned': 0, 'delta': 0, 'total': 0}
+    with tqdm(total=sum(map(len, soft_hyphens.values()))) as bar:
+        for cid, rows in soft_hyphens.items():
+            for table, row_id, col, html in rows:
+                stats['total'] += 1
+                replace_soft_hyphen = soft_hyphen_replacer(db, cid, table, row_id, log_file)
+                html_c = soft_hyphen_re.sub(replace_soft_hyphen, html)
+                if html_c != html:
+                    stats['cleaned'] += 1
+                    stats['delta'] += len(html_c) - len(html)
+                    if not dry_run:
+                        db.update(table, dict(id=row_id), {col: html_c})
+                bar.update()
     print("Done.")
     print("Cleaned %(cleaned)i HTML fragments, out of %(total)i. Char delta = %(delta)i." % stats)
 
@@ -533,6 +692,8 @@ if __name__ == '__main__':
     p.add_argument('--dry-run', default=False, action='store_true')
     p.add_argument('--font-size', default='keep-small', choices=['drop', 'keep-small', 'preserve'],
                    help="what to do with the `size` attribute of `font` elements")
+    p.add_argument('--log-path', default=None,
+                   help="file path to the log of soft hyphen cleanups")
     p.add_argument('--skip-checks', default=False, action='store_true',
                    help="skips checking the result of HTML cleaning")
     args = p.parse_args()
@@ -543,12 +704,14 @@ if __name__ == '__main__':
         DEFAULT_STYLE.pop('size')
 
     db = connect_db(args.db)
+    log_file = open(args.log_path, 'w') if args.log_path else None
     try:
         with db:
             if args.command == 'analyze':
                 analyze(db)
             elif args.command == 'clean':
-                clean_all_html_in_db(db, check=(not args.skip_checks), dry_run=args.dry_run)
+                check = not args.skip_checks
+                clean_all_html_in_db(db, check=check, dry_run=args.dry_run, log_file=log_file)
                 if args.dry_run:
                     raise KeyboardInterrupt
                 save = input('Save changes? (y/N) ')
@@ -557,3 +720,6 @@ if __name__ == '__main__':
                 db.insert('db_meta', dict(key='raw', value=False), replace=True)
     except KeyboardInterrupt:
         pass
+    finally:
+        if log_file:
+            log_file.close()

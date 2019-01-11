@@ -7,8 +7,8 @@ import re
 from .fr_calendar import (
     MOIS_GREG, MOIS_REPU, convert_date_to_iso, gregorian_to_republican,
 )
-from .french import INTRA_WORD_CHARS as intra_word
 from .roman import decimal_to_roman
+from .spelling import INTRA_WORD_CHARS as intra_word
 from .utils import spaces_re, strip_down
 
 
@@ -40,7 +40,7 @@ ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
 date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee)(?!-))?' % globals()
-type_loi_p = r'(constitutionnelle|organique|locale|de(?: [\w%s]+){1,20}(?= \(?n°))' % intra_word
+type_loi_p = r'(constitutionnelle|organique|locale|de(?: [\w%s]+){1,20}(?= \(?n°))' % re.escape(intra_word)
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature_strict_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique|locale))', re.U | re.I)

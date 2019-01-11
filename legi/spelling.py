@@ -11,7 +11,9 @@ import hunspell
 from .roman import ROMAN_PATTERN_SIMPLE
 
 
-DEFAULT_INTRA_WORD_CHARS = set("'’.-‐‑–")  # the dot is for abbreviations
+APOSTROPHES = "'’"
+HYPHENS = "-‐‑"
+INTRA_WORD_CHARS = APOSTROPHES + HYPHENS + "."  # the dot is for abbreviations
 
 
 class SpellcheckingIsUnavailable(Exception):
@@ -23,14 +25,14 @@ class Spellchecker:
     """
     __slots__ = ('lang', 'dict', 'filters', 'intra_word_chars')
 
-    def __init__(self, lang, filters=(), intra_word_chars=DEFAULT_INTRA_WORD_CHARS):
+    def __init__(self, lang, filters=(), intra_word_chars=INTRA_WORD_CHARS):
         self.lang = lang
         paths = self._find_hunspell_files()
         if not paths:
             raise SpellcheckingIsUnavailable("the hunspell files for lang %r are missing" % lang)
         self.dict = hunspell.HunSpell(*paths)
         self.filters = filters
-        self.intra_word_chars = intra_word_chars
+        self.intra_word_chars = set(intra_word_chars)
 
     def _find_hunspell_files(self):
         lang = self.lang
@@ -75,6 +77,47 @@ class Spellchecker:
             if f(word, text, index, text_is_upper=text_is_upper):
                 return True
         return False
+
+    def is_proper_noun(self, word):
+        """Attempts to determine whether a word is a proper noun.
+
+        >>> fr_checker.is_proper_noun("Saint-Nicolas-de-Port")
+        True
+        >>> fr_checker.is_proper_noun("Seuil-d'Argonne")
+        True
+        >>> fr_checker.is_proper_noun("Saint-Rémy-l'Honoré")
+        True
+        >>> fr_checker.is_proper_noun("VARCES-ALLIERES-ET-RISSET")
+        True
+        >>> fr_checker.is_proper_noun("Véhi-cule")
+        False
+        >>> fr_checker.is_proper_noun("Vol-mont")
+        False
+        >>> fr_checker.is_proper_noun("DÉCLA-RATION")
+        False
+        """
+        word = re.sub(r'[\u2010-\u2013]', '-', word)
+        if self.dict.spell(word.replace('-', '').lower()):
+            return False
+        parts = word.split('-')
+        good = False
+        for i, part in enumerate(parts):
+            if part.islower():
+                # Les noms propres contiennent souvent des prépositions telles
+                # que 'le', mais seulement au milieu, pas en début ou fin de nom
+                if i == 0:
+                    return False
+                else:
+                    good = False
+                    continue
+            if len(part) > 2 and part[0].isalpha() and part[1] in APOSTROPHES:
+                # Example: "d'Argonne"
+                part = part[2:]
+            if part.isupper() or part.istitle():
+                good = True
+                continue
+            return False
+        return good
 
     def list_misspelled_words(self, text):
         """Returns a list of the misspelled words found in `text`.
