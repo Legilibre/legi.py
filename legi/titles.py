@@ -39,12 +39,12 @@ premier_du_mois = re.compile(r'\b1 %(mois_p)s %(annee_p)s' % globals())
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
+date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee)(?!-))?' % globals()
 type_loi_p = r'(constitutionnelle|organique|locale|de(?: [\w%s]+){1,20}(?= \(?n°))' % intra_word
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature_strict_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique|locale))', re.U | re.I)
-numero_p = r'(n[°o.] ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
+numero_p = r'((du )?n[°o.] ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
 titre1_strict_re = re.compile(r'(%(annexe_p)s)?%(nature_strict_p)s?' % globals(), re.U | re.I)
 titre2_re = re.compile(r' ?\(?(%(autorite_p)s|%(date_p)s|%(numero_p)s|%(ordure_p)s)\)?' % globals(), re.U | re.I)
