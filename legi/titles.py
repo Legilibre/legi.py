@@ -7,6 +7,7 @@ import re
 from .fr_calendar import (
     MOIS_GREG, MOIS_REPU, convert_date_to_iso, gregorian_to_republican,
 )
+from .french import INTRA_WORD_CHARS as intra_word
 from .roman import decimal_to_roman
 from .utils import spaces_re, strip_down
 
@@ -32,22 +33,22 @@ NATURE_MAP_R_SD = {strip_down(v): k for k, v in NATURE_MAP.items()}
 jour_p = r'(?P<jour>1er|[0-9]{1,2})'
 mois_p = r'(?P<mois>%s)' % '|'.join(MOIS_GREG+MOIS_REPU)
 annee_p = r'(?P<annee>[0-9]{4,}|an [IVX]+)'
-numero_re = re.compile(r'n°(?!\s)', re.U)
+numero_re = re.compile(r'n°( ?° ?|(?!\s))', re.U)
 premier_du_mois = re.compile(r'\b1 %(mois_p)s %(annee_p)s' % globals())
 
 ordure_p = r'quinquennale?'
 annexe_p = r"(?P<annexe>Annexe (au |à la |à l'|du ))"
 autorite_p = r'(?P<autorite>ministériel(le)?|du Roi|du Conseil d\'[EÉ]tat)'
-date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee))?' % globals()
-type_loi_p = r'(constitutionnelle|organique|locale)'
+date_p = r'(du )?(?P<date>(%(jour_p)s )?%(mois_p)s( %(annee_p)s)?)( (?P=annee)(?!-))?' % globals()
+type_loi_p = r'(constitutionnelle|organique|locale|de(?: [\w%s]+){1,20}(?= \(?n°))' % intra_word
 nature_p = r'(?P<nature>Arr[êe]t[ée]|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature_strict_p = r'(?P<nature>Arrêté|Code|Constitution|Convention|Décision|Déclaration|Décret(-loi)?|Loi( %(type_loi_p)s)?|Ordonnance)' % globals()
 nature2_re = re.compile(r'(?P<nature2> (constitutionnelle|organique|locale))', re.U | re.I)
-numero_p = r'(n° ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
+numero_p = r'((du )?n[°o.] ?)?(?P<numero>[0-9]+([\-–][0-9]+)*(, ?[0-9]+(-[0-9]+)*)*( et autres)?)\.?'
 titre1_re = re.compile(r'(%(annexe_p)s)?(%(nature_p)s)?' % globals(), re.U | re.I)
-titre1_strict_re = re.compile(r'(%(annexe_p)s)?%(nature_strict_p)s' % globals(), re.U | re.I)
-titre2_re = re.compile(r' ?(%(autorite_p)s|\(?%(date_p)s\)?|%(numero_p)s|%(ordure_p)s)' % globals(), re.U | re.I)
-titre2_strict_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| %(numero_p)s| %(ordure_p)s)' % globals(), re.U | re.I)
+titre1_strict_re = re.compile(r'(%(annexe_p)s)?%(nature_strict_p)s?' % globals(), re.U | re.I)
+titre2_re = re.compile(r' ?\(?(%(autorite_p)s|%(date_p)s|%(numero_p)s|%(ordure_p)s)\)?' % globals(), re.U | re.I)
+titre2_strict_re = re.compile(r'( %(autorite_p)s| \(?%(date_p)s\)?| \(?%(numero_p)s\)?| %(ordure_p)s)' % globals(), re.U | re.I)
 
 
 def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
@@ -57,7 +58,7 @@ def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
         titre = annexe[0].upper() + annexe[1:].lower()
         titre += NATURE_MAP.get(nature, nature).lower()
     else:
-        titre = NATURE_MAP.get(nature, nature.title())
+        titre = NATURE_MAP.get(nature, nature[0].upper() + nature[1:].lower())
     if autorite:
         titre += ' ' + AUTORITE_MAP[autorite]
     if num:

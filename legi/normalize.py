@@ -20,7 +20,6 @@ from .sections import (
     legifrance_url_section, normalize_section_num, section_re, section_type_p,
     sujet_re,
 )
-from .spelling import spellcheck
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
     ascii_spaces_re, connect_db, filter_nonalnum, mimic_case, nonword_re,
@@ -353,21 +352,15 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
             is_full_match = len(m.group(0)) == len(num)
             if not is_full_match:
                 offset = m.end(0)
-                part1, part2 = num[:offset], num[offset:]
+                part2 = num[offset:]
                 is_full_match = (
                     part2[:3] == ' : ' or
                     part2.startswith(' relative ') or
                     part2.startswith(' relatif ')
                 )
                 if is_full_match:
-                    if upper_word_re.search(part2):
-                        if spellcheck(part2):
-                            num = part1 + upper_word_re.sub(lower, part2)
-                            count('lowercased subtitle (spellcheck)')
-                        else:
-                            count('still uppercase')
-                            url = legifrance_url_article(article_id, cid)
-                            print("Warning: still uppercase:", repr(num), ' ', url)
+                    if upper_words_percentage(part2) > 0.2:
+                        count('detected a bad title (uppercase)')
                 elif part2.startswith(' aux articles '):
                     # titre tronqué, on essaye de le compléter en extrayant le
                     # premier paragraphe du contenu de l'article
@@ -391,23 +384,10 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
                         print("Warning: échec de la récupération du titre: %r   %s" % (paragraph, url))
             if is_full_match:
                 count('article_titre regexp matched')
-                if num != orig_num:
-                    add_change((orig_num, num))
-                continue
             else:
                 count('article_titre regexp did not match')
                 url = legifrance_url_article(article_id, cid)
                 print("Warning: capture partielle du numéro: %r   %s" % (show_match(m), url))
-
-        if upper_word_re.search(num):
-            if spellcheck(num):
-                num = upper_word_re.sub(lower, num)
-                num = num[0].upper() + num[1:]
-                count('lowercased (spellcheck)')
-            else:
-                count('still uppercase')
-                url = legifrance_url_article(article_id, cid)
-                print("Warning: still uppercase:", repr(num), ' ', url)
 
         if num != orig_num:
             add_change((orig_num, num))
@@ -634,16 +614,20 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
         'date_texte': 32,
     }
 
-    update_counts = defaultdict(int)
-    def count_update(k):
-        update_counts[k] += 1
+    counts = defaultdict(int)
 
     changes = defaultdict(int)
+    def add_change(orig_value, new_value):
+        if filter_nonalnum(new_value) == filter_nonalnum(orig_value):
+            # Not worth logging
+            return
+        changes[(orig_value, new_value)] += 1
+
     updates = {}
     orig_values = {}
     q = db.all("""
         SELECT id, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
-          FROM textes_versions
+          FROM textes_versions_brutes_view
     """)
     for row in q:
         text_id, titre_o, titrefull_o, titrefull_s_o, nature_o, num, date_texte, autorite = row
@@ -677,6 +661,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                     elif n_upper_2 > n_upper_1:
                         titre = titrefull[:len_titre]
         if upper_words_percentage(titre) > 0.2:
+            counts['failed to normalize titre (still uppercase)'] += 1
             print('Échec: titre "', titre, '" contient beaucoup de mots en majuscule', sep='')
         if nature != 'CODE':
             anomaly = [False]
@@ -711,8 +696,11 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                           sep='')
                     anomaly[0] = True
                 annexe = get_key('annexe', ignore_not_found=True)
-                nature_d = strip_down(get_key('nature'))
+                nature_complète = get_key('nature')
+                nature_d = strip_down(nature_complète)
                 nature_d = NATURE_MAP_R_SD.get(nature_d, nature_d).upper()
+                if ' ' in nature_d:
+                    nature_d = nature_d.split(' ', 1)[0]
                 if nature_d and nature_d != nature:
                     if not nature:
                         nature = nature_d
@@ -725,15 +713,19 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                 num_d = get_key('numero', ignore_not_found=True)
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
-                        if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
+                        if annexe:
+                            # On ne veut pas donner le numéro d'un décret à son annexe,
+                            # mais on ne va pas retirer le numéro du titre non plus
+                            num = num_d
+                        else:
                             if '-' in num_d or nature == 'DECISION':
                                 orig_values['num'] = num
                                 updates['num'] = num = num_d
-                                count_update('num')
+                                counts['updated num'] += 1
                     elif num[-1] == '.' and num[:-1] == num_d:
                         orig_values['num'] = num
                         updates['num'] = num = num_d
-                        count_update('num')
+                        counts['updated num'] += 1
                     else:
                         print('Incohérence: numéro: "', num_d, '" (detecté) ≠ "', num, '" (donné)', sep='')
                         anomaly[0] = True
@@ -743,7 +735,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                     if not date_texte or date_texte == '2999-01-01':
                         orig_values['date_texte'] = date_texte
                         updates['date_texte'] = date_texte = date_texte_d
-                        count_update('date_texte')
+                        counts['updated date_texte'] += 1
                     elif date_texte_d != date_texte:
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
                         anomaly[0] = True
@@ -755,34 +747,46 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                         if not autorite:
                             orig_values['autorite'] = autorite
                             updates['autorite'] = autorite = autorite_d
-                            count_update('autorite')
+                            counts['updated autorite'] += 1
                         elif autorite != autorite_d:
                             print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
                             anomaly[0] = True
                 if not anomaly[0]:
-                    titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
+                    titre = gen_titre(annexe, nature_complète, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
                     titrefull_p2 = titrefull[endpos2:]
-                    if titrefull_p2 and titrefull_p2[0] != ' ':
+                    if titrefull_p2 and titrefull_p2[0].isalnum():
                         titrefull_p2 = ' ' + titrefull_p2
                     titrefull = titre + titrefull_p2
+                    if num and titrefull.count(num) != 1:
+                        print((
+                            "Échec: `num` apparaît %i fois dans le `titrefull`: %r\n"
+                            "             construit à partir de `titrefull_o`: %r\n"
+                            "                                 et de `titre_o`: %r"
+                        ) % (titrefull.count(num), titrefull, titrefull_o, titre_o))
+        if titrefull != titre and upper_words_percentage(titrefull) > 0.5:
+            counts['detected a bad titrefull (uppercase)'] += 1
+        if quotes_re.search(titrefull):
+            titrefull = quotes_re.sub(replace_quotes, titrefull)
+            counts['normalized quotes in titrefull'] += 1
         titrefull_s = filter_nonalnum(titrefull)
         if titre != titre_o:
-            count_update('titre')
+            counts['updated titre'] += 1
             orig_values['titre'] = titre_o
             updates['titre'] = titre
+            add_change(titre_o, titre)
         if titrefull != titrefull_o:
-            count_update('titrefull')
+            counts['updated titrefull'] += 1
             orig_values['titrefull'] = titrefull_o
             updates['titrefull'] = titrefull
+            add_change(titrefull_o, titrefull)
         if nature != nature_o:
-            count_update('nature')
+            counts['updated nature'] += 1
             orig_values['nature'] = nature_o
             updates['nature'] = nature
         for col, new_value in updates.items():
             orig_value = orig_values[col]
             assert new_value != orig_value
-            changes[(orig_value, new_value)] += 1
         if titrefull_s != titrefull_s_o:
             updates['titrefull_s'] = titrefull_s
         if updates:
@@ -802,8 +806,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                     db.insert("textes_versions_brutes", orig_values, replace=True)
                 orig_values.clear()
 
-    print('Done. Updated %i values: %s' %
-          (sum(update_counts.values()), json.dumps(update_counts, indent=4)))
+    print('Done. Result:', json.dumps(counts, indent=4))
 
     if log_file:
         log_file.write("# titres de textes\n")
@@ -817,7 +820,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
-    p.add_argument('what', default='all', choices=[
+    p.add_argument('what', nargs='?', default='all', choices=[
         'all', 'articles_num', 'sections_titres', 'textes_titres'
     ])
     p.add_argument('--dry-run', action='store_true', default=False)

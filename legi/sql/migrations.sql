@@ -31,3 +31,18 @@ CREATE VIEW textes_versions_brutes_view AS
 
 -- migration #3
 !RECREATE!
+
+-- migration #4
+DROP VIEW textes_versions_brutes_view;
+CREATE VIEW textes_versions_brutes_view AS
+    SELECT a.dossier, a.cid, a.id,
+           (CASE WHEN b.bits & 1 > 0 THEN b.nature ELSE a.nature END) AS nature,
+           (CASE WHEN b.bits & 2 > 0 THEN b.titre ELSE a.titre END) AS titre,
+           (CASE WHEN b.bits & 4 > 0 THEN b.titrefull ELSE a.titrefull END) AS titrefull,
+           (CASE WHEN b.bits & 8 > 0 THEN b.autorite ELSE a.autorite END) AS autorite,
+           (CASE WHEN b.bits & 16 > 0 THEN b.num ELSE a.num END) AS num,
+           (CASE WHEN b.bits & 32 > 0 THEN b.date_texte ELSE a.date_texte END) AS date_texte,
+           a.titrefull_s
+      FROM textes_versions a
+ LEFT JOIN textes_versions_brutes b
+        ON b.id = a.id AND b.cid = a.cid AND b.dossier = a.dossier AND b.mtime = a.mtime;
