@@ -17,8 +17,8 @@ from .french import get_clean_ordinal
 from .html import bad_space_re, drop_bad_space, split_first_paragraph
 from .roman import ROMAN_PATTERN as roman_num
 from .sections import (
-    legifrance_url_section, normalize_section_num, section_re, section_type_p,
-    sujet_re,
+    legifrance_url_section, normalize_section_num, reduce_section_title,
+    section_re, section_type_p, sujet_re,
 )
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
@@ -602,6 +602,47 @@ def normalize_section_titles(db, dry_run=False, log_file=None):
                 log_file.write('%r => %r (%i×)\n' % (change[0], change[1], count))
 
 
+def normalize_sommaires_num(db, dry_run=False, log_file=None):
+    print("> Normalisation des numéros dans les sommaires...")
+
+    counts = {}
+
+    db.run("""
+        UPDATE sommaires AS so
+           SET num = (
+                   SELECT a.num
+                     FROM articles a
+                    WHERE a.id = so.element
+               )
+         WHERE substr(so.element, 5, 4) = 'ARTI'
+           AND COALESCE(so.num, '') <> (
+                   SELECT COALESCE(a.num, '')
+                     FROM articles a
+                    WHERE a.id = so.element
+               )
+    """)
+    counts['updated num for article'] = db.changes()
+
+    db.create_function('reduce_section_title', 1, reduce_section_title)
+    db.run("""
+        UPDATE sommaires AS so
+           SET num = (
+                   SELECT reduce_section_title(s.titre_ta)
+                     FROM sections s
+                    WHERE s.id = so.element
+               )
+         WHERE substr(so.element, 5, 4) = 'SCTA'
+           AND COALESCE(so.num, '') <> (
+                   SELECT reduce_section_title(s.titre_ta)
+                     FROM sections s
+                    WHERE s.id = so.element
+               )
+    """)
+    counts['updated num for section'] = db.changes()
+
+    print("Done. Result: " + json.dumps(counts, indent=4, sort_keys=True))
+
+
 def normalize_text_titles(db, dry_run=False, log_file=None):
     print("> Normalisation des titres des textes...")
 
@@ -821,7 +862,7 @@ if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
     p.add_argument('what', nargs='?', default='all', choices=[
-        'all', 'articles_num', 'sections_titres', 'textes_titres'
+        'all', 'articles_num', 'sections_titres', 'sommaires_num', 'textes_titres'
     ])
     p.add_argument('--dry-run', action='store_true', default=False)
     p.add_argument('--log-path', default='/dev/null')
@@ -837,6 +878,8 @@ if __name__ == '__main__':
                 normalize_section_titles(db, dry_run=args.dry_run, log_file=log_file)
             if args.what in ('all', 'articles_num'):
                 normalize_article_numbers(db, dry_run=args.dry_run, log_file=log_file)
+            if args.what in ('all', 'sommaires_num'):
+                normalize_sommaires_num(db, dry_run=args.dry_run, log_file=log_file)
             if args.dry_run:
                 raise KeyboardInterrupt
     except KeyboardInterrupt:
