@@ -766,6 +766,9 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                         ) % (titrefull.count(num), titrefull, titrefull_o, titre_o))
         if titrefull != titre and upper_words_percentage(titrefull) > 0.5:
             counts['detected a bad titrefull (uppercase)'] += 1
+        if quotes_re.search(titrefull):
+            titrefull = quotes_re.sub(replace_quotes, titrefull)
+            counts['normalized quotes in titrefull'] += 1
         titrefull_s = filter_nonalnum(titrefull)
         if titre != titre_o:
             counts['updated titre'] += 1
