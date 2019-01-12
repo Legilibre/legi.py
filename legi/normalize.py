@@ -20,7 +20,6 @@ from .sections import (
     legifrance_url_section, normalize_section_num, section_re, section_type_p,
     sujet_re,
 )
-from .spelling import spellcheck
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
     ascii_spaces_re, connect_db, filter_nonalnum, mimic_case, nonword_re,
@@ -353,21 +352,15 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
             is_full_match = len(m.group(0)) == len(num)
             if not is_full_match:
                 offset = m.end(0)
-                part1, part2 = num[:offset], num[offset:]
+                part2 = num[offset:]
                 is_full_match = (
                     part2[:3] == ' : ' or
                     part2.startswith(' relative ') or
                     part2.startswith(' relatif ')
                 )
                 if is_full_match:
-                    if upper_word_re.search(part2):
-                        if spellcheck(part2):
-                            num = part1 + upper_word_re.sub(lower, part2)
-                            count('lowercased subtitle (spellcheck)')
-                        else:
-                            count('still uppercase')
-                            url = legifrance_url_article(article_id, cid)
-                            print("Warning: still uppercase:", repr(num), ' ', url)
+                    if upper_words_percentage(part2) > 0.2:
+                        count('detected a bad title (uppercase)')
                 elif part2.startswith(' aux articles '):
                     # titre tronqué, on essaye de le compléter en extrayant le
                     # premier paragraphe du contenu de l'article
@@ -391,23 +384,10 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
                         print("Warning: échec de la récupération du titre: %r   %s" % (paragraph, url))
             if is_full_match:
                 count('article_titre regexp matched')
-                if num != orig_num:
-                    add_change((orig_num, num))
-                continue
             else:
                 count('article_titre regexp did not match')
                 url = legifrance_url_article(article_id, cid)
                 print("Warning: capture partielle du numéro: %r   %s" % (show_match(m), url))
-
-        if upper_word_re.search(num):
-            if spellcheck(num):
-                num = upper_word_re.sub(lower, num)
-                num = num[0].upper() + num[1:]
-                count('lowercased (spellcheck)')
-            else:
-                count('still uppercase')
-                url = legifrance_url_article(article_id, cid)
-                print("Warning: still uppercase:", repr(num), ' ', url)
 
         if num != orig_num:
             add_change((orig_num, num))
