@@ -705,7 +705,11 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                 num_d = get_key('numero', ignore_not_found=True)
                 if num_d and num_d != num and num_d != date_texte:
                     if not num or not num[0].isdigit():
-                        if not annexe:  # On ne veut pas donner le numéro d'un décret à son annexe
+                        if annexe:
+                            # On ne veut pas donner le numéro d'un décret à son annexe,
+                            # mais on ne va pas retirer le numéro du titre non plus
+                            num = num_d
+                        else:
                             if '-' in num_d or nature == 'DECISION':
                                 orig_values['num'] = num
                                 updates['num'] = num = num_d
