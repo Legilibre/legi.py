@@ -755,7 +755,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                     titre = gen_titre(annexe, nature_complète, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
                     titrefull_p2 = titrefull[endpos2:]
-                    if titrefull_p2 and titrefull_p2[0] != ' ':
+                    if titrefull_p2 and titrefull_p2[0].isalnum():
                         titrefull_p2 = ' ' + titrefull_p2
                     titrefull = titre + titrefull_p2
                     if num and titrefull.count(num) != 1:
