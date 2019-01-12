@@ -814,7 +814,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
 if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
-    p.add_argument('what', default='all', choices=[
+    p.add_argument('what', nargs='?', default='all', choices=[
         'all', 'articles_num', 'sections_titres', 'textes_titres'
     ])
     p.add_argument('--dry-run', action='store_true', default=False)
