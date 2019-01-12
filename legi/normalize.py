@@ -696,8 +696,11 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                           sep='')
                     anomaly[0] = True
                 annexe = get_key('annexe', ignore_not_found=True)
-                nature_d = strip_down(get_key('nature'))
+                nature_complète = get_key('nature')
+                nature_d = strip_down(nature_complète)
                 nature_d = NATURE_MAP_R_SD.get(nature_d, nature_d).upper()
+                if ' ' in nature_d:
+                    nature_d = nature_d.split(' ', 1)[0]
                 if nature_d and nature_d != nature:
                     if not nature:
                         nature = nature_d
@@ -749,7 +752,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                             print('Incohérence: autorité "', autorite_d, '" (detectée) ≠ "', autorite, '" (donnée)', sep='')
                             anomaly[0] = True
                 if not anomaly[0]:
-                    titre = gen_titre(annexe, nature, num, date_texte, calendar, autorite)
+                    titre = gen_titre(annexe, nature_complète, num, date_texte, calendar, autorite)
                     len_titre = len(titre)
                     titrefull_p2 = titrefull[endpos2:]
                     if titrefull_p2 and titrefull_p2[0] != ' ':
