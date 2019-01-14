@@ -4,7 +4,7 @@ This module handles the HTML provided in LEGI.
 
 from argparse import ArgumentParser
 from collections import namedtuple
-from difflib import ndiff
+from difflib import context_diff, SequenceMatcher
 import json
 import re
 from xml.parsers import expat
@@ -17,7 +17,7 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
-from .utils import connect_db, group_by_2, ascii_spaces_re
+from .utils import connect_db, group_by_2, ascii_spaces_re, escape_nonprintable
 
 
 # An immutable type representing the opening of an HTML element
@@ -371,9 +371,12 @@ def clean_all_html_in_db(db, check=True):
             if html_s != html_c_s:
                 print()
                 print("=" * 70)
-                print("Cleaning column '%s' of row '%s' resulted in content loss. Diff:" %
+                print("Cleaning column '%s' of row '%s' resulted in modified content. Diff:" %
                       (col, row_id))
-                print(*ndiff([html_s], [html_c_s], None, None), sep='\n')
+                print(diff_compacted_texts(
+                    escape_nonprintable(html_s),
+                    escape_nonprintable(html_c_s)
+                ))
             # Check that cleaning a second time does not alter the result
             try:
                 html_c_2 = clean_html(html_c)
@@ -388,7 +391,7 @@ def clean_all_html_in_db(db, check=True):
                 print("=" * 70)
                 print("Inconsistent output for column '%s' of row '%s'." % (col, row_id))
                 print("*" * 5, "Original data:", "*" * 5)
-                print(html)
+                print(escape_nonprintable(html))
                 print("*" * 5, "Second run diff:", "*" * 5)
                 print(diff_html(html_c, html_c_2))
         if update:
@@ -418,14 +421,40 @@ def split_html_into_lines(html):
     """
     tags = '(?:%s)' % ('|'.join(TRIM_AROUND_ELEMENTS))
     html_split_re = re.compile(r"</{0}>".format(tags), re.I)
-    return html_split_re.sub('\\0\n', html.replace('\n', '\\n')).split('\n')
+    return html_split_re.sub('\\0\n', escape_nonprintable(html)).splitlines(keepends=True)
 
 
 def diff_html(html_a, html_b):
     """Diff two HTML documents.
     """
     a, b = split_html_into_lines(html_a), split_html_into_lines(html_b)
-    return '\n'.join(ndiff(a, b, None, None))
+    return ''.join(context_diff(a, b))
+
+
+def diff_compacted_texts(a, b, n=15):
+    differ = SequenceMatcher(isjunk=None, a=a, b=b, autojunk=True)
+    matches = differ.get_matching_blocks()
+    n2 = n * 2
+    prev_a_pos, prev_b_pos, prev_m_size = None, None, None
+    chunks = []
+    for match in matches:
+        a_pos, b_pos, m_size = match
+        if prev_m_size:
+            chunks.append('\033[1;91m')
+            chunks.append(a[prev_a_pos+prev_m_size:a_pos])
+            chunks.append('\033[92m')
+            chunks.append(b[prev_b_pos+prev_m_size:b_pos])
+            chunks.append('\033[0m')
+        if m_size == 0:
+            pass
+        elif m_size <= n2:
+            chunks.append(a[a_pos:a_pos+m_size])
+        else:
+            chunks.append(a[a_pos:a_pos+n])
+            chunks.append('[…]')
+            chunks.append(a[a_pos+m_size-n:a_pos+m_size])
+        prev_a_pos, prev_b_pos, prev_m_size = match
+    return ''.join(chunks)
 
 
 class StatsCollector:

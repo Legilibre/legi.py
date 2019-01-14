@@ -370,3 +370,12 @@ def show_match(m, n=30, wrapper='%s{%s}%s'):
     after = m_string.find(' ', m_end + n)
     after = m_string[m_end:] if after == -1 else m_string[m_end:after+1] + '[…]'
     return wrapper % (before, m_string[m_start:m_end], after)
+
+
+def escape_nonprintable(s: str) -> str:
+    r"""Escape nonprintable characters in the given string.
+
+    >>> escape_nonprintable("Arrêté anti\u00ADconstitutionnel\n")
+    'Arrêté anti\\xadconstitutionnel\\n'
+    """
+    return ''.join((c if c.isprintable() else c.__repr__()[1:-1]) for c in s)
