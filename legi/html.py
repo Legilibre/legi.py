@@ -338,7 +338,7 @@ def split_first_paragraph(html):
 strip_re = re.compile(r"<.+?>|[ \t\n\r\f\v]+", re.S)
 
 
-def clean_all_html_in_db(db, check=True):
+def clean_all_html_in_db(db, check=True, dry_run=False):
     stats = {'cleaned': 0, 'delta': 0, 'total': 0}
 
     def clean_row(table, row):
@@ -394,7 +394,7 @@ def clean_all_html_in_db(db, check=True):
                 print(escape_nonprintable(html))
                 print("*" * 5, "Second run diff:", "*" * 5)
                 print(diff_html(html_c, html_c_2))
-        if update:
+        if update and not dry_run:
             db.update(table, dict(id=row_id), update)
 
     # Articles
@@ -530,6 +530,7 @@ if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('command', choices=['analyze', 'clean'])
     p.add_argument('db')
+    p.add_argument('--dry-run', default=False, action='store_true')
     p.add_argument('--font-size', default='keep-small', choices=['drop', 'keep-small', 'preserve'],
                    help="what to do with the `size` attribute of `font` elements")
     p.add_argument('--skip-checks', default=False, action='store_true',
@@ -547,7 +548,9 @@ if __name__ == '__main__':
             if args.command == 'analyze':
                 analyze(db)
             elif args.command == 'clean':
-                clean_all_html_in_db(db, check=(not args.skip_checks))
+                clean_all_html_in_db(db, check=(not args.skip_checks), dry_run=args.dry_run)
+                if args.dry_run:
+                    raise KeyboardInterrupt
                 save = input('Save changes? (y/N) ')
                 if save.lower() != 'y':
                     raise KeyboardInterrupt
