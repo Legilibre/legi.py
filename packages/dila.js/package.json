@@ -2,11 +2,9 @@
   "name": "legi",
   "description": "API NodeJS pour requêter les textes de loi issus d'une base legi.py",
   "version": "2.0.0",
-  "author": "Julien Bouquillon <julien@revolunet.com>",
+  "author": "Julien Bouquillon <julien@bouquillon.com>",
   "license": "MIT",
-  "files": [
-    "src"
-  ],
+  "files": ["src"],
   "scripts": {
     "test": "jest",
     "test-watch": "jest --watch",
