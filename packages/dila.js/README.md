@@ -4,7 +4,7 @@
 ![license](https://img.shields.io/npm/l/legi.svg)
 [![github-issues](https://img.shields.io/github/issues/revolunet/legi.js.svg)](https://github.com/revolunet/legi.js/issues)
 
-![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)
+[![nodei.co](https://nodei.co/npm/legi.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/legi)
 
 Une API NodeJS pour requêter les textes de loi bruts issus d'une base [legi.py](https://github.com/Legilibre/legi.py)
 
@@ -12,7 +12,7 @@ Utilise [knex](https://github.com/tgriesser/knex/) pour exploiter les données d
 
 Par défaut l'API utilisateur utilise un serveur de dev public pour fournir les textes.
 
-Vous pouvez utiliser votre propre base de données en montnt votre serveur PostgreSQL avec [legi-postgres](https://github.com/legilibre/legi-postgres)
+Vous pouvez utiliser votre propre base de données en montant votre serveur PostgreSQL avec [legi-postgres](https://github.com/legilibre/legi-postgres)
 
 ## Install
 
@@ -81,7 +81,8 @@ Plus d'exemples dans [./examples](./examples)
 
 ## Todo
 
-- versions et liens dans getArticle
+- gestion dates/versions
+- gestion textes type JORF, decrets...
 
 ### Related
 
