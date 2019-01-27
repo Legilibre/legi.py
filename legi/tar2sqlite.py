@@ -170,7 +170,7 @@ def process_archive(db, archive_path, process_links=True):
     insert = db.insert
     update = db.update
 
-    def get_table( parts):
+    def get_table(parts):
         if parts[-1][4:8] not in TABLES_MAP:
             return None
         table = TABLES_MAP[parts[-1][4:8]]
@@ -188,7 +188,7 @@ def process_archive(db, archive_path, process_links=True):
         except KeyError:
             counts[k] = 1
 
-    base = db.one("SELECT value FROM db_meta WHERE key = 'base'") or LEGI
+    base = db.one("SELECT value FROM db_meta WHERE key = 'base'") or 'LEGI'
 
     skipped = 0
     unknown_folders = {}
@@ -207,8 +207,8 @@ def process_archive(db, archive_path, process_links=True):
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
             if parts[0] not in ['legi', 'jorf'] or \
-               ( parts[0] == 'legi' and not parts[2].startswith('code_et_TNC_') ) or \
-               ( parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte'] ):
+               (parts[0] == 'legi' and not parts[2].startswith('code_et_TNC_')) or \
+               (parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte']):
                 # https://github.com/Legilibre/legi.py/issues/23
                 try:
                     unknown_folders[parts[2]] += 1
