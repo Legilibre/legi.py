@@ -241,7 +241,7 @@ def process_archive(db, archive_path, process_links=True):
             # Skip the file if it hasn't changed, store it if it's a duplicate
             duplicate = False
             table = get_table(parts)
-            if table == None:
+            if table is None:
                 try:
                     unknown_folders[text_id] += 1
                 except KeyError:
