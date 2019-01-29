@@ -8,3 +8,4 @@
 .tox/
 legi.sqlite*
 /tarballs/
+.vscode
