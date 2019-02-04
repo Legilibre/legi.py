@@ -8,3 +8,4 @@
 .tox/
 *.sqlite*
 /tarballs/
+.vscode

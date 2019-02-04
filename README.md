@@ -65,7 +65,7 @@ exemple avec [cron][cron] :
 
 (`chronic` fait partie des [`moreutils`](http://joeyh.name/code/moreutils/).)
 
-L'option `--base JORF` permet de créer une base JORF au lieu d'une base LEGI.
+L'option `--base` permet d'utiliser la base JORF ou KALI au lieu de la base LEGI.
 
 ## Fonctionnalités
 

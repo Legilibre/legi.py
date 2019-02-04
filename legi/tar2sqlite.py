@@ -51,12 +51,18 @@ def suppress(base, get_table, db, liste_suppression):
         text_cid = parts[11] if base == 'LEGI' else text_id
         assert len(text_id) == 20
         table = get_table(parts)
-        db.run("""
-            DELETE FROM {0}
-             WHERE dossier = ?
-               AND cid = ?
-               AND id = ?
-        """.format(table), (parts[3], text_cid, text_id))
+        if table == "conteneurs":
+            db.run("""
+                DELETE FROM {0}
+                WHERE id = ?
+            """.format(table), (text_id))
+        else:
+            db.run("""
+                DELETE FROM {0}
+                WHERE dossier = ?
+                AND cid = ?
+                AND id = ?
+            """.format(table), (parts[3], text_cid, text_id))
         changes = db.changes()
         if changes:
             count(counts, 'delete from ' + table, changes)
@@ -83,6 +89,11 @@ def suppress(base, get_table, db, liste_suppression):
                        AND _source = 'struct/' || ?
                 """, (text_cid, text_id))
                 count(counts, 'delete from sommaires', db.changes())
+            elif table == "conteneurs":
+                db.run("""
+                    DELETE FROM sommaires
+                    WHERE _source = ?
+                """, (text_id))
             # And delete the associated row in textes_versions_brutes if it exists
             if table == 'textes_versions':
                 db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
@@ -140,6 +151,7 @@ def process_archive(db, archive_path, process_links=True):
         NUM NUM_SEQUENCE NOR DATE_PUBLI DATE_TEXTE DERNIERE_MODIFICATION
         ORIGINE_PUBLI PAGE_DEB_PUBLI PAGE_FIN_PUBLI
     """.split())
+    META_CONTENEUR_TAGS = set('TITRE ETAT NUM DATE_PUBLI'.split())
     META_VERSION_TAGS = set(
         'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
     )
@@ -148,8 +160,9 @@ def process_archive(db, archive_path, process_links=True):
         'sections': 'section_ta',
         'textes_structs': 'texte/struct',
         'textes_versions': 'texte/version',
+        'conteneurs': 'conteneur'
     }
-    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_'}
+    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_', 'CONT': 'conteneurs'}
     TYPELIEN_MAP = {
         "ABROGATION": "ABROGE",
         "ANNULATION": "ANNULE",
@@ -164,6 +177,7 @@ def process_archive(db, archive_path, process_links=True):
         "TRANSFERE": "TRANSFERT",
     }
     TYPELIEN_MAP.update([(v, k) for k, v in TYPELIEN_MAP.items()])
+    TM_TAGS = ['TITRE_TM']
 
     # Define some shortcuts
     attr = etree._Element.get
@@ -178,6 +192,8 @@ def process_archive(db, archive_path, process_links=True):
             if parts[0] == 'legi':
                 table += parts[13] + 's'
             elif parts[0] == 'jorf':
+                table += parts[3] + 's'
+            elif parts[0] == 'kali':
                 table += parts[3] + 's'
         return table
 
@@ -206,9 +222,10 @@ def process_archive(db, archive_path, process_links=True):
             if parts[1] == base.lower():
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
-            if parts[0] not in ['legi', 'jorf'] or \
+            if parts[0] not in ['legi', 'jorf', 'kali'] or \
                (parts[0] == 'legi' and not parts[2].startswith('code_et_TNC_')) or \
-               (parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte']):
+               (parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte']) or \
+               (parts[0] == 'kali' and parts[2] not in ['article', 'section_ta', 'texte', 'conteneur']):
                 # https://github.com/Legilibre/legi.py/issues/23
                 try:
                     unknown_folders[parts[2]] += 1
@@ -231,10 +248,12 @@ def process_archive(db, archive_path, process_links=True):
                 if tag in ['ARTICLE', 'SECTION_TA']:
                     contexte = root.find('CONTEXTE/TEXTE')
                     text_cid = attr(contexte, 'cid')
-                elif tag in ['TEXTELR', 'TEXTE_VERSION']:
+                elif tag in ['TEXTELR', 'TEXTE_VERSION', 'TEXTEKALI']:
                     meta_spec = meta.find('META_SPEC')
                     meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
                     text_cid = meta_chronicle.find('CID').text
+                elif tag in ["IDCC"]:
+                    text_cid = None
                 else:
                     raise Exception('unexpected tag: '+tag)
 
@@ -247,11 +266,20 @@ def process_archive(db, archive_path, process_links=True):
                 except KeyError:
                     unknown_folders[text_id] = 1
                 continue
-            prev_row = db.one("""
-                SELECT mtime, dossier, cid
-                  FROM {0}
-                 WHERE id = ?
-            """.format(table), (text_id,))
+
+            if table == 'conteneurs':
+                prev_row = db.one("""
+                    SELECT mtime, null AS dossier, null AS cid
+                    FROM {0}
+                    WHERE id = ?
+                """.format(table), (text_id,))
+            else:
+                prev_row = db.one("""
+                    SELECT mtime, dossier, cid
+                    FROM {0}
+                    WHERE id = ?
+                """.format(table), (text_id,))
+
             if prev_row:
                 prev_mtime, prev_dossier, prev_cid = prev_row
                 if prev_dossier != dossier or prev_cid != text_cid:
@@ -315,6 +343,7 @@ def process_archive(db, archive_path, process_links=True):
             attrs = {}
             liens = ()
             sommaires = ()
+            tetiers = []
             if tag == 'ARTICLE':
                 assert nature == 'Article'
                 assert table == 'articles'
@@ -349,7 +378,7 @@ def process_archive(db, archive_path, process_links=True):
                     }
                     for i, lien in enumerate(root.find('STRUCTURE_TA'))
                 ]
-            elif tag == 'TEXTELR':
+            elif tag in ['TEXTELR', 'TEXTEKALI']:
                 assert table == 'textes_structs'
                 meta_spec = meta.find('META_SPEC')
                 meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
@@ -377,6 +406,41 @@ def process_archive(db, archive_path, process_links=True):
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
                 scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True)
+            elif tag == 'IDCC':
+                assert table == 'conteneurs'
+                meta_spec = meta.find('META_SPEC')
+                meta_conteneur = meta_spec.find('META_CONTENEUR')
+                scrape_tags(attrs, meta_conteneur, META_CONTENEUR_TAGS)
+                sommaires = []
+                for i, tm in enumerate(root.find('STRUCTURE_TXT')):
+                    lien_txts = tm.find('LIEN_TXT')
+                    if lien_txts is not None:
+                        tetier_id = "KALITM%s-%s" % (text_id[8:], i)
+                        sommaires.append(
+                            {
+                                'parent': text_id,
+                                'element': tetier_id,
+                                'position': i,
+                                '_source': text_id,
+                            }
+                        )
+                        tetier = {
+                            'id': tetier_id,
+                            'niv': int(attr(tm, 'niv')),
+                            'conteneur_id': text_id
+                        }
+                        scrape_tags(tetier, tm, TM_TAGS)
+                        tetiers.append(tetier)
+                        for y, child in enumerate(tm):
+                            if child.tag == 'TITRE_TM':
+                                continue
+                            elif child.tag == 'LIEN_TXT':
+                                sommaires.append({
+                                    'parent': tetier_id,
+                                    'element': attr(child, 'idtxt'),
+                                    'position': y,
+                                    '_source': text_id
+                                })
             else:
                 raise Exception('unexpected tag: '+tag)
 
@@ -427,8 +491,9 @@ def process_archive(db, archive_path, process_links=True):
                 count_one('upsert into duplicate_files')
                 continue
 
-            attrs['dossier'] = dossier
-            attrs['cid'] = text_cid
+            if table != 'conteneurs':
+                attrs['dossier'] = dossier
+                attrs['cid'] = text_cid
             attrs['mtime'] = mtime
 
             if prev_row:
@@ -448,6 +513,17 @@ def process_archive(db, archive_path, process_links=True):
                            AND _source = ?
                     """, (text_cid, 'struct/' + text_id))
                     count(counts, 'delete from sommaires', db.changes())
+                elif tag == 'IDCC':
+                    db.run("""
+                        DELETE FROM sommaires
+                         WHERE _source = ?
+                    """, (text_id))
+                    count(counts, 'delete from sommaires', db.changes())
+                    db.run("""
+                        DELETE FROM tetiers
+                         WHERE conteneur_id = ?
+                    """, (text_id))
+                    count(counts, 'delete from tetiers', db.changes())
                 if tag in ('ARTICLE', 'TEXTE_VERSION'):
                     db.run("""
                         DELETE FROM liens
@@ -473,6 +549,9 @@ def process_archive(db, archive_path, process_links=True):
             for sommaire in sommaires:
                 db.insert('sommaires', sommaire)
             count(counts, 'insert into sommaires', len(sommaires))
+            for tetier in tetiers:
+                db.insert('tetiers', tetier)
+            count(counts, 'insert into tetiers', len(tetiers))
 
     print("made", sum(counts.values()), "changes in the database:",
           json.dumps(counts, indent=4, sort_keys=True))
