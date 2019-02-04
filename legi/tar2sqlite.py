@@ -215,8 +215,8 @@ def process_archive(db, archive_path, process_links=True):
                 except KeyError:
                     unknown_folders[parts[2]] = 1
                 continue
-            dossier = parts[3] if parts[0] == 'legi' else 'jorf'
-            text_cid = parts[11] if parts[0] == 'legi' else None
+            dossier = parts[3] if base == 'LEGI' else None
+            text_cid = parts[11] if base == 'LEGI' else None
             text_id = parts[-1][:-4]
             mtime = entry.mtime
 
@@ -498,22 +498,34 @@ def main():
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
-    p.add_argument('--base')
+    p.add_argument('--base', default="LEGI", choices=["LEGI", "JORF", "KALI"])
     p.add_argument('--skip-links', default=False, action='store_true',
                    help="if set, all link metadata will be ignored (the `liens` table will be empty)")
     args = p.parse_args()
+
+    if args.base != 'LEGI' and not args.raw:
+        print("!> You need to use the --raw option when working with bases other than LEGI.")
+        raise SystemExit(1)
+
+    if args.base != 'LEGI' and args.anomalies:
+        print("!> The --anomalies option can only be used with the LEGI base")
+        raise SystemExit(1)
 
     if not os.path.isdir(args.anomalies_dir):
         os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db, pragmas=args.pragma)
-    base = db.one("SELECT value FROM db_meta WHERE key = 'base'")
+    base_meta = db.one("SELECT value FROM db_meta WHERE key = 'base'")
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
-    if not base:
-        base = args.base.upper() if args.base and not last_update else 'LEGI'
-        db.insert('db_meta', dict(key='base', value=base))
-    if args.base and base != args.base.upper():
-        print('!> Wrong database: requested '+args.base.upper()+' but existing database is '+base+'.')
+    if not base_meta:
+        if last_update:
+            # for backwards compatibility, this defaults to LEGI
+            base_meta = "LEGI"
+        else:
+            base_meta = args.base
+        db.insert('db_meta', dict(key='base', value=base_meta))
+    if args.base and base_meta != args.base:
+        print('!> Wrong database: requested '+args.base+' but existing database is '+base_meta+'.')
         raise SystemExit(1)
 
     # Check and record the data mode
@@ -538,12 +550,12 @@ def main():
 
     # Look for new archives in the given directory
     print("> last_update is", last_update)
-    archive_re = re.compile(r'(.+_)?'+base.lower()+r'(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
+    archive_re = re.compile(r'(.+_)?'+args.base.lower()+r'(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
     archives = sorted([
         (m.group('date'), bool(m.group('global')), m.group(0)) for m in [
             archive_re.match(fn) for fn in os.listdir(args.directory)
-            if fnmatch(fn.lower(), '*'+base.lower()+'_*.tar.*')
+            if fnmatch(fn.lower(), '*'+args.base.lower()+'_*.tar.*')
         ]
     ])
     most_recent_global = [t[0] for t in archives if t[1]][-1]
@@ -571,13 +583,13 @@ def main():
         print('last_update is now set to', last_update)
 
         # Detect anomalies if requested
-        if args.anomalies and base == 'LEGI':
+        if args.anomalies:
             fpath = args.anomalies_dir + '/anomalies-' + last_update + '.txt'
             with open(fpath, 'w') as f:
                 n_anomalies = detect_anomalies(db, f)
             print("logged", n_anomalies, "anomalies in", fpath)
 
-    if not args.raw and base == 'LEGI':
+    if not args.raw:
         from .normalize import normalize_text_titles
         normalize_text_titles(db)
         from .factorize import main as factorize
