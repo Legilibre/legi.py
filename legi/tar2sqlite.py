@@ -567,33 +567,54 @@ def process_archive(db, archive_path, process_links=True):
         suppress(base, get_table, db, liste_suppression)
 
 
+ARGS_DEFAULTS = {
+    'anomalies': False,
+    'anomalies_dir': '.',
+    'pragma': [],
+    'raw': False,
+    'base': 'LEGI',
+    'skip_links': False
+}
+
+
 def main():
     p = ArgumentParser()
-    p.add_argument('db')
+    p.add_argument('db_path')
     p.add_argument('directory')
-    p.add_argument('--anomalies', action='store_true', default=False,
+    p.add_argument('--anomalies', action='store_true', default=ARGS_DEFAULTS['anomalies'],
                    help="detect anomalies after each processed archive")
-    p.add_argument('--anomalies-dir', default='.')
-    p.add_argument('--pragma', action='append', default=[],
+    p.add_argument('--anomalies-dir', default=ARGS_DEFAULTS['anomalies_dir'])
+    p.add_argument('--pragma', action='append', default=ARGS_DEFAULTS['pragma'],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
-    p.add_argument('--raw', default=False, action='store_true')
-    p.add_argument('--base', default="LEGI", choices=["LEGI", "JORF", "KALI"])
-    p.add_argument('--skip-links', default=False, action='store_true',
+    p.add_argument('--raw', default=ARGS_DEFAULTS['raw'], action='store_true')
+    p.add_argument('--base', default=ARGS_DEFAULTS['base'], choices=["LEGI", "JORF", "KALI"])
+    p.add_argument('--skip-links', default=ARGS_DEFAULTS['skip_links'], action='store_true',
                    help="if set, all link metadata will be ignored (the `liens` table will be empty)")
     args = p.parse_args()
+    tar2sqlite(**vars(args))
 
-    if args.base != 'LEGI' and not args.raw:
+
+def tar2sqlite(
+    db_path, directory,
+    anomalies=ARGS_DEFAULTS['anomalies'],
+    anomalies_dir=ARGS_DEFAULTS['anomalies_dir'],
+    pragma=ARGS_DEFAULTS['pragma'],
+    raw=ARGS_DEFAULTS['raw'],
+    base=ARGS_DEFAULTS['base'],
+    skip_links=ARGS_DEFAULTS['skip_links'],
+):
+    if base != 'LEGI' and not raw:
         print("!> You need to use the --raw option when working with bases other than LEGI.")
         raise SystemExit(1)
 
-    if args.base != 'LEGI' and args.anomalies:
+    if base != 'LEGI' and anomalies:
         print("!> The --anomalies option can only be used with the LEGI base")
         raise SystemExit(1)
 
-    if not os.path.isdir(args.anomalies_dir):
-        os.mkdir(args.anomalies_dir)
+    if not os.path.isdir(anomalies_dir):
+        os.mkdir(anomalies_dir)
 
-    db = connect_db(args.db, pragmas=args.pragma)
+    db = connect_db(db_path, pragmas=pragma)
     base_meta = db.one("SELECT value FROM db_meta WHERE key = 'base'")
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
     if not base_meta:
@@ -601,40 +622,40 @@ def main():
             # for backwards compatibility, this defaults to LEGI
             base_meta = "LEGI"
         else:
-            base_meta = args.base
+            base_meta = base
         db.insert('db_meta', dict(key='base', value=base_meta))
-    if args.base and base_meta != args.base:
-        print('!> Wrong database: requested '+args.base+' but existing database is '+base_meta+'.')
+    if base and base_meta != base:
+        print('!> Wrong database: requested '+base+' but existing database is '+base_meta+'.')
         raise SystemExit(1)
 
     # Check and record the data mode
     db_meta_raw = db.one("SELECT value FROM db_meta WHERE key = 'raw'")
-    if args.raw:
+    if raw:
         versions_brutes = bool(db.one("SELECT 1 FROM textes_versions_brutes LIMIT 1"))
         data_is_not_raw = versions_brutes or db_meta_raw is False
         if data_is_not_raw:
             print("!> Can't honor --raw option, the data has already been modified previously.")
             raise SystemExit(1)
-    if db_meta_raw != args.raw:
-        db.insert('db_meta', dict(key='raw', value=args.raw), replace=True)
+    if db_meta_raw != raw:
+        db.insert('db_meta', dict(key='raw', value=raw), replace=True)
 
     # Handle the --skip-links option
     has_links = bool(db.one("SELECT 1 FROM liens LIMIT 1"))
-    if not args.skip_links and not has_links and last_update is not None:
-        args.skip_links = True
+    if not skip_links and not has_links and last_update is not None:
+        skip_links = True
         print("> Warning: links will not be processed because this DB was built with --skip-links.")
-    elif args.skip_links and has_links:
+    elif skip_links and has_links:
         print("> Deleting links...")
         db.run("DELETE FROM liens")
 
     # Look for new archives in the given directory
     print("> last_update is", last_update)
-    archive_re = re.compile(r'(.+_)?'+args.base.lower()+r'(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
+    archive_re = re.compile(r'(.+_)?'+base.lower()+r'(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
     archives = sorted([
         (m.group('date'), bool(m.group('global')), m.group(0)) for m in [
-            archive_re.match(fn) for fn in os.listdir(args.directory)
-            if fnmatch(fn.lower(), '*'+args.base.lower()+'_*.tar.*')
+            archive_re.match(fn) for fn in os.listdir(directory)
+            if fnmatch(fn.lower(), '*'+base.lower()+'_*.tar.*')
         ]
     ])
     most_recent_global = [t[0] for t in archives if t[1]][-1]
@@ -642,7 +663,7 @@ def main():
         print("> There is a new global archive, recreating the DB from scratch!")
         db.close()
         os.rename(db.address, db.address + '.back')
-        db = connect_db(args.db, pragmas=args.pragma)
+        db = connect_db(db, pragmas=pragma)
     archives, skipped = partition(
         archives, lambda t: t[0] >= most_recent_global and t[0] > (last_update or '')
     )
@@ -653,7 +674,7 @@ def main():
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name, not args.skip_links)
+            process_archive(db, directory + '/' + archive_name, not skip_links)
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
@@ -662,13 +683,13 @@ def main():
         print('last_update is now set to', last_update)
 
         # Detect anomalies if requested
-        if args.anomalies:
-            fpath = args.anomalies_dir + '/anomalies-' + last_update + '.txt'
+        if anomalies:
+            fpath = anomalies_dir + '/anomalies-' + last_update + '.txt'
             with open(fpath, 'w') as f:
                 n_anomalies = detect_anomalies(db, f)
             print("logged", n_anomalies, "anomalies in", fpath)
 
-    if not args.raw:
+    if not raw:
         from .normalize import normalize_text_titles
         normalize_text_titles(db)
         from .factorize import main as factorize
