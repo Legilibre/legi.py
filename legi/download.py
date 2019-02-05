@@ -12,6 +12,7 @@ DILA_FTP_PORT = 21
 DILA_LEGI_DIR = {
     'LEGI': '/LEGI',
     'JORF': '/JORF',
+    'KALI': '/KALI',
 }
 
 
