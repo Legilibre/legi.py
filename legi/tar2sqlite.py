@@ -512,8 +512,8 @@ def main():
     if not base:
         base = args.base.upper() if args.base and not last_update else 'LEGI'
         db.insert('db_meta', dict(key='base', value=base))
-    if args.base and base != args.base:
-        print('!> Wrong database: requested '+base.upper()+' but existing database is '+base+'.')
+    if args.base and base != args.base.upper():
+        print('!> Wrong database: requested '+args.base.upper()+' but existing database is '+base+'.')
         raise SystemExit(1)
 
     if base != 'LEGI' and not args.raw:
