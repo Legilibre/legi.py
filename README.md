@@ -66,6 +66,12 @@ exemple avec [cron][cron] :
 (`chronic` fait partie des [`moreutils`](http://joeyh.name/code/moreutils/).)
 
 L'option `--base JORF` permet de créer une base JORF au lieu d'une base LEGI.
+Noter que l'option `--raw` est obligatoire pour les bases autres que LEGI.
+
+Une fois la base créée, l'option `--base` n'est plus plus nécessaire car sa
+valeur est enregistrée dans les métadonnées de la base et est utilisée comme
+valeur par défaut. Toutefois, il peut être vérifié que la base à mettre à
+jour est du bon type est donnant ce paramètre `--base`.
 
 ## Fonctionnalités
 

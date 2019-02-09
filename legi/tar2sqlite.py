@@ -46,6 +46,8 @@ def suppress(base, get_table, db, liste_suppression):
     counts = {}
     for path in liste_suppression:
         parts = path.split('/')
+        if parts[0] == 'null':
+            continue
         assert parts[0] == base.lower()
         text_id = parts[-1]
         text_cid = parts[11] if base == 'LEGI' else text_id
@@ -516,10 +518,6 @@ def main():
         print('!> Wrong database: requested '+args.base.upper()+' but existing database is '+base+'.')
         raise SystemExit(1)
 
-    if base != 'LEGI' and not args.raw:
-        print("!> You need to use the --raw option when working with bases other than LEGI.")
-        raise SystemExit(1)
-
     if base != 'LEGI' and args.anomalies:
         print("!> The --anomalies option can only be used with the LEGI base")
         raise SystemExit(1)
@@ -534,6 +532,10 @@ def main():
             raise SystemExit(1)
     if db_meta_raw != args.raw:
         db.insert('db_meta', dict(key='raw', value=args.raw), replace=True)
+
+    if base != 'LEGI' and not args.raw:
+        print("!> You need to use the --raw option when working with bases other than LEGI.")
+        raise SystemExit(1)
 
     # Handle the --skip-links option
     has_links = bool(db.one("SELECT 1 FROM liens LIMIT 1"))

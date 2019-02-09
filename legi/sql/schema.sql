@@ -78,7 +78,7 @@ CREATE TABLE articles
 , type           text
 , nota           text
 , bloc_textuel   text
-, dossier        text       not null
+, dossier        text
 , cid            char(20)   not null
 , mtime          int        not null
 );
