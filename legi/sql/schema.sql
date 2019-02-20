@@ -95,7 +95,7 @@ CREATE TABLE sommaires
 , _source    text       -- to support incremental updates
 );
 
-CREATE INDEX sommaires_parent_debut_idx ON sommaires (parent, debut);
+CREATE INDEX sommaires_cid_idx ON sommaires (cid, num);
 
 CREATE TABLE liens
 ( src_id      char(20)   not null
