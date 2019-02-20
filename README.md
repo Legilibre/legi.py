@@ -11,14 +11,14 @@ sont pas encore implémentées directement dans legi.py, par exemple générer d
 statistiques sur l'activité législative, [trouver le texte le plus ancien encore
 en vigueur][tweet-texte-plus-ancien], etc.
 
-[![Build Status](https://travis-ci.org/Legilibre/legi.py.svg)](https://travis-ci.org/Legilibre/legi.py)
+[![Build Status](https://travis-ci.org/SocialGouv/legi.py.svg?branch=master)](https://travis-ci.org/SocialGouv/legi.py)
 
 ## Installation
 
 Vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python
 nécessaires :
 
-    git clone https://github.com/Legilibre/legi.py.git
+    git clone https://github.com/SocialGouv/legi.py.git
     cd legi.py
     python -m ensurepip
     pip install -r requirements.txt
@@ -103,7 +103,7 @@ Pour détecter les anomalies actuellement présentes dans la base :
 
 ## Contribuer
 
-Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion](https://github.com/Legilibre/legi.py/issues/new) avant de commencer le travail, ça permet une meilleure coopération et coordination. Vous pouvez aussi vous présenter dans [le salon](https://github.com/Legilibre/salon).
+Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion](https://github.com/SocialGouv/legi.py/issues/new) avant de commencer le travail, ça permet une meilleure coopération et coordination. Vous pouvez aussi vous présenter dans [le salon](https://github.com/SocialGouv/salon).
 
 ### Tests
 
