@@ -72,21 +72,22 @@ CREATE TABLE articles
 ( id             char(20)   unique not null
 , section        char(20)   -- REFERENCES sections(id)
 , num            text
+, titre          text
 , etat           text
 , date_debut     day
 , date_fin       day
 , type           text
 , nota           text
 , bloc_textuel   text
-, dossier        text       not null
+, dossier        text
 , cid            char(20)   not null
 , mtime          int        not null
 );
 
 CREATE TABLE sommaires
-( cid        char(20)   not null
-, parent     char(20)   -- REFERENCES sections
-, element    char(20)   not null -- REFERENCES articles OR sections
+( cid        char(20)
+, parent     char(20)   -- REFERENCES sections OR conteneurs
+, element    char(20)   not null -- REFERENCES textes OR articles OR sections
 , debut      day
 , fin        day
 , etat       text
@@ -95,7 +96,11 @@ CREATE TABLE sommaires
 , _source    text       -- to support incremental updates
 );
 
-CREATE INDEX sommaires_cid_idx ON sommaires (cid, num);
+-- CREATE UNIQUE INDEX sommaires_parent_element_idx ON sommaires(parent, element);
+CREATE INDEX sommaires_parent_debut_fin_etat_num_idx ON sommaires (parent, debut, fin, etat, num);
+
+/* for deletes in tar2sqlite */
+CREATE INDEX sommaires_source_idx ON sommaires(_source);
 
 CREATE TABLE liens
 ( src_id      char(20)   not null
@@ -113,11 +118,11 @@ CREATE INDEX liens_dst_idx ON liens (dst_id) WHERE _reversed;
 CREATE TABLE duplicate_files
 ( id              char(20)   not null
 , sous_dossier    text       not null
-, cid             char(20)   not null
+, cid             char(20)
 , dossier         text
 , mtime           int        not null
 , data            text       not null
-, other_cid       char(20)   not null
+, other_cid       char(20)
 , other_dossier   text
 , other_mtime     int        not null
 , UNIQUE (id, sous_dossier, cid, dossier)
@@ -149,3 +154,36 @@ CREATE VIEW textes_versions_brutes_view AS
       FROM textes_versions a
  LEFT JOIN textes_versions_brutes b
         ON b.id = a.id AND b.cid = a.cid AND b.dossier = a.dossier AND b.mtime = a.mtime;
+
+CREATE TABLE conteneurs
+( id           char(20)   unique not null
+, titre        text
+, etat         text
+, nature       text
+, num          text
+, date_publi   day
+, mtime        int        not null
+);
+
+CREATE INDEX conteneurs_id_idx ON conteneurs (id);
+CREATE INDEX conteneurs_num_idx ON conteneurs (num);
+
+CREATE TABLE tetiers
+( id             char(20)   unique not null
+, titre_tm       text       not null
+, niv            int        not null
+, conteneur_id   char(20)   not null
+);
+
+CREATE INDEX tetiers_id_idx ON tetiers (id);
+
+CREATE TABLE calipsos
+( id             char(20)   unique not null
+);
+CREATE INDEX calipsos_id_idx ON calipsos (id);
+
+CREATE TABLE articles_calipsos
+( article_id   char(20)   not null
+, calipso_id   char(20)   not null
+);
+CREATE UNIQUE INDEX article_calipsos_double_idx ON articles_calipsos (article_id, calipso_id);

@@ -1,3 +1,6 @@
 libarchive-c
 lxml
 tqdm
+aiohttp
+aiofiles
+backoff

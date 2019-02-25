@@ -5,7 +5,6 @@ Normalizes LEGI data stored in an SQLite DB
 from argparse import ArgumentParser
 from collections import defaultdict
 from functools import reduce
-from html import escape, unescape
 import json
 import re
 
@@ -14,7 +13,7 @@ from .articles import (
     article_titre, legifrance_url_article,
 )
 from .french import get_clean_ordinal
-from .html import bad_space_re, drop_bad_space, split_first_paragraph
+from .html_utils import bad_space_re, drop_bad_space, split_first_paragraph, escape, unescape
 from .roman import ROMAN_PATTERN as roman_num
 from .sections import (
     legifrance_url_section, normalize_section_num, reduce_section_title,

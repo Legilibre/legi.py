@@ -1,4 +1,4 @@
-from legi.html import clean_html
+from legi.html_utils import clean_html
 
 
 def test_clean_html_on_empty_string():

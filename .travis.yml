@@ -1,25 +1,49 @@
-language: python
-python:
-  - 3.6
-  - 3.7
-
-branches:
-  only:
-    - master
-
-addons:
-  apt:
-    packages:
-      - libarchive13
-
-install:
-  - sqlite3 --version
-  - pip install tox
-
-script: tox
-
-notifications:
-  email: false
-
+---
 dist: xenial
 sudo: false
+git:
+  depth: 5
+
+language: generic
+
+_environments:
+  - &docker_keys
+    - secure: "Dkcr38iPwAYOOeb8IdrIT27A6Q7YtzNjb3LPiVF1JYtR0zNV4YN1eYQWU5+wEvNynGzuX5kFKDbQMFM0JY/DQtfjBMXT8Pet2g5UAwjr7TmPRaShPWlp5/LIfA/ZWPRoTWjQyMJdshGNCgodVfIDCkF7WD+BuFn++DWAIDsc3FhByrAGQdNOHv5N4IOqQCPpmpd7EFWzWbgO8Xj+hSO+9U7wDGsM5LAgcIYvLXiL2fDMh0AFQ/PmdB34t2+hIA3xABypS5yXE2jEU5xoEG0DhJE9vkiWOrnbSuyn/UIdSuqqSWLJVk3yIiRRdbF/rVNXgVHaZmeZJj7mhaiFu7XYJRQD4zn0hqqi49wGrhL135zexPPSnOIJD0ktI/JVV+4BhLV8yus8dfEvoeAXqLv6sG+kPke4TDZwnA+KIeRA9Zda92q5io3jixA23yTV5/gJg2MRta+wkmf2bUhXxy0UAZI9JW8Eg5ClQdciqqbFsu1zWXvmaFoLyX8LuBt6oeYBtPeCXsmBfdT4KZ773RWyzVwN8nwmo1KBhB3Nr09tKKuGhrp7Wo2HMOnZkOfoJ+lp/gYjDWCWS9029YDEOrMmTPFtVsRpB4sFZhTxLu/dH9nbhho7J1/5GX5Xc1cHNSXb1zHGF7VZdbtguhSkJv1sCo4xeEdoPkre1j++FYsCaoM="
+    - secure: "MqyXPjOt19oSGNTzGoPm/d5pDZgkX8blm/THjptqA9+dxMYP8OWiLUFIXoJNi1h72kt5xv0UFkEHT2L9mN/+ys2l1W2D652clsvZujQhd7s01bcYFkfYcLii6NagoLkHc/Vj41TvizdCs+wQoZMM1c9XY1eyYspr8hLdQk3F1khz+bMh3nWN/vdxn4JWGTwCAZA4g5edyLIY4WeP7ZmFPDnjiGI8/EHo1qV0eKvrIm3VxDSdRx7ibBeikVrW8oCYdn8R8N9NhMb3GR6e1+C4uLyPbWvENAHXBymAwbPBMAWDAPGua0n/pbIq/+lrV7l2AVSAd43+VeMt67frF+wSb1wzLQ4Qj3bIPjqHGaoS3qWMqCGyj4zfx19ScomU0v5lD3vXbytyR5SYy/ydtEQtt0lB3wOk6t8I8KDiVlHLYWEQMYie1K6WnhQIKT0EOGnK17AO/kbT1yrfY4fVG2sfqGW56ioHe3x6WKzhy+TtJMDVHlHHNo4bfnbSUFbiZ8p1SdHU2OIbMzkaW0wwwgrVeNeC4M7fMIvtNTyYQ/BOH9GQeimOvWRDdQCWzs6HUo1sJW6+XmkE/Se/vzQ83Sk6CfvwQKK/hsbY4d8Wd2VJl+gtyAIJcC2dcH+xP9/C88/adUDRPrwU+KHehs1JxKGIxBzCljJ0QOsnCs9JbLF0DxU="
+
+_steps:
+  - &test_stage
+    stage: Test
+    language: python
+    python: 3.7
+    cache: pip
+    before_install: sudo apt-get install -y libarchive13
+    before_script: pip install libarchive-c lxml tox
+
+  - &deploy_stage
+    stage: Deploy
+    if: type = push AND tag IS present
+    script:
+      - docker pull $DOCKER_IMAGE
+      #
+      - docker build -t $DOCKER_IMAGE:$TRAVIS_BRANCH $CONTEXT
+      - docker build -t $DOCKER_IMAGE:latest $CONTEXT
+      #
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - docker push $DOCKER_IMAGE:$TRAVIS_BRANCH
+      - docker push $DOCKER_IMAGE:latest
+
+jobs:
+  include:
+    - <<: *test_stage
+      name: Test
+      script:
+        - tox
+
+    - <<: *deploy_stage
+      name: Deploy latest image to Docker Hub
+      env:
+        - *docker_image
+        - *docker_keys
+        - DOCKER_IMAGE="socialgouv/legi.py"
+        - CONTEXT=.

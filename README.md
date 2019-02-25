@@ -1,136 +1,103 @@
-legi.py est un module python qui peut :
+# legi.py
 
-- créer une base de données SQLite à partir des archives de la base LEGI
-- mettre à jour automatiquement et incrémentalement cette BDD
-- normaliser les titres des textes
-- connecter les différentes versions d'un texte entre elles
-- analyser les données pour détecter [les anomalies][anomalies]
+Fork de [Legilibre/legi.py](https://github.com/legilibre/legi.py) avec :
 
-Avoir les lois françaises dans une base SQL permet aussi d'autres choses qui ne
-sont pas encore implémentées directement dans legi.py, par exemple générer des
-statistiques sur l'activité législative, [trouver le texte le plus ancien encore
-en vigueur][tweet-texte-plus-ancien], etc.
+- gestion des bases [LEGI](https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/), [KALI](https://www.data.gouv.fr/fr/datasets/kali-conventions-collectives-nationales/) et [JORF](https://www.data.gouv.fr/fr/datasets/jorf-les-donnees-de-l-edition-lois-et-decrets-du-journal-officiel/)
+- Parallélisation des téléchargements
+- docker (optionnel)
 
-[![Build Status](https://travis-ci.org/SocialGouv/legi.py.svg?branch=master)](https://travis-ci.org/SocialGouv/legi.py)
+Les bases de données OpenData en XML sont très riches mais difficilement exploitable.
 
-## Installation
+legi.py permet de convertir ces données en une base de données relationnelle, plus facilement interrogeable.
 
-Vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python
-nécessaires :
+### Usage
 
-    git clone https://github.com/SocialGouv/legi.py.git
-    cd legi.py
-    python -m ensurepip
-    pip install -r requirements.txt
+~~Vous pouvez récupérer directement les dernières bases de données compilées ici :~~
 
-legi.py a aussi besoin de [`libarchive`][libarchive]. Pour l'installer sur Ubuntu :
+- LEGI.sqlite
+- KALI.sqlite
+- JORF.sqlite
 
-    sudo apt-get install libarchive13
+~~[badge date mise à jour]~~
 
-legi.py et les modules dont il dépend sont compatibles avec python 3.6 et 3.7,
-les versions antérieurs de python peuvent générer des erreurs.
+~~dumps PostgreSQL également dispos sur [legi-postgres](https://github.com/SocialGouv/legi-postgres)~~
 
-legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
-sous forme de paquet [sur PyPI][legi-pypi].
+#### Docker
 
-## Création et maintenance de la BDD
+Si vous souhaitez créer les fichiers SQLite vous-même , vous pouvez utilisez l'image docker `socialgouv/legi.py`.
 
-La première étape est de télécharger les archives LEGI depuis
-`ftp://echanges.dila.gouv.fr/LEGI/` :
+> 💡 Les volumes et temps de compilation initiale peuvent durer plusieures heures selon votre matériel/connexion.
 
-    python -m legi.download ./tarballs
+##### Lancer le download de la base LEGI
 
-La deuxième étape est la conversion des archives en base SQLite :
+Cette commande lance le téléchargement des bases OpenData de la DILA et les sauvegarde localement dans `./data`.
 
-    python -m legi.tar2sqlite legi.sqlite ./tarballs [--raw]
+```sh
+docker run --rm -t              \
+    -v $PWD/data:/data          \
+    socialgouv/legi.py          \
+    python -m legi.download /data --base LEGI
+```
 
-Cette opération peut prendre de quelques minutes à plusieurs heures selon votre
-machine et le nombre d'archives. Les deux caractéristiques importantes de votre
-machine sont: le disque dur (un SSD est beaucoup plus rapide), et le processeur
-(notamment sa fréquence, le nombre de cœurs importe peu car le travail n'est pas
-parallèle).
+##### mettre à jour le fichier SQLite de la base LEGI
 
-La taille du fichier SQLite créé est environ 3,7Go (en décembre 2018).
+Cette commande lit tous les fichiers dans `./data` et crée ou met à jour une base de données SQLite.
 
-L'option `--raw` désactive le nettoyage des données, ajoutez-la si vous avez
-besoin des données LEGI brutes.
+```sh
+docker run --rm -t         \
+    -v $PWD/data:/data     \
+    socialgouv/legi.py     \
+    python -m legi.tar2sqlite /data/LEGI.sqlite /data --base LEGI
+```
 
-`tar2sqlite` permet aussi de maintenir votre base de données à jour, il saute
-automatiquement les archives qu'il a déjà traité. En général la DILA publie une
-nouvelle archive à la fin de chaque jour ouvré, vous pouvez donc programmer
-votre machine pour mettre à jour la BDD du mardi au samedi pendant la nuit, par
-exemple avec [cron][cron] :
+Le fichier sera crée localement dans `./data/legi.sqlite` via le volume docker.
 
-    0 1 * * 2-6 ID=legi chronic ~/chemin/vers/legi.py/cron/cron.sh
+#### PostgreSQL
 
-(`chronic` fait partie des [`moreutils`](http://joeyh.name/code/moreutils/).)
+Vous pouvez utiliser [legi-postgres](https://github.com/SocialGouv/legi-postgres) pour convertir ces données au format PostgreSQL
 
-L'option `--base JORF` permet de créer une base JORF au lieu d'une base LEGI.
+## Développement
 
-## Fonctionnalités
+Vous pouvez développer _dans_ l'environnement docker en ajoutant `-v $PWD:/app` au lancement du container :
 
-### Normalisation des titres et numéros
-
-Le module `normalize` nettoie les titres et numéros des textes, des sections et
-des articles afin qu'ils soient plus « standards ».
-
-### Factorisation des textes
-
-La "factorisation" connecte entre elles les différentes version d'un même texte.
-La base LEGI n'a pas d'identifiant qui remplisse réellement ce rôle.
-
-### Nettoyage des contenus
-
-Le module `html` permet de nettoyer les contenus des textes. Il supprime :
-
-- les espaces redondantes (*whitespace collapse*), sauf à l'intérieur des `<pre>`
-- les attributs inutiles, par exemple `id` et `dir="ltr"`
-- les éléments inutiles, par exemple un `<span>` sans attributs
-- les éléments vides, sauf `<td>` et `<th>`
-
-En décembre 2018 il détecte 85 millions de caractères inutiles dans LEGI.
-
-Cette fonctionnalité n'est pas activée par défaut car elle est « destructrice »
-et récente. Vous pouvez nettoyer tout l'HTML d'une base en exécutant la commande
-`python -m legi.html clean legi.sqlite` (les modifications ne sont enregistrées
-que si vous entrez `y` à la fin).
-
-### Détection d'anomalies
-
-Le module `anomalies` est conçu pour détecter les incohérences dans les données afin de les signaler à la DILA. Le résultat est visible sur [anomalies.legilibre.fr][anomalies]. (`cron/anomalies-cron.sh` est le script qui génère ce mini-site.)
-
-Pour détecter les anomalies actuellement présentes dans la base :
-
-    python -m legi.anomalies legi.sqlite
-
-## Contribuer
-
-Les *Pull Requests* sont bienvenues, n'hésitez pas à [ouvrir une discussion](https://github.com/SocialGouv/legi.py/issues/new) avant de commencer le travail, ça permet une meilleure coopération et coordination. Vous pouvez aussi vous présenter dans [le salon](https://github.com/SocialGouv/salon).
+```sh
+docker run --rm -t         \
+    -v $PWD/data:/data     \
+    -v $PWD:/app           \
+    socialgouv/legi.py     \
+    python hello.py
+```
 
 ### Tests
 
 legi.py utilise [Tox](https://pypi.python.org/pypi/tox) pour tester le code sur plusieurs versions de Python. Installez-le si nécessaire puis lancez la commande `tox` dans le dossier qui contient votre copie du dépôt legi.py.
 
+## A propos
+
+legi.py permet de :
+
+- créer une base de données SQLite à partir des archives des bases LEGI, KALI, JORF
+- mettre à jour automatiquement et incrémentalement cette BDD
+- normaliser les titres des textes
+- connecter les différentes versions d'un texte entre elles
+- analyser les données pour détecter [les anomalies][anomalies]
+
+Plus d'informations sur le [repo original](https://github.com/Legilibre/legi.py)
+
+## Contribuer
+
+Les _Pull Requests_ sont bienvenues. Vous pouvez aussi ouvrir des PRs sur le [repo original de Legilibre](https://github.com/Legilibre/legi.py)
+
+## Projets connexes
+
+- http://github.com/Legilibre
+- https://framagit.org/parlement-ouvert
+- http://github.com/regardscitoyens
+- https://framagit.org/tricoteuses
+
 ## Licence
 
 [CC0 Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/)
-
-## Historique du projet
-
-Fin juin 2014 la [base de données LEGI][legi-data] contenant les lois françaises
-a été libérée en Open Data. J'ai immédiatement [commencé le travail][tweet-debut]
-pour la convertir dans d'autres formats. Malheureusement, distrait par d'autres
-choses à faire et un peu découragé par la structure médiocre des données j'ai
-fini par laisser le projet de côté.
-
-En 2015 j'ai réouvert, nettoyé et publié mon code. J'ai ensuite été très occupé
-à créer [Liberapay](https://liberapay.com/).
-
-Fin 2016 j'ai à nouveau travaillé sur legi.py. Le projet progressa fortement,
-[anomalies.legilibre.fr][anomalies] fut créé.
-
-En février 2017 la version 0.1 est publiée.
-
 
 [anomalies]: http://anomalies.legilibre.fr/
 [cron]: https://en.wikipedia.org/wiki/Cron

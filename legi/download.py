@@ -3,27 +3,77 @@ Downloads the LEGI tarballs from the official FTP server.
 """
 
 import argparse
-import ftplib
 import os
+from urllib.request import urlopen
+import lxml.html
+import re
+import asyncio
+import aiohttp
+import aiofiles
+import backoff
 
 
-DILA_FTP_HOST = 'echanges.dila.gouv.fr'
-DILA_FTP_PORT = 21
-DILA_LEGI_DIR = {
-    'LEGI': '/LEGI',
-    'JORF': '/JORF',
-}
+DILA_URL = "https://echanges.dila.gouv.fr/OPENDATA"
+
+HANDLED_EXCEPTIONS = (
+    aiohttp.ClientError,
+    aiohttp.client_exceptions.ServerDisconnectedError,
+    aiohttp.client_exceptions.ClientPayloadError
+)
+
+
+@backoff.on_exception(backoff.expo, HANDLED_EXCEPTIONS, max_time=5)
+async def fetch_size(base, filename, session):
+    url = "%s/%s/%s" % (DILA_URL, base, filename)
+    async with session.head(url) as response:
+        return (filename, response.headers['Content-Length'])
+
+
+async def fetch_sizes(base, filenames):
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=20)) as session:
+        tasks = [asyncio.ensure_future(fetch_size(base, f, session)) for f in filenames]
+        return await asyncio.gather(*tasks)
+
+
+def filter_link(filename, base):
+    return bool(re.match(r"%s_[0-9\-]+\.tar\.gz" % base, filename)) \
+        or bool(re.match(r"Freemium_%s_(global)?_[0-9\-]+\.tar\.gz" % base.lower(), filename))
+
+
+@backoff.on_exception(backoff.expo, HANDLED_EXCEPTIONS, max_time=20)
+async def download_file(base, filename, dst_dir, session):
+    filepath = os.path.join(dst_dir, filename)
+    url = "%s/%s/%s" % (DILA_URL, base, filename)
+    async with session.get(url) as resp:
+        if resp.status == 200:
+            f = await aiofiles.open(filepath, mode='wb')
+            await f.write(await resp.read())
+            await f.close()
+
+
+@backoff.on_exception(backoff.expo, HANDLED_EXCEPTIONS, max_time=20)
+async def download_files(base, filenames, dst_dir):
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=10)) as session:
+        tasks = [
+            asyncio.ensure_future(download_file(base, f, dst_dir, session))
+            for f in filenames
+        ]
+        return await asyncio.gather(*tasks)
 
 
 def download_legi(dst_dir, base='LEGI'):
     if not os.path.exists(dst_dir):
         os.mkdir(dst_dir)
     local_files = {filename: {} for filename in os.listdir(dst_dir)}
-    ftph = ftplib.FTP()
-    ftph.connect(DILA_FTP_HOST, DILA_FTP_PORT)
-    ftph.login()
-    ftph.cwd(DILA_LEGI_DIR[base])
-    remote_files = [filename for filename in ftph.nlst() if '.tar.gz' in filename and (base.lower()+'_' in filename or base+'_' in filename)]
+
+    print("Reading index page for base %s ..." % base)
+    url = "%s/%s" % (DILA_URL, base)
+    f = urlopen(url)
+    raw_html = f.read().decode('utf-8')
+    lxml_doc = lxml.html.document_fromstring(raw_html)
+    links = [l[2] for l in lxml_doc.iterlinks()]
+    remote_files = [os.path.basename(l.split("/")[-1]) for l in links]
+    remote_files = [l for l in remote_files if filter_link(l, base)]
     common_files = [f for f in remote_files if f in local_files]
     missing_files = [f for f in remote_files if f not in local_files]
     remote_files = {filename: {} for filename in remote_files}
@@ -31,13 +81,17 @@ def download_legi(dst_dir, base='LEGI'):
         local_files[filename]['size'] = os.path.getsize(
             os.path.join(dst_dir, filename)
         )
-    ftph.voidcmd('TYPE I')
-    for filename in remote_files:
-        file_size = ftph.size(filename)
-        remote_files[filename]['size'] = int(file_size)
+
+    print("fetching size of %s remote files ..." % len(common_files))
+    loop = asyncio.get_event_loop()
+    future = asyncio.ensure_future(fetch_sizes(base, common_files))
+    common_file_sizes = loop.run_until_complete(future)
+    for common_file_size in common_file_sizes:
+        remote_files[common_file_size[0]]['size'] = int(common_file_size[1])
+
     invalid_files = []
     for filename in common_files:
-        if local_files[filename]['size'] < remote_files[filename]['size']:
+        if ('size' in remote_files[filename] and local_files[filename]['size'] != remote_files[filename]['size']):
             invalid_files.append(filename)
     print(
         '{} remote files, {} common files ({} invalid), {} missing files'
@@ -48,20 +102,14 @@ def download_legi(dst_dir, base='LEGI'):
         )
     )
     for filename in invalid_files:
-        filepath = os.path.join(dst_dir, filename)
-        with open(filepath, mode='a+b') as fh:
-            print('Continuing the download of the file {}'.format(filename))
-            ftph.retrbinary(
-                'RETR {}'.format(filename),
-                fh.write,
-                rest=local_files[filename]['size']
-            )
-    for filename in missing_files:
-        filepath = os.path.join(dst_dir, filename)
-        with open(filepath, mode='wb') as fh:
-            print('Downloading the file {}'.format(filename))
-            ftph.retrbinary('RETR {}'.format(filename), fh.write, rest=0)
-    ftph.quit()
+        print('Removing file {} because it has a different size'.format(filename))
+        os.remove(os.path.join(dst_dir, filename))
+
+    files_to_download = invalid_files + missing_files
+    print("Starting to download %s files ..." % len(files_to_download))
+    loop = asyncio.get_event_loop()
+    future = asyncio.ensure_future(download_files(base, files_to_download, dst_dir))
+    loop.run_until_complete(future)
 
 
 if __name__ == '__main__':
@@ -69,7 +117,7 @@ if __name__ == '__main__':
     p.add_argument('directory')
     p.add_argument('--base', default='LEGI')
     args = p.parse_args()
-    if args.base not in DILA_LEGI_DIR.keys():
+    if args.base not in ["LEGI", "JORF", "KALI"]:
         print('!> Non-existing database "'+args.base+'".')
         raise SystemExit(1)
     download_legi(args.directory, args.base)
