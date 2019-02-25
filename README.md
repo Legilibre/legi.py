@@ -65,6 +65,8 @@ exemple avec [cron][cron] :
 
 (`chronic` fait partie des [`moreutils`](http://joeyh.name/code/moreutils/).)
 
+L'option `--base JORF` permet de créer une base JORF au lieu d'une base LEGI.
+
 ## Fonctionnalités
 
 ### Normalisation des titres et numéros

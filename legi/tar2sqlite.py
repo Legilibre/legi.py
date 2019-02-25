@@ -42,13 +42,13 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
     )
 
 
-def suppress(get_table, db, liste_suppression):
+def suppress(base, get_table, db, liste_suppression):
     counts = {}
     for path in liste_suppression:
         parts = path.split('/')
-        assert parts[0] == 'legi'
-        text_cid = parts[11]
+        assert parts[0] == base.lower()
         text_id = parts[-1]
+        text_cid = parts[11] if base == 'LEGI' else text_id
         assert len(text_id) == 20
         table = get_table(parts)
         db.run("""
@@ -124,7 +124,7 @@ def suppress(get_table, db, liste_suppression):
             """, (parts[3], text_cid, text_id))
             count(counts, 'delete from duplicate_files', db.changes())
     total = sum(counts.values())
-    print("made", total, "changes in the database based on liste_suppression_legi.dat:",
+    print("made", total, "changes in the database based on liste_suppression_"+base.lower()+".dat:",
           json.dumps(counts, indent=4, sort_keys=True))
 
 
@@ -171,9 +171,14 @@ def process_archive(db, archive_path, process_links=True):
     update = db.update
 
     def get_table(parts):
+        if parts[-1][4:8] not in TABLES_MAP:
+            return None
         table = TABLES_MAP[parts[-1][4:8]]
         if table == 'textes_':
-            table += parts[13] + 's'
+            if parts[0] == 'legi':
+                table += parts[13] + 's'
+            elif parts[0] == 'jorf':
+                table += parts[3] + 's'
         return table
 
     counts = {}
@@ -182,6 +187,8 @@ def process_archive(db, archive_path, process_links=True):
             counts[k] += 1
         except KeyError:
             counts[k] = 1
+
+    base = db.one("SELECT value FROM db_meta WHERE key = 'base'") or 'LEGI'
 
     skipped = 0
     unknown_folders = {}
@@ -193,27 +200,53 @@ def process_archive(db, archive_path, process_links=True):
             if path[-1] == '/':
                 continue
             parts = path.split('/')
-            if parts[-1] == 'liste_suppression_legi.dat':
+            if parts[-1] == 'liste_suppression_'+base.lower()+'.dat':
                 liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
                 continue
-            if parts[1] == 'legi':
+            if parts[1] == base.lower():
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
-            if not parts[2].startswith('code_et_TNC_'):
+            if parts[0] not in ['legi', 'jorf'] or \
+               (parts[0] == 'legi' and not parts[2].startswith('code_et_TNC_')) or \
+               (parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte']):
                 # https://github.com/Legilibre/legi.py/issues/23
                 try:
                     unknown_folders[parts[2]] += 1
                 except KeyError:
                     unknown_folders[parts[2]] = 1
                 continue
-            dossier = parts[3]
-            text_cid = parts[11]
+            dossier = parts[3] if base == 'LEGI' else None
+            text_cid = parts[11] if base == 'LEGI' else None
             text_id = parts[-1][:-4]
             mtime = entry.mtime
+
+            # Read the file
+            xml.feed(b''.join(entry.get_blocks()))
+            root = xml.close()
+            tag = root.tag
+            meta = root.find('META')
+
+            # Obtain the CID when database is not LEGI
+            if base != 'LEGI':
+                if tag in ['ARTICLE', 'SECTION_TA']:
+                    contexte = root.find('CONTEXTE/TEXTE')
+                    text_cid = attr(contexte, 'cid')
+                elif tag in ['TEXTELR', 'TEXTE_VERSION']:
+                    meta_spec = meta.find('META_SPEC')
+                    meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
+                    text_cid = meta_chronicle.find('CID').text
+                else:
+                    raise Exception('unexpected tag: '+tag)
 
             # Skip the file if it hasn't changed, store it if it's a duplicate
             duplicate = False
             table = get_table(parts)
+            if table is None:
+                try:
+                    unknown_folders[text_id] += 1
+                except KeyError:
+                    unknown_folders[text_id] = 1
+                continue
             prev_row = db.one("""
                 SELECT mtime, dossier, cid
                   FROM {0}
@@ -270,11 +303,6 @@ def process_archive(db, archive_path, process_links=True):
                     skipped += 1
                     continue
 
-            xml.feed(b''.join(entry.get_blocks()))
-            root = xml.close()
-            tag = root.tag
-            meta = root.find('META')
-
             # Check the ID
             if tag == 'SECTION_TA':
                 assert root.find('ID').text == text_id
@@ -323,6 +351,9 @@ def process_archive(db, archive_path, process_links=True):
                 ]
             elif tag == 'TEXTELR':
                 assert table == 'textes_structs'
+                meta_spec = meta.find('META_SPEC')
+                meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
+                assert meta_chronicle.find('CID').text == text_cid
                 scrape_tags(attrs, root, TEXTELR_TAGS)
                 sommaires = [
                     {
@@ -454,7 +485,7 @@ def process_archive(db, archive_path, process_links=True):
             print("skipped", x, "files in unknown folder `%s`" % d)
 
     if liste_suppression:
-        suppress(get_table, db, liste_suppression)
+        suppress(base, get_table, db, liste_suppression)
 
 
 def main():
@@ -467,6 +498,7 @@ def main():
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
+    p.add_argument('--base', choices=["LEGI", "JORF"])
     p.add_argument('--skip-links', default=False, action='store_true',
                    help="if set, all link metadata will be ignored (the `liens` table will be empty)")
     args = p.parse_args()
@@ -475,7 +507,22 @@ def main():
         os.mkdir(args.anomalies_dir)
 
     db = connect_db(args.db, pragmas=args.pragma)
+    base = db.one("SELECT value FROM db_meta WHERE key = 'base'")
     last_update = db.one("SELECT value FROM db_meta WHERE key = 'last_update'")
+    if not base:
+        base = args.base.upper() if args.base and not last_update else 'LEGI'
+        db.insert('db_meta', dict(key='base', value=base))
+    if args.base and base != args.base.upper():
+        print('!> Wrong database: requested '+args.base.upper()+' but existing database is '+base+'.')
+        raise SystemExit(1)
+
+    if base != 'LEGI' and not args.raw:
+        print("!> You need to use the --raw option when working with bases other than LEGI.")
+        raise SystemExit(1)
+
+    if base != 'LEGI' and args.anomalies:
+        print("!> The --anomalies option can only be used with the LEGI base")
+        raise SystemExit(1)
 
     # Check and record the data mode
     db_meta_raw = db.one("SELECT value FROM db_meta WHERE key = 'raw'")
@@ -499,12 +546,12 @@ def main():
 
     # Look for new archives in the given directory
     print("> last_update is", last_update)
-    archive_re = re.compile(r'(.+_)?legi(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
+    archive_re = re.compile(r'(.+_)?'+base.lower()+r'(?P<global>_global)?_(?P<date>[0-9]{8}-[0-9]{6})\..+', flags=re.IGNORECASE)
     skipped = 0
     archives = sorted([
         (m.group('date'), bool(m.group('global')), m.group(0)) for m in [
             archive_re.match(fn) for fn in os.listdir(args.directory)
-            if fnmatch(fn.lower(), '*legi_*.tar.*')
+            if fnmatch(fn.lower(), '*'+base.lower()+'_*.tar.*')
         ]
     ])
     most_recent_global = [t[0] for t in archives if t[1]][-1]
