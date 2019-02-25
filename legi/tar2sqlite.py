@@ -601,7 +601,7 @@ def main():
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
-    p.add_argument('--base', choices=["LEGI", "JORF"])
+    p.add_argument('--base', choices=["LEGI", "JORF", "KALI"])
     p.add_argument('--skip-links', default=False, action='store_true',
                    help="if set, all link metadata will be ignored (the `liens` table will be empty)")
     args = p.parse_args()
