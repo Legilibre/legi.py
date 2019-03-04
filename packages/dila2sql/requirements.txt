@@ -7,3 +7,4 @@ backoff
 peewee
 psycopg2-binary
 tox
+xlrd
