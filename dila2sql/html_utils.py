@@ -520,17 +520,14 @@ if __name__ == '__main__':
 
     db = connect_db(args.db)
     db_proxy.initialize(db)
-    try:
-        with db:
-            if args.command == 'analyze':
-                analyze()
-            elif args.command == 'clean':
-                clean_all_html_in_db(check=(not args.skip_checks))
-                save = input('Save changes? (y/N) ')
-                if save.lower() != 'y':
-                    raise KeyboardInterrupt
-                DBMeta.insert(key='raw', value=False) \
-                    .on_conflict(conflict_target=[DBMeta.key], preserve=[DBMeta.value]) \
-                    .execute()
-    except KeyboardInterrupt:
-        pass
+    with db:
+        if args.command == 'analyze':
+            analyze()
+        elif args.command == 'clean':
+            clean_all_html_in_db(check=(not args.skip_checks))
+            save = input('Save changes? (y/N) ')
+            if save.lower() != 'y':
+                exit(1)
+            DBMeta.insert(key='raw', value=False) \
+                .on_conflict(conflict_target=[DBMeta.key], preserve=[DBMeta.value]) \
+                .execute()

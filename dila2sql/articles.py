@@ -141,8 +141,5 @@ if __name__ == '__main__':
     args = p.parse_args()
 
     db = connect_db(args.db)
-    try:
-        with db:
-            test_article_num_parsing(db, args.limit)
-    except KeyboardInterrupt:
-        pass
+    with db:
+        test_article_num_parsing(db, args.limit)

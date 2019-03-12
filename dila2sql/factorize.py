@@ -255,21 +255,18 @@ if __name__ == '__main__':
 
     db = connect_db(args.db)
     db_proxy.initialize(db)
-    try:
-        with db:
-            if args.from_scratch:
-                db.execute_sql("DELETE FROM textes;")
-                db.commit()
-                db.execute_sql("""
-                  UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
-                """)
-                db.commit()
-            missing_titre = TexteVersion \
-                .select(TexteVersion.id) \
-                .where(TexteVersion.titrefull_s.is_null()) \
-                .first()
-            if missing_titre:
-                normalize_text_titles(db)
-            main(db)
-    except KeyboardInterrupt:
-        pass
+    with db:
+        if args.from_scratch:
+            db.execute_sql("DELETE FROM textes;")
+            db.commit()
+            db.execute_sql("""
+              UPDATE textes_versions SET texte_id = NULL WHERE texte_id IS NOT NULL;
+            """)
+            db.commit()
+        missing_titre = TexteVersion \
+            .select(TexteVersion.id) \
+            .where(TexteVersion.titrefull_s.is_null()) \
+            .first()
+        if missing_titre:
+            normalize_text_titles(db)
+        main(db)

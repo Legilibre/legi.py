@@ -875,17 +875,12 @@ if __name__ == '__main__':
     db_proxy.initialize(db)
 
     log_file = open(args.log_path, 'w') if args.log_path else None
-    try:
-        with db:
-            if args.what in ('all', 'textes_titres'):
-                normalize_text_titles(db, dry_run=args.dry_run, log_file=log_file)
-            if args.what in ('all', 'sections_titres'):
-                normalize_section_titles(db, dry_run=args.dry_run, log_file=log_file)
-            if args.what in ('all', 'articles_num'):
-                normalize_article_numbers(db, dry_run=args.dry_run, log_file=log_file)
-            if args.what in ('all', 'sommaires_num'):
-                normalize_sommaires_num(db, dry_run=args.dry_run, log_file=log_file)
-            if args.dry_run:
-                raise KeyboardInterrupt
-    except KeyboardInterrupt:
-        pass
+    with db:
+        if args.what in ('all', 'textes_titres'):
+            normalize_text_titles(db, dry_run=args.dry_run, log_file=log_file)
+        if args.what in ('all', 'sections_titres'):
+            normalize_section_titles(db, dry_run=args.dry_run, log_file=log_file)
+        if args.what in ('all', 'articles_num'):
+            normalize_article_numbers(db, dry_run=args.dry_run, log_file=log_file)
+        if args.what in ('all', 'sommaires_num'):
+            normalize_sommaires_num(db, dry_run=args.dry_run, log_file=log_file)
