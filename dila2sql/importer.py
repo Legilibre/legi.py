@@ -11,15 +11,8 @@ from collections import defaultdict
 
 import libarchive
 from lxml import etree
-
-try:
-    from tqdm import tqdm
-except ImportError:
-    print('[warning] tqdm is not installed, the progress bar is disabled')
-    tqdm = lambda x: x
-
 from .anomalies import detect_anomalies
-from .utils import connect_db, partition, json_serializer
+from .utils import connect_db, partition, json_serializer, progressbar
 from .models import db_proxy, DBMeta, Calipso, DuplicateFile, \
     ArticleCalipso, TexteVersionBrute, Tetier, \
     Conteneur, Lien, Sommaire, TABLE_TO_MODEL
@@ -587,7 +580,7 @@ def process_archive(db, archive_path, process_links=True):
     calipsos = set()
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
-        for entry in tqdm(archive):
+        for entry in progressbar(archive):
             process_file(
                 xml, entry, base, unknown_folders, counts,
                 liste_suppression, calipsos, process_links, skipped

@@ -253,3 +253,12 @@ def json_serializer(obj):
     if isinstance(obj, date):
         return str(obj)
     raise TypeError("Type %s not serializable" % type(obj))
+
+
+def progressbar(iterable):
+    try:
+        from tqdm import tqdm
+        return tqdm(iterable)
+    except ImportError:
+        print('[warning] tqdm is not installed, the progress bar is disabled')
+        return iterable
