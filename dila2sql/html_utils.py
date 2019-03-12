@@ -8,16 +8,9 @@ from difflib import ndiff
 import json
 import re
 from xml.parsers import expat
-
 from lxml import etree
 
-try:
-    from tqdm import tqdm
-except ImportError:
-    print('[warning] tqdm is not installed, the progress bar is disabled')
-    tqdm = lambda x: x
-
-from .utils import connect_db, group_by_2, ascii_spaces_re
+from .utils import connect_db, group_by_2, ascii_spaces_re, progressbar
 from .models import db_proxy, Article, TexteVersion, DBMeta, TABLE_TO_MODEL
 
 
@@ -399,7 +392,7 @@ def clean_all_html_in_db(check=True):
     # Articles
     print("Cleaning articles...")
     articles = Article.select(Article.id, Article.bloc_textuel, Article.nota).dicts()
-    for row in tqdm(articles):
+    for row in progressbar(articles):
         clean_row('articles', row)
     # Textes
     print("Cleaning textes_versions...")
@@ -408,7 +401,7 @@ def clean_all_html_in_db(check=True):
         TexteVersion.tp, TexteVersion.nota, TexteVersion.abro,
         TexteVersion.rect
     ).dicts()
-    for row in tqdm(texte_versions):
+    for row in progressbar(texte_versions):
         clean_row('textes_versions', row)
 
     # Print stats
