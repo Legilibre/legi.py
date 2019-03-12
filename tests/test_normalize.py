@@ -1,6 +1,6 @@
-from legi.normalize import normalize_text_titles
-from legi.utils import connect_db
-from legi.models import db_proxy, TexteVersion, TexteVersionBrute
+from dila2sql.normalize import normalize_text_titles
+from dila2sql.utils import connect_db
+from dila2sql.models import db_proxy, TexteVersion, TexteVersionBrute
 
 import pytest
 pytest.skip("normalize not yet migrated to peewee", allow_module_level=True)

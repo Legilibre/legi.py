@@ -45,5 +45,5 @@ jobs:
       env:
         - *docker_image
         - *docker_keys
-        - DOCKER_IMAGE="socialgouv/legi.py"
+        - DOCKER_IMAGE="socialgouv/dila2sql"
         - CONTEXT=.

@@ -2,7 +2,7 @@ image: docker:latest
 
 variables:
   DOCKER_HOST: tcp://localhost:2375 #Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
-  CONTAINER_IMAGE: socialgouv/legi.py
+  CONTAINER_IMAGE: socialgouv/dila2sql
 
 services:
   - docker:dind

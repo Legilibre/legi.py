@@ -1,5 +1,5 @@
-from legi.factorize import main
-from legi.utils import connect_db
+from dila2sql.factorize import main
+from dila2sql.utils import connect_db
 
 
 def test_factorize():

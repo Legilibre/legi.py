@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from legi.fr_calendar import (
+from dila2sql.fr_calendar import (
     MOIS_REPU, REPUBLICAN_START_DATE, SANSCULOTTIDES,
     gregorian_to_republican, republican_to_gregorian,
     convert_date_to_iso,

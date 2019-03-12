@@ -1,111 +1,116 @@
-# legi.py
+# dila2sql
 
-Fork de [Legilibre/legi.py](https://github.com/legilibre/legi.py) avec :
+![DILA2SQL Logo](https://i.imgur.com/wS0w4lO.png)
 
-- gestion des bases [LEGI](https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/), [KALI](https://www.data.gouv.fr/fr/datasets/kali-conventions-collectives-nationales/) et [JORF](https://www.data.gouv.fr/fr/datasets/jorf-les-donnees-de-l-edition-lois-et-decrets-du-journal-officiel/)
-- Parallélisation des téléchargements
-- docker (optionnel)
+Ce projet permet de générer des bases SQL à partir des exports publiés au format XML par la [DILA (Direction de l’information légale et administrative)][dila].
 
-Les bases de données OpenData en XML sont très riches mais difficilement exploitable.
+`dila2sql` est un fork du projet [`legi.py`][legi.py] créé par [Legilibre][legilibre] et [@Changaco][changaco].
 
-legi.py permet de convertir ces données en une base de données relationnelle, plus facilement interrogeable.
+Les bases de la DILA supportées sont :
+- [LEGI][legi-data] : Codes, lois et règlements consolidés
+- [KALI][kali-data] : Conventions collectives nationales
+- [JORF][jorf-data] : Textes publiés au Journal officiel de la République française
 
-### Usage
+Le projet supporte en sortie les formats PostgreSQL et SQLite.
 
-~~Vous pouvez récupérer directement les dernières bases de données compilées ici :~~
+## Fonctionnement
 
-- LEGI.sqlite
-- KALI.sqlite
-- JORF.sqlite
+- téléchargement incrémental des archives XML
+- création/migration de la base SQL
+- parcours incrémental des archives et modifications dans la base SQL
+- réparation des erreurs simples et amélioration (liens)
+- nettoyage des données textuelles (normalisation des titres, fautes de français)
+- détection d'anomalies
+
+## Bases SQL accessibles publiquement
+
+Pour permettre une réutilisation simple, le projet `dila2sql` est hébergé par l'[Incubateur des Ministères Sociaux][incubateur].
+
+L'incubateur fournit un accès public gratuit aux bases SQL générées et mises à jour quotidiennement :
+
+- LEGI : [fichier SQLite][legi-sqlite] | [dump SQL Postgres][legi-postgres]
+- KALI : [fichier SQLite][kali-sqlite] | [dump SQL Postgres][kali-postgres]
+- JORF : [fichier SQLite][jorf-sqlite] | [dump SQL Postgres][jorf-postgres]
 
 ~~[badge date mise à jour]~~
 
-~~dumps PostgreSQL également dispos sur [legi-postgres](https://github.com/SocialGouv/legi-postgres)~~
+*Note: La seule source officielle de droit est [Legifrance][legifrance], ces bases fournissent uniquement un accès informel plus pratique.*
+*Des erreurs peuvent avoir été introduites par ce projet.*
 
-#### Docker
+## Utilisation Locale
 
-Si vous souhaitez créer les fichiers SQLite vous-même , vous pouvez utilisez l'image docker `socialgouv/legi.py`.
+Voici quelques informations pour lancer vous même le projet sur votre machine, avec ou sans Docker
 
-> 💡 Les volumes et temps de compilation initiale peuvent durer plusieures heures selon votre matériel/connexion.
+> 💡 Le premier lancement du projet peut prendre plusieurs heures selon votre matériel/connexion.
 
-#### Installation locale
+### Utilisation sans Docker
 
-Installez libarchive puis
+Le projet fonctionne uniquement avec Python 3.7+.
+
+Installez [libarchive][libarchive] : `sudo apt-get install libarchive13` sur Debian/Ubuntu ou bien `brew install libarchive` sur Mac OS X.
+
+Puis installez les dépendences Python :
+
+    pip install -r requirements.txt
+
+Cette commande lance le téléchargement incrémental des archives XML de la base LEGI et les sauvegarde dans `./data` :
+
+    python -m dila2sql.download ./data --base LEGI
+
+Cette commande parcourt incrémentalement les nouvelles archives de la base LEGI présentes dans `./data` et crée (ou met à jour) une base de données SQLite stockée dans `./data/LEGI.sqlite`.
+
+    python -m dila2sql.importer --base LEGI sqlite:///LEGI.sqlite ./data
+
+Commande équivalente pour la base KALI et une sortie Postgres :
+
+    python -m dila2sql.importer --base KALI --raw postgresql://dila2sql:dilamite@localhost/kali ./data
+
+Pour lancer les tests il suffit de lancer `tox`
+
+### Avec Docker
+
+Une image Docker `socialgouv/dila2sql` est hébergée sur DockerHub par l'[Incubateur des Ministères Sociaux][incubateur].
+
+Vous pouvez aussi builder l'image Docker localement avec la commande suivante :
+
+    docker build -t dila2sql .
+
+Vous pouvez alors lancer toutes les commandes précédemment mentionnées en local sous cette forme :
+
+    docker run --rm -t -v $PWD/data:/data socialgouv/dila2sql COMMANDE
+
+Vous pouvez aussi développer dans l'image Docker en ajoutant `-v $PWD:/app` au lancement du container, le code utilisé sera alors celui de votre répertoire local.
+
+Vous pouvez aussi lancer les tests dans l'image Docker grâce à cette commande :
+
+    docker run --rm -t -v $PWD/data:/data socialgouv/dila2sql
+
+## Problèmes libarchive avec Mac OS X
+
+sur Mac OS X, il vous faudra aussi probablement exporter la variable `LD_LIBRARY_PATH` à cause de ce [bug connu][libarchive-bug].
+Par exemple :
 
 ```sh
-pip install -r requirements.txt
-```
-
-
-sur Mac OS X, il vous faudra aussi probablement exporter la variable `LD_LIBRARY_PATH` à cause de ce [bug connu](https://github.com/dsoprea/PyEasyArchive#notes). Par exemple :
-
-```sh
-# ~/.zshrc
+# ~/.bashrc
 export LIBARCHIVE=/usr/local/Cellar/libarchive/3.3.3/lib/libarchive.13.dylib
 ```
 
+De même en cas de problème lors du lancement des tests, essayez avec cette commande:
 
-##### Lancer le download de la base LEGI
+    TOX_TESTENV_PASSENV=LIBARCHIVE tox
 
-Cette commande lance le téléchargement des bases OpenData de la DILA et les sauvegarde localement dans `./data`.
+## Différences par rapport à legi.py
 
-```sh
-docker run --rm -t              \
-    -v $PWD/data:/data          \
-    socialgouv/legi.py          \
-    python -m legi.download /data --base LEGI
-```
-
-##### mettre à jour le fichier SQLite de la base LEGI
-
-Cette commande lit tous les fichiers dans `./data` et crée ou met à jour une base de données SQLite.
-
-```sh
-docker run --rm -t         \
-    -v $PWD/data:/data     \
-    socialgouv/legi.py     \
-    python -m legi.importer /data/LEGI.sqlite /data --base LEGI
-```
-
-Le fichier sera crée localement dans `./data/legi.sqlite` via le volume docker.
-
-#### PostgreSQL
-
-Vous pouvez utiliser [legi-postgres](https://github.com/SocialGouv/legi-postgres) pour convertir ces données au format PostgreSQL
-
-## Développement
-
-Vous pouvez développer _dans_ l'environnement docker en ajoutant `-v $PWD:/app` au lancement du container :
-
-```sh
-docker run --rm -t         \
-    -v $PWD/data:/data     \
-    -v $PWD:/app           \
-    socialgouv/legi.py     \
-    python hello.py
-```
-
-### Tests
-
-legi.py utilise [Tox](https://pypi.python.org/pypi/tox) pour tester le code sur plusieurs versions de Python. Installez-le si nécessaire puis lancez la commande `tox` dans le dossier qui contient votre copie du dépôt legi.py.
-
-Sur Mac OS X, si vous rencontrez un bug sur libarchive quand vous lancez tox, essayez avec cette commande: `TOX_TESTENV_PASSENV=LIBARCHIVE tox`
-
-## A propos
-
-legi.py permet de :
-
-- créer une base de données SQLite à partir des archives des bases LEGI, KALI, JORF
-- mettre à jour automatiquement et incrémentalement cette BDD
-- normaliser les titres des textes
-- connecter les différentes versions d'un texte entre elles
-- analyser les données pour détecter [les anomalies][anomalies]
-
-Plus d'informations sur le [repo original](https://github.com/Legilibre/legi.py)
+- Support de plusieurs bases de la DILA en entrée
+- Support de plusieurs bases SQL en sortie grâce à [peewee](http://docs.peewee-orm.com/en/latest/)
+- Parallélisation des téléchargements
+- Image Docker optionnelle pour isoler l'environnement
 
 ## Contribuer
 
-Les _Pull Requests_ sont bienvenues. Vous pouvez aussi ouvrir des PRs sur le [repo original de Legilibre](https://github.com/Legilibre/legi.py)
+Les _Pull Requests_ sont bienvenues.
+
+Les [autres bases de la DILA][dila-bases] sont disponibles dans des dumps XML similaires, il devrait donc être relativement aisé d'adapter `dila2sql` pour les supporter.
 
 ## Projets connexes
 
@@ -118,10 +123,21 @@ Les _Pull Requests_ sont bienvenues. Vous pouvez aussi ouvrir des PRs sur le [re
 
 [CC0 Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/)
 
-[anomalies]: http://anomalies.legilibre.fr/
-[cron]: https://en.wikipedia.org/wiki/Cron
-[libarchive]: http://libarchive.org/
+[dila]: http://www.dila.premier-ministre.gouv.fr/
+[legi.py]: https://github.com/Legilibre/legi.py/
+[legilibre]: https://github.com/Legilibre
+[changaco]: https://github.com/Changaco
 [legi-data]: https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/
-[legi-pypi]: https://pypi.python.org/pypi/legi
-[tweet-debut]: https://twitter.com/Changaco/statuses/484674913954172929
-[tweet-texte-plus-ancien]: https://twitter.com/Changaco/statuses/491566919544479745
+[kali-data]: https://www.data.gouv.fr/fr/datasets/kali-conventions-collectives-nationales/
+[jorf-data]: https://www.data.gouv.fr/fr/datasets/jorf-les-donnees-de-l-edition-lois-et-decrets-du-journal-officiel/
+[incubateur]: https://github.com/socialgouv
+[legi-sqlite]: https://dila2sql.num.social.gouv.fr/exports/sqlite/LEGI.sqlite
+[legi-postgres]: https://dila2sql.num.social.gouv.fr/exports/postgres/LEGI.sql
+[kali-sqlite]: https://dila2sql.num.social.gouv.fr/exports/sqlite/KALI.sqlite
+[kali-postgres]: https://dila2sql.num.social.gouv.fr/exports/postgres/KALI.sql
+[jorf-sqlite]: https://dila2sql.num.social.gouv.fr/exports/sqlite/JORF.sqlite
+[jorf-postgres]: https://dila2sql.num.social.gouv.fr/exports/postgres/JORF.sql
+[legifrance]: https://www.legifrance.gouv.fr/
+[libarchive]: http://libarchive.org/
+[libarchive-bug]: https://github.com/dsoprea/PyEasyArchive#notes
+[dila-bases]: https://www.dila.premier-ministre.gouv.fr/repertoire-des-informations-publiques/les-donnees-juridiques

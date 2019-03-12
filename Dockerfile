@@ -1,9 +1,9 @@
 #
-# container docker pour legi.py
+# container docker pour dila2sql
 #
-# https://github.com/SocialGouv/legi.py
+# https://github.com/SocialGouv/dila2sql
 #
-# build     : `docker build -t legi.py  .`
+# build     : `docker build -t dila2sql .`
 #
 
 FROM python:alpine
