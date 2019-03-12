@@ -28,6 +28,23 @@ Si vous souhaitez créer les fichiers SQLite vous-même , vous pouvez utilisez l
 
 > 💡 Les volumes et temps de compilation initiale peuvent durer plusieures heures selon votre matériel/connexion.
 
+#### Installation locale
+
+Installez libarchive puis
+
+```sh
+pip install -r requirements.txt
+```
+
+
+sur Mac OS X, il vous faudra aussi probablement exporter la variable `LD_LIBRARY_PATH` à cause de ce [bug connu](https://github.com/dsoprea/PyEasyArchive#notes). Par exemple :
+
+```sh
+# ~/.zshrc
+export LIBARCHIVE=/usr/local/Cellar/libarchive/3.3.3/lib/libarchive.13.dylib
+```
+
+
 ##### Lancer le download de la base LEGI
 
 Cette commande lance le téléchargement des bases OpenData de la DILA et les sauvegarde localement dans `./data`.
@@ -47,7 +64,7 @@ Cette commande lit tous les fichiers dans `./data` et crée ou met à jour une b
 docker run --rm -t         \
     -v $PWD/data:/data     \
     socialgouv/legi.py     \
-    python -m legi.tar2sqlite /data/LEGI.sqlite /data --base LEGI
+    python -m legi.importer /data/LEGI.sqlite /data --base LEGI
 ```
 
 Le fichier sera crée localement dans `./data/legi.sqlite` via le volume docker.
@@ -71,6 +88,8 @@ docker run --rm -t         \
 ### Tests
 
 legi.py utilise [Tox](https://pypi.python.org/pypi/tox) pour tester le code sur plusieurs versions de Python. Installez-le si nécessaire puis lancez la commande `tox` dans le dossier qui contient votre copie du dépôt legi.py.
+
+Sur Mac OS X, si vous rencontrez un bug sur libarchive quand vous lancez tox, essayez avec cette commande: `TOX_TESTENV_PASSENV=LIBARCHIVE tox`
 
 ## A propos
 

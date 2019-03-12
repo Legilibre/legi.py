@@ -4,8 +4,8 @@ set -o pipefail
 
 cd "$(dirname "$0")/.."
 python -u -m legi.download ./tarballs
-echo "=> Starting tar2sqlite..."
-python -u -m legi.tar2sqlite legi.raw.sqlite tarballs --anomalies --anomalies-dir=anomalies --raw | tee -a legi.raw.log
+echo "=> Starting importer..."
+python -u -m legi.importer legi.raw.sqlite tarballs --anomalies --anomalies-dir=anomalies --raw | tee -a legi.raw.log
 echo "=> Uploading anomaly logs..."
 rsync anomalies/ $1:~/anomalies/logs -rtv --chmod=F644
 echo "=> Generating index.html..."

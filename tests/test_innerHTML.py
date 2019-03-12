@@ -1,6 +1,6 @@
 from lxml import etree
 
-from legi.tar2sqlite import innerHTML
+from legi.importer import innerHTML
 
 
 def test_innerHTML():

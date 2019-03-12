@@ -64,7 +64,7 @@ def gen_titre(annexe, nature, num, date_texte, calendar, autorite):
     if num:
         titre += ' n° '+num
     if date_texte and date_texte != '2999-01-01':
-        year, month, day = map(int, date_texte.split('-'))
+        year, month, day = map(int, str(date_texte).split('-'))
         gregorian = '%s %s %s' % (day, MOIS_GREG[month-1], year)
         if calendar == 'republican':
             year, month, day = gregorian_to_republican(year, month, day)

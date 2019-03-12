@@ -18,6 +18,7 @@ except ImportError:
     tqdm = lambda x: x
 
 from .utils import connect_db, group_by_2, ascii_spaces_re
+from .models import db_proxy, Article, TexteVersion, DBMeta, TABLE_TO_MODEL
 
 
 # An immutable type representing the opening of an HTML element
@@ -338,7 +339,7 @@ def split_first_paragraph(html):
 strip_re = re.compile(r"<.+?>|[ \t\n\r\f\v]+", re.S)
 
 
-def clean_all_html_in_db(db, check=True):
+def clean_all_html_in_db(check=True):
     stats = {'cleaned': 0, 'delta': 0, 'total': 0}
 
     def clean_row(table, row):
@@ -392,20 +393,22 @@ def clean_all_html_in_db(db, check=True):
                 print("*" * 5, "Second run diff:", "*" * 5)
                 print(diff_html(html_c, html_c_2))
         if update:
-            db.update(table, dict(id=row_id), update)
+            model = TABLE_TO_MODEL[table]
+            model.update(**update).where(model.id == row_id).execute()
 
     # Articles
     print("Cleaning articles...")
-    q = db.all("SELECT id, bloc_textuel, nota FROM articles", to_dict=True)
-    for row in tqdm(q):
+    articles = Article.select(Article.id, Article.bloc_textuel, Article.nota).dicts()
+    for row in tqdm(articles):
         clean_row('articles', row)
     # Textes
     print("Cleaning textes_versions...")
-    q = db.all("""
-        SELECT id, visas, signataires, tp, nota, abro, rect
-          FROM textes_versions
-    """, to_dict=True)
-    for row in tqdm(q):
+    texte_versions = TexteVersion.select(
+        TexteVersion.id, TexteVersion.visas, TexteVersion.signataires,
+        TexteVersion.tp, TexteVersion.nota, TexteVersion.abro,
+        TexteVersion.rect
+    ).dicts()
+    for row in tqdm(texte_versions):
         clean_row('textes_versions', row)
 
     # Print stats
@@ -465,26 +468,29 @@ class StatsCollector:
         return r
 
 
-def analyze(db):
+def analyze():
     parser = etree.XMLParser(target=StatsCollector())
     parser.feed('<root>')
     # Articles
-    q = db.all("""
-        SELECT id, bloc_textuel, nota
-          FROM articles
-    """)
-    for article_id, bloc_textuel, nota in q:
-        if bloc_textuel:
-            parser.feed(bloc_textuel)
-        if nota:
-            parser.feed(nota)
+    articles = Article.select(Article.id, Article.bloc_textuel, Article.nota)
+    for article in articles:
+        if article.bloc_textuel:
+            parser.feed(article.bloc_textuel)
+        if article.nota:
+            parser.feed(article.nota)
     # Textes
-    q = db.all("""
-        SELECT id, visas, signataires, tp, nota, abro, rect
-          FROM textes_versions
-    """)
-    for row in q:
-        for text in row[1:]:
+    texte_versions = TexteVersion. \
+        select(
+            TexteVersion.id, TexteVersion.visas, TexteVersion.signataires,
+            TexteVersion.tp, TexteVersion.nota, TexteVersion.abro,
+            TexteVersion.rect
+        )
+    for version in texte_versions:
+        texts = [
+            version.visas, version.signataires, version.tp, version.nota,
+            version.abro, version.rect
+        ]
+        for text in texts:
             if text:
                 parser.feed(text)
     # Result
@@ -513,15 +519,18 @@ if __name__ == '__main__':
         DEFAULT_STYLE.pop('size')
 
     db = connect_db(args.db)
+    db_proxy.initialize(db)
     try:
         with db:
             if args.command == 'analyze':
-                analyze(db)
+                analyze()
             elif args.command == 'clean':
-                clean_all_html_in_db(db, check=(not args.skip_checks))
+                clean_all_html_in_db(check=(not args.skip_checks))
                 save = input('Save changes? (y/N) ')
                 if save.lower() != 'y':
                     raise KeyboardInterrupt
-                db.insert('db_meta', dict(key='raw', value=False), replace=True)
+                DBMeta.insert(key='raw', value=False) \
+                    .on_conflict(conflict_target=[DBMeta.key], preserve=[DBMeta.value]) \
+                    .execute()
     except KeyboardInterrupt:
         pass

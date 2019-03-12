@@ -7,6 +7,7 @@ from collections import defaultdict
 from functools import reduce
 import json
 import re
+from peewee import fn
 
 from .articles import (
     article_num, article_num_extra_re, article_num_multi, article_num_multi_sub,
@@ -24,6 +25,8 @@ from .utils import (
     ascii_spaces_re, connect_db, filter_nonalnum, mimic_case, nonword_re,
     show_match, strip_down, strip_prefix, upper_words_percentage,
 )
+
+from .models import db_proxy, Article, Section, TexteVersion, TexteVersionBrute, Sommaire
 
 
 dash_re = re.compile(r"[\u2012-\u2015]")
@@ -164,9 +167,9 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
     def update_article(data):
         if dry_run:
             return
-        db.update('articles', {'id': article_id}, data)
+        Article.update(**data).where(Article.id == article_id).execute()
 
-    q = db.all("""
+    q = db.execute_sql("""
         SELECT id, cid, num
           FROM articles
          WHERE length(num) > 0
@@ -363,9 +366,10 @@ def normalize_article_numbers(db, dry_run=False, log_file=None):
                 elif part2.startswith(' aux articles '):
                     # titre tronqué, on essaye de le compléter en extrayant le
                     # premier paragraphe du contenu de l'article
-                    html = db.one(
-                        "SELECT bloc_textuel FROM articles WHERE id = ?", (article_id,)
-                    )
+                    html = Article.select(Article.bloc_textuel) \
+                        .where(Article.id == article_id) \
+                        .get() \
+                        .bloc_textuel
                     paragraph, rest = split_first_paragraph(html)
                     paragraph = paragraph.replace('\n', ' ')
                     m3 = article_titre_partial_re.match(paragraph)
@@ -422,7 +426,7 @@ def normalize_section_titles(db, dry_run=False, log_file=None):
     def update_section(data):
         if dry_run:
             return
-        db.update('sections', {'id': section_id}, data)
+        Section.update(**data).where(Section.id == section_id).execute()
 
     multi_spaces_re = re.compile(r"(?: {2,}|\t+[ \t]*)")
 
@@ -462,7 +466,7 @@ def normalize_section_titles(db, dry_run=False, log_file=None):
             num = num[0].upper() + num[1:]
         return num
 
-    q = db.all("SELECT id, cid, titre_ta FROM sections")
+    q = db.execute_sql("SELECT id, cid, titre_ta FROM sections")
     for section_id, cid, titre_ta_o in q:
         titre_ta = titre_ta_o
         url = legifrance_url_section(section_id, cid)
@@ -606,7 +610,7 @@ def normalize_sommaires_num(db, dry_run=False, log_file=None):
 
     counts = {}
 
-    db.run("""
+    cursor = db.execute_sql("""
         UPDATE sommaires AS so
            SET num = (
                    SELECT a.num
@@ -620,24 +624,19 @@ def normalize_sommaires_num(db, dry_run=False, log_file=None):
                     WHERE a.id = so.element
                )
     """)
-    counts['updated num for article'] = db.changes()
+    db.commit()
+    counts['updated num for article'] = cursor.rowcount
 
-    db.create_function('reduce_section_title', 1, reduce_section_title)
-    db.run("""
-        UPDATE sommaires AS so
-           SET num = (
-                   SELECT reduce_section_title(s.titre_ta)
-                     FROM sections s
-                    WHERE s.id = so.element
-               )
-         WHERE substr(so.element, 5, 4) = 'SCTA'
-           AND COALESCE(so.num, '') <> (
-                   SELECT reduce_section_title(s.titre_ta)
-                     FROM sections s
-                    WHERE s.id = so.element
-               )
-    """)
-    counts['updated num for section'] = db.changes()
+    counter = 0
+    sommaires = Sommaire.select(Sommaire.id, Sommaire.num) \
+        .where(fn.SUBSTR(Sommaire.element, 5, 4) == 'SCTA') \
+        .join(Section, on=(Section.id == Sommaire.element))
+    for sommaire in sommaires:
+        reduced_title = reduce_section_title(sommaire.section.titre_ta)
+        if sommaire.num != reduced_title:
+            Sommaire.update(num=reduced_title).where(Sommaire.id == sommaire.id).execute()
+            counter += 1
+    counts['updated num for section'] = counter
 
     print("Done. Result: " + json.dumps(counts, indent=4, sort_keys=True))
 
@@ -665,7 +664,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
 
     updates = {}
     orig_values = {}
-    q = db.all("""
+    q = db.execute_sql("""
         SELECT id, titre, titrefull, titrefull_s, nature, num, date_texte, autorite
           FROM textes_versions_brutes_view
     """)
@@ -776,7 +775,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                         orig_values['date_texte'] = date_texte
                         updates['date_texte'] = date_texte = date_texte_d
                         counts['updated date_texte'] += 1
-                    elif date_texte_d != date_texte:
+                    elif str(date_texte_d) != str(date_texte):
                         print('Incohérence: date: "', date_texte_d, '" (detectée) ≠ "', date_texte, '" (donnée)', sep='')
                         anomaly[0] = True
                 autorite_d = get_key('autorite', ignore_not_found=True)
@@ -831,19 +830,24 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
             updates['titrefull_s'] = titrefull_s
         if updates:
             if not dry_run:
-                db.update("textes_versions", dict(id=text_id), updates)
+                TexteVersion.update(**updates).where(TexteVersion.id == text_id).execute()
             updates.clear()
             if orig_values:
                 # Save the original non-normalized data in textes_versions_brutes
                 bits = (TEXTES_VERSIONS_BRUTES_BITS[k] for k in orig_values)
                 orig_values['bits'] = reduce(int.__or__, bits)
-                orig_values.update(db.one("""
-                    SELECT id, dossier, cid, mtime
-                      FROM textes_versions
-                     WHERE id = ?
-                """, (text_id,), to_dict=True))
+                texte_version = TexteVersion \
+                    .select(
+                        TexteVersion.id, TexteVersion.dossier,
+                        TexteVersion.cid, TexteVersion.mtime
+                    ) \
+                    .where(TexteVersion.id == text_id) \
+                    .dicts().first() or {}
+                orig_values.update(texte_version)
                 if not dry_run:
-                    db.insert("textes_versions_brutes", orig_values, replace=True)
+                    TexteVersionBrute.delete(). \
+                        where(TexteVersionBrute.id == orig_values['id']).execute()
+                    TexteVersionBrute.insert(**orig_values).execute()
                 orig_values.clear()
 
     print('Done. Result:', json.dumps(counts, indent=4))
@@ -868,6 +872,8 @@ if __name__ == '__main__':
     args = p.parse_args()
 
     db = connect_db(args.db)
+    db_proxy.initialize(db)
+
     log_file = open(args.log_path, 'w') if args.log_path else None
     try:
         with db:

@@ -51,7 +51,7 @@ def main(args):
             xml = parser.close()
             tag = xml.tag
             roots[tag] = roots.get(tag, 0) + 1
-            for xpath, values_dict in values_count.iteritems():
+            for xpath, values_dict in values_count.items():
                 e = xml.find(xpath)
                 if e is not None:
                     v = e.text

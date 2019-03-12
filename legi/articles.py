@@ -105,7 +105,7 @@ def legifrance_url_article(id, cid):
 
 def test_article_num_parsing(db, limit):
     i = 0
-    q = db.all("""
+    q = db.execute_sql("""
         SELECT id, cid, num
           FROM articles
          WHERE num IS NOT NULL
