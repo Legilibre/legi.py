@@ -22,11 +22,11 @@ Le projet supporte en sortie les formats PostgreSQL et SQLite.
 - nettoyage des données textuelles (normalisation des titres, fautes de français)
 - détection d'anomalies
 
-## Bases SQL accessibles publiquement
+## Bases SQL accessibles publiquement - À venir bientôt
 
 Pour permettre une réutilisation simple, le projet `dila2sql` est hébergé par l'[Incubateur des Ministères Sociaux][incubateur].
 
-L'incubateur fournit un accès public gratuit aux bases SQL générées et mises à jour quotidiennement :
+L'incubateur fournira (bientôt) un accès public gratuit aux bases SQL générées et mises à jour quotidiennement :
 
 - LEGI : [fichier SQLite][legi-sqlite] | [dump SQL Postgres][legi-postgres]
 - KALI : [fichier SQLite][kali-sqlite] | [dump SQL Postgres][kali-postgres]
