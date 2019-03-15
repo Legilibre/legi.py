@@ -23,9 +23,11 @@ nécessaires :
     python -m ensurepip
     pip install -r requirements.txt
 
-legi.py a aussi besoin de [`libarchive`][libarchive]. Pour l'installer sur Ubuntu :
+legi.py a aussi besoin de [`libarchive`][libarchive]. L'installation de celle-ci varie selon le système d'exploitation :
 
-    sudo apt-get install libarchive13
+- Arch Linux : rien à faire, `libarchive` fait partie des paquets de base et est une dépendance de `pacman`
+- Mac OS X : la version de `libarchive` inclue dans Mac OS X est obsolète, vous pouvez utiliser [Homebrew](https://brew.sh/) pour installer une version récente en exécutant `brew install libarchive`, puis indiquer au module Python qu'il doit utiliser cette version en ajoutant une variable d'environnement : `export LIBARCHIVE="$(find "$(brew --cellar libarchive)" -name libarchive.13.dylib | sort | tail -1)"` (cette commande peut être ajoutée au fichier d'initialisation de votre shell, typiquement `~/.bashrc` ou `~/.zshrc`)
+- Ubuntu : `sudo apt-get install libarchive13`
 
 legi.py et les modules dont il dépend sont compatibles avec python 3.6 et 3.7,
 les versions antérieurs de python peuvent générer des erreurs.
