@@ -1,6 +1,6 @@
 from lxml import etree
 
-from dila2sql.importer import innerHTML
+from dila2sql.importer.process_xml import innerHTML
 
 
 def test_innerHTML():
