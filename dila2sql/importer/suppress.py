@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from .utils import get_table
+from .utils import get_table, get_dossier
 from dila2sql.models import DuplicateFile, ArticleCalipso, TexteVersionBrute, \
     Conteneur, Lien, Sommaire, TABLE_TO_MODEL
 
@@ -8,24 +8,29 @@ from dila2sql.models import DuplicateFile, ArticleCalipso, TexteVersionBrute, \
 def suppress(base, db, liste_suppression):
     counts = defaultdict(lambda: 0)
     for path in liste_suppression:
+        print("deleting path %s" % path)
         parts = path.split('/')
         if parts[0] != base.lower():
             print('[warning] cannot suppress {0}'.format(path))
             continue
         text_id = parts[-1]
-        text_cid = parts[11] if base == 'LEGI' else text_id
+        text_cid = parts[11] if base == 'LEGI' else None
         assert len(text_id) == 20
 
         table = get_table(parts)
+        dossier = get_dossier(parts, table)
         model = TABLE_TO_MODEL[table]
         if model == Conteneur:
             deleted_rows = Conteneur.delete().where(Conteneur.id == text_id).execute()
-        else:
+        elif base == "LEGI":
             deleted_rows = model.delete().where(
-                (model.dossier == parts[3]) &
+                (model.dossier == dossier) &
                 (model.cid == text_cid) &
                 (model.id == text_id)
             ).execute()
+        else:
+            # for bases other than LEGI there is dossier and no text_cid
+            deleted_rows = model.delete().where(model.id == text_id).execute()
 
         if deleted_rows:
             counts['delete from ' + table] += deleted_rows
@@ -67,7 +72,7 @@ def suppress(base, db, liste_suppression):
             # If the file had an older duplicate that hasn't been deleted then
             # we have to fall back to that, otherwise we'd be missing data
             duplicate_files = DuplicateFile.select() \
-                .where(DuplicateFile.id == 'KALIARTI000026951576a') \
+                .where(DuplicateFile.id == text_id) \
                 .order_by(DuplicateFile.mtime.desc()) \
                 .limit(1) \
                 .dicts()
@@ -91,14 +96,20 @@ def suppress(base, db, liste_suppression):
                     for row in rows:
                         model.create(**row)
                     counts['insert into ' + table] += len(rows)
-        else:
+        elif base == "LEGI":
             # Remove the file from the duplicates table if it was in there
             deleted_duplicate_files = DuplicateFile.delete().where(
-                (DuplicateFile.dossier == parts[3]) &
+                (DuplicateFile.dossier == dossier) &
                 (DuplicateFile.cid == text_cid) &
                 (DuplicateFile.id == text_id)
             ).execute()
             counts['delete from duplicate_files'] += deleted_duplicate_files
+        else:
+            deleted_duplicate_files = DuplicateFile.delete().where(
+                (DuplicateFile.id == text_id)
+            ).execute()
+            counts['delete from duplicate_files'] += deleted_duplicate_files
+
     total = sum(counts.values())
     print("made", total, "changes in the database based on liste_suppression_"+base.lower()+".dat:",
           json.dumps(counts, indent=4, sort_keys=True))

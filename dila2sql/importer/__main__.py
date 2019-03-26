@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 
 import libarchive
-from .utils import get_table
+from .utils import get_table, get_dossier
 from .suppress import suppress
 from .process_xml import process_xml
 from dila2sql.anomalies import detect_anomalies
@@ -48,7 +48,7 @@ def process_archive(db, archive_path, process_links=True):
                 unknown_folders[parts[2]] += 1
                 continue
             table = get_table(parts)
-            dossier = parts[3] if base == 'LEGI' else None
+            dossier = get_dossier(parts, base)
             text_cid = parts[11] if base == 'LEGI' else None
             text_id = parts[-1][:-4]
             if table is None:

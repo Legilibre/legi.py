@@ -1,6 +1,10 @@
 from .constants import TABLES_MAP
 
 
+def get_dossier(parts, base):
+    return parts[3] if base == 'LEGI' else None
+
+
 def get_table(parts):
     if parts[-1][4:8] not in TABLES_MAP:
         return None
