@@ -8,7 +8,6 @@ from dila2sql.models import DuplicateFile, ArticleCalipso, TexteVersionBrute, \
 def suppress(base, db, liste_suppression):
     counts = defaultdict(lambda: 0)
     for path in liste_suppression:
-        print("deleting path %s" % path)
         parts = path.split('/')
         if parts[0] != base.lower():
             print('[warning] cannot suppress {0}'.format(path))

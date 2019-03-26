@@ -24,6 +24,26 @@ def scrape_tags(attrs, root, wanted_tags, unwrap=False):
     )
 
 
+def get_previous_row(table, text_id):
+    if table == 'conteneurs':
+        prev_rows = Conteneur \
+            .select() \
+            .where(Conteneur.id == text_id) \
+            .dicts().limit(1)
+        prev_row = prev_rows[0] if len(prev_rows) > 0 else None
+        if prev_row:
+            prev_row["dossier"] = None
+            prev_row["cid"] = None
+        return prev_row
+    else:
+        model = TABLE_TO_MODEL[table]
+        prev_rows = model \
+            .select(model.mtime, model.dossier, model.cid) \
+            .where(model.id == text_id) \
+            .dicts().limit(1)
+        return prev_rows[0] if len(prev_rows) > 0 else None
+
+
 def process_xml(
     xml_blob,
     mtime,
@@ -62,22 +82,8 @@ def process_xml(
     # Skip the file if it hasn't changed, store it if it's a duplicate
     duplicate = False
 
-    if table == 'conteneurs':
-        prev_rows = Conteneur \
-            .select() \
-            .where(Conteneur.id == text_id) \
-            .dicts().limit(1)
-        prev_row = prev_rows[0] if len(prev_rows) > 0 else None
-        if prev_row:
-            prev_row["dossier"] = None
-            prev_row["cid"] = None
-    else:
-        model = TABLE_TO_MODEL[table]
-        prev_rows = model \
-            .select(model.mtime, model.dossier, model.cid) \
-            .where(model.id == text_id) \
-            .dicts().limit(1)
-        prev_row = prev_rows[0] if len(prev_rows) > 0 else None
+    prev_row = get_previous_row(table, text_id)
+
     if prev_row:
         if prev_row["dossier"] != dossier or prev_row["cid"] != text_cid:
             if prev_row["mtime"] >= mtime:
