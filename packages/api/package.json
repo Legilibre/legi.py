@@ -24,6 +24,7 @@
   "main": "./src",
   "scripts": {
     "start": "node ./src",
+    "dev": "DEBUG=express:* nodemon --watch . --watch ../legi.js ./src",
     "swagger": "swagger-codegen generate -i ./swagger.yml -l html2 -o ./docs/"
   },
   "devDependencies": {

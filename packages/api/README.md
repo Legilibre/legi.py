@@ -6,6 +6,22 @@ Le format par défaut est le JSON, avec un structure d'arbre [unist](https://git
 
 NB: vous devez disposer d'une base de données `legi-postgres`
 
+## Local development setup
+
+If you want to make local changes to `legi.js` and see their impact in the API, you can update the require line in `src/legi.js` with:
+
+```js
+const Legi = require("../../legi.js");
+```
+
+You should also install `nodemon` so that the server watches file changes and reloads automatically : `npm install -g nodemon`.
+
+You can now start the server with this command to see all the logs:
+
+```
+yarn dev
+```
+
 ## Usage
 
 - `/codes` : récupérer la liste des codes disponibles
