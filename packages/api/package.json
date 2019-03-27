@@ -1,0 +1,34 @@
+{
+  "name": "legi-api",
+  "version": "1.0.0",
+  "author": "Julien Bouquillon <julien@bouquillon.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/revolunet/legi-api.git"
+  },
+  "homepage": "https://revolunet.github.io/legi-api/",
+  "bugs": {
+    "url": "https://github.com/revolunet/legi-api/issues"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.16.3",
+    "legi": "^1.3.0",
+    "memoizee": "^0.4.14",
+    "unist-util-find": "^1.0.1",
+    "unist-util-map": "^1.0.4",
+    "unist-util-parents": "^1.0.1",
+    "unist-util-remove": "^1.0.1"
+  },
+  "main": "./src",
+  "scripts": {
+    "start": "node ./src",
+    "dev": "DEBUG=express:* nodemon --watch . --watch ../legi.js ./src",
+    "swagger": "swagger-codegen generate -i ./swagger.yml -l html2 -o ./docs/"
+  },
+  "devDependencies": {
+    "jest": "^22.4.3",
+    "swagger-codegen": "^0.1.1"
+  }
+}
