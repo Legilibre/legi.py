@@ -1,17 +1,15 @@
-# legi-api
+# dila2sql - API
 
-API http pour interroger les textes issus de la base LEGI.
+API HTTP pour interroger les bases générées par `dila2sql` : LEGI, KALI, etc...
 
 Le format par défaut est le JSON, avec un structure d'arbre [unist](https://github.com/syntax-tree/unist)
 
-NB: vous devez disposer d'une base de données `legi-postgres`
-
 ## Local development setup
 
-If you want to make local changes to `legi.js` and see their impact in the API, you can update the require line in `src/legi.js` with:
+If you want to make local changes to `dila.js` and see their impact in the API, you can update the require line in `src/getDila.js` with:
 
 ```js
-const Legi = require("../../legi.js");
+const Dila = require("../../dila.js");
 ```
 
 You should also install `nodemon` so that the server watches file changes and reloads automatically : `npm install -g nodemon`.
@@ -36,9 +34,3 @@ yarn dev
 - `/code/LEGITEXT000006069414?date=2016-01-01&format=html` : code de la P.I. au 1/1/2016 en HTML
 - `/code/JORFTEXT000000465978` : texte du journal officiel
 - `/code/LEGISCTA000006132321` : une section du code du travail
-
-## Related
-
-- https://github.com/revolunet/legi.js
-- https://github.com/Legilibre/legi-postgres
-- https://github.com/Legilibre/legi.py

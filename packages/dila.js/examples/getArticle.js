@@ -1,12 +1,12 @@
-const legi = require("./legi");
+const dila = require("./dila");
 const { JSONlog } = require("../src/utils");
 
 // get single article
-legi
+dila
   .getArticle({
     id: "LEGIARTI000006398351"
   })
   .then(JSONlog)
   .catch(console.log)
-  .then(legi.close);
+  .then(dila.close);
 

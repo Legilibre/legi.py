@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
-const getLegi = require("./getLegi");
+const getDila = require("./getDila");
 const pkg = require("../package.json");
 
 const app = express();

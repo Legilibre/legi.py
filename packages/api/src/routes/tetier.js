@@ -1,10 +1,10 @@
 const routes = require("express").Router();
 const memoize = require("memoizee");
 
-const getLegi = require("../getLegi");
+const getDila = require("../getDila");
 
 const getTetierData = memoize(
-  (baseDILA, id, date) => getLegi(baseDILA).getTetier({id, date}),
+  (baseDILA, id, date) => getDila(baseDILA).getTetier({id, date}),
   { promise: true }
 );
 

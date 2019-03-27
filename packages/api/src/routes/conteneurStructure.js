@@ -2,7 +2,7 @@ const routes = require("express").Router();
 const memoize = require("memoizee");
 const map = require("unist-util-map");
 
-const getLegi = require("../getLegi");
+const getDila = require("../getDila");
 
 // extract basic text structure
 const getStructure = tree =>
@@ -15,7 +15,7 @@ const getStructure = tree =>
 
 const getSommaireData = memoize(
   (baseDILA, id, date, includeArticles) => (
-    getLegi(baseDILA).getSommaireConteneur({id, date, includeArticles})
+    getDila(baseDILA).getSommaireConteneur({id, date, includeArticles})
   ),
   { promise: true }
 );

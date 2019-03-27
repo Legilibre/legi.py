@@ -1,6 +1,6 @@
 {
-  "name": "legi",
-  "description": "API NodeJS pour requêter les textes de loi issus d'une base legi.py",
+  "name": "dila",
+  "description": "Librairie NodeJS pour requêter les bases générées par dila2sql",
   "version": "2.0.0",
   "author": "Julien Bouquillon <julien@bouquillon.com>",
   "license": "MIT",
@@ -19,11 +19,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/revolunet/legi.js.git"
+    "url": "git+https://github.com/SocialGouv/dila2sql.git"
   },
-  "homepage": "https://revolunet.github.io/legi.js/",
+  "homepage": "https://github.com/SocialGouv/dila2sql/",
   "bugs": {
-    "url": "https://github.com/revolunet/legi.js/issues"
+    "url": "https://github.com/SocialGouv/dila2sql/issues"
   },
   "dependencies": {
     "condense-whitespace": "^1.0.0",

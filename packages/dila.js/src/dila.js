@@ -2,7 +2,7 @@ const knexRequire = require("knex");
 
 const defaultKnexConfig = require("./knexfile");
 
-const legi = (knexConfig = {}) => {
+const dila = (knexConfig = {}) => {
   const knex = knexRequire({
     ...defaultKnexConfig,
     ...knexConfig
@@ -27,10 +27,10 @@ const legi = (knexConfig = {}) => {
   };
 };
 
-class Legi {
+class Dila {
   constructor(knexConfig) {
-    return legi(knexConfig);
+    return dila(knexConfig);
   }
 }
 
-module.exports = Legi;
+module.exports = Dila;

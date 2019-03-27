@@ -1,3 +1,3 @@
-const Legi = require("../src/legi");
+const Dila = require("../src/dila");
 
-module.exports = new Legi();
+module.exports = new Dila();

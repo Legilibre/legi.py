@@ -1,9 +1,9 @@
-const legi = require("./legi");
+const dila = require("./dila");
 const { JSONlog } = require("../src/utils");
 
 // get code sommaire
-legi
+dila
   .getSommaireTexte({ id: "KALITEXT000030579247", date: "2018-12-01" })
   .then(JSONlog)
   .catch(console.log)
-  .then(legi.close);
+  .then(dila.close);

@@ -1,1 +1,1 @@
-module.exports = require("./legi");
+module.exports = require("./dila");

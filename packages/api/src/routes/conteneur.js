@@ -1,10 +1,10 @@
 const routes = require("express").Router();
 const memoize = require("memoizee");
 
-const getLegi = require("../getLegi");
+const getDila = require("../getDila");
 
 const getConteneurData = memoize(
-  (baseDILA, id, date) => getLegi(baseDILA).getConteneur({id, date}),
+  (baseDILA, id, date) => getDila(baseDILA).getConteneur({id, date}),
   { promise: true }
 );
 

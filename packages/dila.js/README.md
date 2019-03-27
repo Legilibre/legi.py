@@ -25,28 +25,28 @@ npm install legi
 Promise-based API
 
 ```js
-const Legi = require("legi");
+const Dila = require("dila");
 
-const legi = new Legi();
+const dila = new Dila();
 
 // liste des codes disponibles
-legi.getCodesList().then(console.log);
+dila.getCodesList().then(console.log);
 
 // code du travail (~1min)
-legi.getCode({ cid: "LEGITEXT000006072050", date: "2012-03-05" }).then(console.log);
+dila.getCode({ cid: "LEGITEXT000006072050", date: "2012-03-05" }).then(console.log);
 
 // section d'un texte
-legi.getSection({ id: "LEGISCTA000006132321", date: "2018-05-03" }).then(console.log);
+dila.getSection({ id: "LEGISCTA000006132321", date: "2018-05-03" }).then(console.log);
 
 // conversion en markdown
-const markdown = require("legi/src/markdown");
-legi
+const markdown = require("dila.js/src/markdown");
+dila
   .getCode({ cid: "LEGITEXT000006069414", date: "2012-03-05" })
   .then(markdown)
   .then(console.log);
 
 // conversion en html
-const html = require("legi/src/html");
+const html = require("dila.js/src/html");
 legi
   .getCode({ cid: "LEGITEXT000006069414", date: "2012-03-05" })
   .then(html)
@@ -56,7 +56,7 @@ legi
 Pour utiliser votre propres serveur PostgreSQL :
 
 ```
-const legi = new Legi({
+const legi = new Dila({
   client: "pg",
   connection: {
     host: "127.0.0.1",
@@ -88,5 +88,3 @@ Plus d'exemples dans [./examples](./examples)
 
 - https://github.com/Legilibre/legi.py
 - https://github.com/Legilibre/Archeo-Lex
-- https://github.com/Legilibre/legi-php
-- https://github.com/Legilibre/legi-postgres

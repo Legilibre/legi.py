@@ -41,7 +41,7 @@ const mdAstToHtml = async node => {
     })
     .use(doc, {
       css: "https://rawgit.com/sindresorhus/github-markdown-css/gh-pages/github-markdown.css",
-      title: "legi.js",
+      title: "dila.js",
       language: "fr"
     })
     .run(tree);

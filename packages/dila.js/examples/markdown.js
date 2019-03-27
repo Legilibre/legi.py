@@ -1,11 +1,11 @@
-const legi = require("./legi");
+const dila = require("./dila");
 
 const markdown = require("../src/markdown");
 
 // get full code in markdown format
-legi
+dila
   .getCode({ cid: "LEGITEXT000006070666", date: "2018-12-01" })
   .then(markdown)
   .then(console.log)
   .catch(console.log)
-  .then(legi.close);
+  .then(dila.close);
