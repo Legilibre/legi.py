@@ -1,27 +1,43 @@
 const { getRawStructure } = require("./getStructure");
-const { makeAst, cleanData } = require("./utils");
-const getCodeData = require("./getCodeData");
-
-const isSection = id => id.substring(0, 8) === "LEGISCTA";
+const { makeAst, cleanData, canContainChildren, getItemType } = require("./utils");
+const getTexteData = require("./getTexteData");
+const getConteneurData = require("./getConteneurData");
 
 const getRow = row => ({
-  type: "section",
+  type: getItemType(row),
   data: cleanData({
     id: row.id,
-    titre_ta: row.titre_ta,
+    titre: row.titre,
     position: row.position,
     parent: row.parent
   })
 });
 
 // return full structure without nested content and without articles. useful to build a navigation
-const getSommaire = (knex, { cid, date }) =>
-  getRawStructure({ knex, cid, date, maxDepth: 0 }).then(async result => ({
-    // make the final AST-like structure
-    type: "code",
-    // add root section data if needed
-    data: await getCodeData(knex, { cid }),
-    children: makeAst(result.rows.filter(row => isSection(row.id)).map(getRow))
-  }));
 
-module.exports = getSommaire;
+const getSommaireTexte = (knex, { id, date }) => {
+  return getRawStructure({ knex, parentId: id, date, maxDepth: 0 }).then(async result => ({
+    // make the final AST-like structure
+    type: "texte",
+    // add root section data if needed
+    data: await getTexteData(knex, { id }),
+    children: makeAst(result.rows.filter(canContainChildren).map(getRow), id)
+  }));
+};
+
+const getSommaireConteneur = (knex, { id, date, includeArticles = false }) => {
+  // eslint-disable-next-line no-unused-vars
+  const filterRow = includeArticles ? _ => true : canContainChildren;
+  return getRawStructure({ knex, parentId: id, date, maxDepth: 0 }).then(async result => ({
+    // make the final AST-like structure
+    type: "conteneur",
+    // add root section data if needed
+    data: await getConteneurData(knex, { id: id }),
+    children: makeAst(result.rows.filter(filterRow).map(getRow), id)
+  }));
+};
+
+module.exports = {
+  getSommaireTexte,
+  getSommaireConteneur
+};

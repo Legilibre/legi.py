@@ -45,7 +45,7 @@ const getBreak = () => ({
 
 const getSectionHeading = (node, depth) => {
   const heading = [];
-  heading.push(getHeading({ text: cleanLegiText(node.data.titre_ta), depth }));
+  heading.push(getHeading({ text: cleanLegiText(node.data.titre), depth }));
   return heading;
 };
 

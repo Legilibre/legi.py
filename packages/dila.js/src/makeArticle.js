@@ -4,7 +4,7 @@ const makeArticle = data => ({
   type: "article",
   data: cleanData({
     ...data,
-    titre_ta: data.num && `Article ${data.num}`
+    titre: data.num && `Article ${data.num}`
   })
 });
 

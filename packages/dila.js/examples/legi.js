@@ -1,12 +1,3 @@
-const Legi = require("../src/Legi");
+const Legi = require("../src/legi");
 
-module.exports = new Legi({
-  client: "pg",
-  connection: {
-    host: "vps.revolunet.com",
-    port: 5444,
-    user: "legi",
-    password: "legi",
-    database: "legi"
-  }
-});
+module.exports = new Legi();

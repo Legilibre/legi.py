@@ -3,7 +3,7 @@ const getSectionData = (knex, filters) =>
     .clearSelect()
     .clearWhere()
     .clearOrder()
-    .select()
+    .select("id", "titre_ta AS titre", "commentaire", "parent", "dossier", "cid", "mtime")
     .from("sections")
     .where(filters)
     .first();
