@@ -60,6 +60,7 @@ def process_archive(db, archive_path, process_links=True):
 
     for arg_list in progressbar(args):
         xml_counts, xml_skipped = process_xml(*arg_list)
+        db.commit()
         skipped += xml_skipped
         for key, count in xml_counts.items():
             counts[key] += count

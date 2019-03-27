@@ -5,7 +5,8 @@ from .constants import ARTICLE_TAGS, SECTION_TA_TAGS, TEXTELR_TAGS, \
     TEXTE_VERSION_TAGS, META_ARTICLE_TAGS, META_CHRONICLE_TAGS, META_CONTENEUR_TAGS, \
     META_VERSION_TAGS, SOUS_DOSSIER_MAP, TYPELIEN_MAP, TM_TAGS
 from dila2sql.models import Calipso, DuplicateFile, ArticleCalipso, \
-    TexteVersionBrute, Lien, Tetier, Conteneur, Sommaire, TABLE_TO_MODEL
+    TexteVersionBrute, Lien, Tetier, Conteneur, Sommaire, TexteVersion, \
+    TABLE_TO_MODEL
 from dila2sql.utils import json_serializer
 
 
@@ -141,7 +142,7 @@ def process_xml(
                 counts['upsert into duplicate_files'] += 1
         elif prev_row["mtime"] == mtime:
             skipped += 1
-            return
+            return counts, skipped
 
     # Check the ID
     if tag == 'SECTION_TA':
@@ -242,9 +243,7 @@ def process_xml(
                     {
                         'parent': text_id,
                         'element': tetier_id,
-                        'debut': attr(tm, 'debut'),
-                        'fin': attr(tm, 'fin'),
-                        'etat': attr(tm, 'etat'),
+                        'etat': attrs['etat'],
                         'position': i,
                         '_source': text_id,
                     }
@@ -329,7 +328,7 @@ def process_xml(
             ]
         ).execute()
         counts['upsert into duplicate_files'] += 1
-        return
+        return counts, skipped
 
     if table != 'conteneurs':
         attrs['dossier'] = dossier
