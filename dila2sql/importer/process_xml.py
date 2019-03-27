@@ -259,12 +259,21 @@ def process_xml(
                     if child.tag == 'TITRE_TM':
                         continue
                     elif child.tag == 'LIEN_TXT':
-                        sommaires.append({
+                        element_id = attr(child, 'idtxt')
+                        sommaire = {
                             'parent': tetier_id,
-                            'element': attr(child, 'idtxt'),
+                            'element': element_id,
                             'position': y,
                             '_source': text_id
-                        })
+                        }
+                        texte_version = TexteVersion.select().where(TexteVersion.id == element_id).first()
+                        if texte_version:
+                            sommaire.update({
+                                'etat': texte_version.etat,
+                                'debut': texte_version.date_debut,
+                                'fin': texte_version.date_fin,
+                            })
+                        sommaires.append(sommaire)
     else:
         raise Exception('unexpected tag: '+tag)
 
@@ -373,6 +382,11 @@ def process_xml(
                 .where(TexteVersionBrute.id == text_id) \
                 .execute()
             counts['delete from textes_versions_brutes'] += deleted_linked_rows
+            Sommaire.update({
+                'etat': attrs['etat'],
+                'debut': attrs['date_debut'],
+                'fin': attrs['date_fin']
+            }).where(Sommaire.element == text_id).execute()
         # Update the row
         counts['update in '+table] += 1
         model = TABLE_TO_MODEL[table]
@@ -382,6 +396,12 @@ def process_xml(
         attrs['id'] = text_id
         model = TABLE_TO_MODEL[table]
         model.create(**attrs)
+        if model == TexteVersion:
+            Sommaire.update({
+                'etat': attrs['etat'],
+                'debut': attrs['date_debut'],
+                'fin': attrs['date_fin']
+            }).where(Sommaire.element == text_id).execute()
 
     # Insert the associated rows
     for lien in liens:
