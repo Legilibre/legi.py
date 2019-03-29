@@ -32,7 +32,7 @@ docker-compose run -v data:/data dila2sql python -m dila2sql.download /data --ba
 docker-compose run -v data:/data dila2sql python -m dila2sql.importer --base KALI --raw postgresql://dila2sql:dila2sql@db/kali /data
 ```
 
-_it should now work_™️
+_it should now work™_
 
 ## Contribuer
 
