@@ -12,9 +12,27 @@ Le package `dila2sql` est un fork du projet [`legi.py`][legi.py] créé par [Leg
 Les packages `api` et `dilajs` ont été initialement créés par [@revolunet][revolunet] dans le cadre du projet [`legixplore`][legixplore].
 Nous les avons ensuite migrés dans ce multirepo pour des raisons pratiques et logiques.
 
-# Usage
+# Utilisation avec Docker
 
-Suivez les instructions des README des trois packages.
+Lancez tous les containers avec:
+```
+docker-compose up -d
+```
+
+Créez les bases de données avec ces commandes :
+```
+docker-compose exec db psql -U dila2sql -c "CREATE DATABASE kali
+docker-compose exec db psql -U dila2sql -c "CREATE DATABASE legi
+docker-compose exec db psql -U dila2sql -c "CREATE DATABASE jorf
+```
+
+Download DILA XMLs and import into Postgres
+```
+docker-compose run -v data:/data dila2sql python -m dila2sql.download /data --base KALI
+docker-compose run -v data:/data dila2sql python -m dila2sql.importer --base KALI --raw postgresql://dila2sql:dila2sql@db/kali /data
+```
+
+_it should now work_™️
 
 ## Contribuer
 

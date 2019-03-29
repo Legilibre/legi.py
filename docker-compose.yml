@@ -6,8 +6,10 @@ services:
     environment:
       POSTGRES_USER: dila2sql
       POSTGRES_PASSWORD: dila2sql
+    volumes:
+      - dila2sql-pgdata:/var/lib/postgresql/data
     ports:
-      - "5442:5432"
+      - "5442:5432"  # just for external
   api:
     image: dila2sql-api
     environment:
@@ -22,3 +24,5 @@ services:
       DB_HOST: db
       DB_USER: dila2sql
       DB_PASSWORD: dila2sql
+volumes:
+  dila2sql-pgdata:
