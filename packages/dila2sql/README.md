@@ -81,7 +81,7 @@ Vous pouvez aussi développer dans l'image Docker en ajoutant `-v $PWD:/app` au 
 
 Vous pouvez aussi lancer les tests dans l'image Docker grâce à cette commande :
 
-    docker run --rm -t -v $PWD/data:/data socialgouv/dila2sql
+    docker run --rm -t -v $PWD/data:/data socialgouv/dila2sql tox
 
 ## Problèmes libarchive avec Mac OS X
 

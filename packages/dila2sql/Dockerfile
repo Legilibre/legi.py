@@ -1,7 +1,7 @@
 #
 # container docker pour dila2sql
 #
-# https://github.com/SocialGouv/dila2sql
+# https://github.com/SocialGouv/dila2sql/tree/master/packages/dila2sql
 #
 # build     : `docker build -t dila2sql .`
 #

@@ -17,7 +17,7 @@ Vous pouvez utiliser votre propre base de données en montant votre serveur Post
 ## Install
 
 ```sh
-npm install legi
+npm install dila
 ```
 
 ## Usage
