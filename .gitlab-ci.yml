@@ -11,25 +11,44 @@ services:
   - docker:dind
 
 stages:
-  - "Build local Docker images"
-  - "Test"
-  # - "Deploy image to Docker Hub"
+  - "Build CI Docker images"
+  - "Run Tests"
+  - "Publish Docker images"
 
-prepare-dila2sql-image:
-  stage: "Build local Docker images"
+build-ci-docker-image-dila2sql:
+  stage: "Build Docker images for CI"
   image: docker:$DOCKER_VERSION
   services:
   - docker:dind
   before_script:
   - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
   script:
-  - docker build --cache-from dila2sql:$CI_COMMIT_BEFORE_SHA -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA" packages/dila2sql
-  - docker push "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+  - >-
+    docker build
+    --cache-from "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_BEFORE_SHA"
+    -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+    packages/dila2sql
+  - docker push "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
 
-test-dila2sql:
-  stage: "Test"
+run-tests-dila2sql:
+  stage: "Run Tests"
   image: docker:$DOCKER_VERSION
   services:
   - docker:dind
   script:
-  - docker run -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA" tox
+  - docker run -t "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA" tox
+
+publish-docker-image-dila2sql:
+  stage: "Build and Push Docker Image"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
+  before_script:
+  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  script:
+  - >-
+    docker build
+    --cache-from "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_BEFORE_SHA"
+    -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+    packages/dila2sql
+  - docker push "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
