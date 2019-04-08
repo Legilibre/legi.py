@@ -114,7 +114,7 @@ def download_legi(dst_dir, base='LEGI'):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument('directory')
+    p.add_argument('--directory', default="/var/lib/dila2sql/original_dumps")
     p.add_argument('--base', default='LEGI')
     args = p.parse_args()
     if args.base not in ["LEGI", "JORF", "KALI"]:

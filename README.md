@@ -2,9 +2,10 @@
 
 ![DILA2SQL Logo](https://i.imgur.com/wS0w4lO.png)
 
-Ce multirepo expose plusieurs packages:
+Ce monorepo contient trois packages:
+
 - `dila2sql`: générer des bases SQL à partir des exports publiés au format XML par la [DILA (Direction de l’information légale et administrative)][dila].
-- `dilajs`: librairie NodeJS qui permet d'accéder à une base PostgreSQL générée par `dila2sql`.
+- `dilajs`: librairie NodeJS qui permet d'accéder à une base PostgreSQL générée par `dila2sql`
 - `api`: API Express qui expose la base générée en utilisant `dila.js`
 
 Le package `dila2sql` est un fork du projet [`legi.py`][legi.py] créé par [Legilibre][legilibre] et [@Changaco][changaco].
@@ -12,27 +13,32 @@ Le package `dila2sql` est un fork du projet [`legi.py`][legi.py] créé par [Leg
 Les packages `api` et `dilajs` ont été initialement créés par [@revolunet][revolunet] dans le cadre du projet [`legixplore`][legixplore].
 Nous les avons ensuite migrés dans ce multirepo pour des raisons pratiques et logiques.
 
-# Utilisation avec Docker
+## Utilisation avec Docker
 
-Lancez tous les containers avec:
-```
+```bash
+# lancer tous les containers
 docker-compose up -d
+
+# créer la base de donnée
+docker-compose exec db psql -U dila2sql -c "CREATE DATABASE kali"
+
+# lancer le téléchargement des dumps XML originaux depuis legifrance
+docker-compose run dila2sql python -m dila2sql.download --base KALI
+
+# lancer l'import de ces dumps dans la base Postgres
+docker-compose run dila2sql python -m dila2sql.importer --base KALI --raw postgresql://dila2sql:dila2sql@db/kali
 ```
 
-Créez les bases de données avec ces commandes :
-```
-docker-compose exec db psql -U dila2sql -c "CREATE DATABASE kali
-docker-compose exec db psql -U dila2sql -c "CREATE DATABASE legi
-docker-compose exec db psql -U dila2sql -c "CREATE DATABASE jorf
-```
+Ce processus peut être décliné pour les bases LEGI ou JORF.
 
-Download DILA XMLs and import into Postgres
-```
-docker-compose run -v data:/data dila2sql python -m dila2sql.download /data --base KALI
-docker-compose run -v data:/data dila2sql python -m dila2sql.importer --base KALI --raw postgresql://dila2sql:dila2sql@db/kali /data
-```
+## Développer avec Docker
 
-_it should now work™_
+Lancez les commandes en montant le code local vers le chemin du code applicatif dans le container pour utiliser le code local plutôt que celui de l'image buildée.
+
+```bash
+# Ex: lancer le téléchargement des dumps
+docker-compose run -v $PWD/packages/dila2sql:/app dila2sql python -m dila2sql.download --base KALI
+```
 
 ## Contribuer
 

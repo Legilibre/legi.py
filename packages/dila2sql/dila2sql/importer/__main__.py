@@ -84,7 +84,7 @@ def process_archive(db, archive_path, process_links=True):
 def main():
     p = ArgumentParser()
     p.add_argument('db')
-    p.add_argument('directory')
+    p.add_argument('--directory', default="/var/lib/dila2sql/original_dumps")
     p.add_argument('--anomalies', action='store_true', default=False,
                    help="detect anomalies after each processed archive")
     p.add_argument('--anomalies-dir', default='.')
