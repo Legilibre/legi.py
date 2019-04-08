@@ -1,30 +1,35 @@
+---
+
 image: docker:latest
 
 variables:
-  DOCKER_HOST: tcp://localhost:2375 #Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
+  DOCKER_VERSION: "18.06"
+  DOCKER_HOST: tcp://localhost:2375 # Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
   CONTAINER_IMAGE: socialgouv/dila2sql
 
 services:
   - docker:dind
 
 stages:
-  - test
-  - build
+  - "Build local Docker images"
+  - "Test"
+  # - "Deploy image to Docker Hub"
 
-test:
-  image: python:3.6
-  stage: test
+prepare-dila2sql-image:
+  stage: "Build local Docker images"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
+  before_script:
+  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
   script:
-    - apt-get update && apt-get install -y libarchive13
-    - python3 -m pip install tox
-    - tox
+  - docker build --cache-from $CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_BEFORE_SHA -t "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA" packages/dila2sql
+  - docker push "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA"
 
-build:
-  stage: build
+test-dila2sql:
+  stage: "Test"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
   script:
-    - docker pull $CONTAINER_IMAGE:latest || true # to get cache layer
-    - docker build --cache-from $CONTAINER_IMAGE:latest -t $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - docker build --cache-from $CONTAINER_IMAGE:latest -t $CONTAINER_IMAGE:latest .
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA
-    - docker push $CONTAINER_IMAGE:latest
+  - docker run -t "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA" tox

@@ -2,7 +2,7 @@
 
 ![DILA2SQL Logo](https://i.imgur.com/wS0w4lO.png)
 
-Ce monorepo contient trois packages:
+Ce mono-repository contient trois packages:
 
 - `dila2sql`: générer des bases SQL à partir des exports publiés au format XML par la [DILA (Direction de l’information légale et administrative)][dila].
 - `dilajs`: librairie NodeJS qui permet d'accéder à une base PostgreSQL générée par `dila2sql`
@@ -11,7 +11,7 @@ Ce monorepo contient trois packages:
 Le package `dila2sql` est un fork du projet [`legi.py`][legi.py] créé par [Legilibre][legilibre] et [@Changaco][changaco].
 
 Les packages `api` et `dilajs` ont été initialement créés par [@revolunet][revolunet] dans le cadre du projet [`legixplore`][legixplore].
-Nous les avons ensuite migrés dans ce multirepo pour des raisons pratiques et logiques.
+Nous les avons ensuite migrés dans ce mono-repository pour des raisons pratiques et logiques.
 
 ## Utilisation avec Docker
 
