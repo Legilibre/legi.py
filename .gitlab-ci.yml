@@ -16,7 +16,7 @@ stages:
   - "Publish Docker images"
 
 build-ci-docker-image-dila2sql:
-  stage: "Build Docker images for CI"
+  stage: "Build CI Docker images"
   image: docker:$DOCKER_VERSION
   services:
   - docker:dind
@@ -39,7 +39,7 @@ run-tests-dila2sql:
   - docker run -t "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA" tox
 
 publish-docker-image-dila2sql:
-  stage: "Build and Push Docker Image"
+  stage: "Publish Docker images"
   image: docker:$DOCKER_VERSION
   services:
   - docker:dind
