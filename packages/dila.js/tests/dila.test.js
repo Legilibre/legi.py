@@ -26,7 +26,6 @@ const CODE_TEST = "LEGITEXT000006070666";
 it("getSection: article en vigueur doit apparaitre", async () => {
   expect.assertions(2);
   const res = await dila.getSection({
-    cid: "LEGITEXT000006072050",
     id: "LEGISCTA000030730058",
     date: "2016-01-01"
   });

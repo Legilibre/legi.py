@@ -19,23 +19,9 @@ const getDefaultConfig = () => {
         max: 5
       }
     };
+  } else {
+    throw new Error("missing DB_URL env var pointing to a PostgreSQL generated with dila2sql");
   }
-
-  return {
-    client: "pg",
-    version: "9.6",
-    connection: {
-      host: "legi.vps.revolunet.com",
-      port: 5444,
-      user: "legi",
-      password: "legi",
-      database: "legi"
-    },
-    pool: {
-      min: 0,
-      max: 5
-    }
-  };
 };
 
 const defaultConfig = getDefaultConfig();

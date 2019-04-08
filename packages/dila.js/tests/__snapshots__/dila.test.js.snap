@@ -10,7 +10,7 @@ Object {
     "id": "LEGISCTA000029978970",
     "mtime": 1514576002,
     "parent": "LEGISCTA000032717981",
-    "titre_ta": "Section 2 : Dispositions particulières à l'île de Clipperton",
+    "titre": "Section 2 : Dispositions particulières à l'île de Clipperton",
   },
   "type": "section",
 }
@@ -35,7 +35,7 @@ Object {
         "parent": "LEGISCTA000030730058",
         "position": 0,
         "section": "LEGISCTA000030730058",
-        "titre_ta": "Article R2151-1",
+        "titre": "Article R2151-1",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -48,7 +48,7 @@ Object {
     "id": "LEGISCTA000030730058",
     "mtime": 1477335586,
     "parent": "LEGISCTA000030730052",
-    "titre_ta": "Chapitre Ier : Critères de représentativité &#13;
+    "titre": "Chapitre Ier : Critères de représentativité &#13;
 &#13;
 &#13;
 &#13;
@@ -78,7 +78,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 4,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-26",
+        "titre": "Article R958-26",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -99,7 +99,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 5,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article D958-27",
+        "titre": "Article D958-27",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -120,7 +120,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 6,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-28",
+        "titre": "Article R958-28",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -141,7 +141,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 7,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-29",
+        "titre": "Article R958-29",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -162,7 +162,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 8,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-30",
+        "titre": "Article R958-30",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -183,7 +183,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 9,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article D958-31",
+        "titre": "Article D958-31",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -204,7 +204,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 10,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-32",
+        "titre": "Article R958-32",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -225,7 +225,7 @@ Object {
         "parent": "LEGISCTA000029978970",
         "position": 11,
         "section": "LEGISCTA000032717973",
-        "titre_ta": "Article R958-33",
+        "titre": "Article R958-33",
         "type": "AUTONOME",
       },
       "type": "article",
@@ -238,7 +238,7 @@ Object {
     "id": "LEGISCTA000029978970",
     "mtime": 1514576002,
     "parent": "LEGISCTA000032717981",
-    "titre_ta": "Section 2 : Dispositions particulières à l'île de Clipperton",
+    "titre": "Section 2 : Dispositions particulières à l'île de Clipperton",
   },
   "type": "section",
 }
@@ -254,7 +254,7 @@ Object {
     "id": "LEGISCTA000030730058",
     "mtime": 1477335586,
     "parent": "LEGISCTA000030730052",
-    "titre_ta": "Chapitre Ier : Critères de représentativité &#13;
+    "titre": "Chapitre Ier : Critères de représentativité &#13;
 &#13;
 &#13;
 &#13;
