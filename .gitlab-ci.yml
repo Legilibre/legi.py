@@ -6,6 +6,9 @@ variables:
   DOCKER_VERSION: "18.06"
   DOCKER_HOST: tcp://localhost:2375 # Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
   CONTAINER_IMAGE: socialgouv/dila2sql
+  PREVIOUS_CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_BEFORE_SHA"
+  CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
+  PUBLIC_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
 
 services:
   - docker:dind
@@ -25,10 +28,10 @@ build-ci-docker-image-dila2sql:
   script:
   - >-
     docker build
-    --cache-from "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_BEFORE_SHA"
-    -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+    --cache-from $PREVIOUS_CI_IMAGE_DILA2SQL
+    -t $CI_IMAGE_DILA2SQL
     packages/dila2sql
-  - docker push "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
+  - docker push $CI_IMAGE_DILA2SQL
 
 run-tests-dila2sql:
   stage: "Run Tests"
@@ -36,7 +39,7 @@ run-tests-dila2sql:
   services:
   - docker:dind
   script:
-  - docker run -t "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA" tox
+  - docker run -t $CI_IMAGE_DILA2SQL tox
 
 publish-docker-image-dila2sql:
   stage: "Publish Docker images"
@@ -48,7 +51,7 @@ publish-docker-image-dila2sql:
   script:
   - >-
     docker build
-    --cache-from "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_BEFORE_SHA"
-    -t "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+    --cache-from $CI_IMAGE_DILA2SQL
+    -t $PUBLIC_IMAGE_DILA2SQL
     packages/dila2sql
-  - docker push "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
+  - docker push $PUBLIC_IMAGE_DILA2SQL
