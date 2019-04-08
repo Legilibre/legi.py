@@ -23,8 +23,8 @@ prepare-dila2sql-image:
   before_script:
   - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
   script:
-  - docker build --cache-from $CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_BEFORE_SHA -t "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA" packages/dila2sql
-  - docker push "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA"
+  - docker build --cache-from dila2sql:$CI_COMMIT_BEFORE_SHA -t "dila2sql:$CI_COMMIT_SHA" packages/dila2sql
+  - docker push "dila2sql:$CI_COMMIT_SHA"
 
 test-dila2sql:
   stage: "Test"
@@ -32,4 +32,4 @@ test-dila2sql:
   services:
   - docker:dind
   script:
-  - docker run -t "$CI_REGISTRY_IMAGE_dila2sql:$CI_COMMIT_SHA" tox
+  - docker run -t "dila2sql:$CI_COMMIT_SHA" tox
