@@ -28,15 +28,15 @@ it("getArticle", async () => {
   expect(res).toMatchSnapshot();
 });
 
-it("getCode", async () => {
+it("getTexte", async () => {
   expect.assertions(1);
-  const res = await dila.getCode({ cid: CODE_TEST, date: "2018-04-03" });
+  const res = await dila.getTexte({ id: CODE_TEST, date: "2018-04-03" });
   expect(res).toMatchSnapshot();
 });
 
 it("getSommaire", async () => {
   expect.assertions(1);
-  const res = await dila.getSommaire({ cid: CODE_TEST, date: "2018-04-03" });
+  const res = await dila.getSommaireTexte({ id: CODE_TEST, date: "2018-04-03" });
   expect(res).toMatchSnapshot();
 });
 

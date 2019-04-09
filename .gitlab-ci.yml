@@ -1,30 +1,57 @@
+---
+
 image: docker:latest
 
 variables:
-  DOCKER_HOST: tcp://localhost:2375 #Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
+  DOCKER_VERSION: "18.06"
+  DOCKER_HOST: tcp://localhost:2375 # Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
   CONTAINER_IMAGE: socialgouv/dila2sql
+  PREVIOUS_CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_BEFORE_SHA"
+  CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
+  PUBLIC_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
 
 services:
   - docker:dind
 
 stages:
-  - test
-  - build
+  - "Build CI Docker images"
+  - "Run Tests"
+  - "Publish Docker images"
 
-test:
-  image: python:3.6
-  stage: test
+build-ci-docker-image-dila2sql:
+  stage: "Build CI Docker images"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
+  before_script:
+  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
   script:
-    - apt-get update && apt-get install -y libarchive13
-    - python3 -m pip install tox
-    - tox
+  - >-
+    docker build
+    --cache-from $PREVIOUS_CI_IMAGE_DILA2SQL
+    -t $CI_IMAGE_DILA2SQL
+    packages/dila2sql
+  - docker push $CI_IMAGE_DILA2SQL
 
-build:
-  stage: build
+run-tests-dila2sql:
+  stage: "Run Tests"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
   script:
-    - docker pull $CONTAINER_IMAGE:latest || true # to get cache layer
-    - docker build --cache-from $CONTAINER_IMAGE:latest -t $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA .
-    - docker build --cache-from $CONTAINER_IMAGE:latest -t $CONTAINER_IMAGE:latest .
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    - docker push $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA
-    - docker push $CONTAINER_IMAGE:latest
+  - docker run -t $CI_IMAGE_DILA2SQL tox
+
+publish-docker-image-dila2sql:
+  stage: "Publish Docker images"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
+  before_script:
+  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  script:
+  - >-
+    docker build
+    --cache-from $CI_IMAGE_DILA2SQL
+    -t $PUBLIC_IMAGE_DILA2SQL
+    packages/dila2sql
+  - docker push $PUBLIC_IMAGE_DILA2SQL

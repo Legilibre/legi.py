@@ -18,12 +18,12 @@ const CODE_TEST = "LEGITEXT000006070666";
 
 it("getCode then markdown", async () => {
   expect.assertions(1);
-  const res = await dila.getCode({ cid: CODE_TEST, date: "2018-12-01" }).then(markdown);
+  const res = await dila.getTexte({ id: CODE_TEST, date: "2018-12-01" }).then(markdown);
   expect(res).toMatchSnapshot();
 });
 
 it("getCode then html", async () => {
   expect.assertions(1);
-  const res = await dila.getCode({ cid: CODE_TEST, date: "2018-12-01" }).then(html);
+  const res = await dila.getTexte({ id: CODE_TEST, date: "2018-12-01" }).then(html);
   expect(res).toMatchSnapshot();
 });
