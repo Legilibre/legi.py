@@ -3,7 +3,7 @@
 #
 # https://github.com/SocialGouv/dila2sql/tree/master/packages/dila.js
 #
-# build: `docker build -t dila.js .`
+# build: `docker build -t dila2sql-api packages/api`
 #
 
 FROM node:11-alpine

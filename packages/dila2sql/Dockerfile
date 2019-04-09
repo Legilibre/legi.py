@@ -3,7 +3,7 @@
 #
 # https://github.com/SocialGouv/dila2sql/tree/master/packages/dila2sql
 #
-# build     : `docker build -t dila2sql .`
+# build     : `docker build -t dila2sql packages/dila2sql`
 #
 
 FROM python:alpine
