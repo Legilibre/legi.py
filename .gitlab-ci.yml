@@ -42,22 +42,7 @@ stages:
 #   script:
 #   - docker run -t $CI_IMAGE_DILA2SQL tox
 
-# publish-docker-image-dila2sql:
-#   stage: "Publish Docker images"
-#   image: docker:$DOCKER_VERSION
-#   services:
-#   - docker:dind
-#   before_script:
-#   - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
-#   script:
-#   - >-
-#     docker build
-#     --cache-from $CI_IMAGE_DILA2SQL
-#     -t $PUBLIC_IMAGE_DILA2SQL
-#     packages/dila2sql
-#   - docker push $PUBLIC_IMAGE_DILA2SQL
-
-publish-docker-image-dila2sql-api:
+publish-docker-image-dila2sql:
   stage: "Publish Docker images"
   image: docker:$DOCKER_VERSION
   services:
@@ -67,7 +52,22 @@ publish-docker-image-dila2sql-api:
   script:
   - >-
     docker build
-    --cache-from $PUBLIC_IMAGE_DILA2SQL_API
-    -t $PUBLIC_IMAGE_DILA2SQL_API
-    packages/api
-  - docker push $PUBLIC_IMAGE_DILA2SQL_API
+    --cache-from $CI_IMAGE_DILA2SQL
+    -t $PUBLIC_IMAGE_DILA2SQL
+    packages/dila2sql
+  - docker push $PUBLIC_IMAGE_DILA2SQL
+
+# publish-docker-image-dila2sql-api:
+#   stage: "Publish Docker images"
+#   image: docker:$DOCKER_VERSION
+#   services:
+#   - docker:dind
+#   before_script:
+#   - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+#   script:
+#   - >-
+#     docker build
+#     --cache-from $PUBLIC_IMAGE_DILA2SQL_API
+#     -t $PUBLIC_IMAGE_DILA2SQL_API
+#     packages/api
+#   - docker push $PUBLIC_IMAGE_DILA2SQL_API
