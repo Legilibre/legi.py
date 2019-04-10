@@ -1,0 +1,14 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dila2sql-api${HASH_BRANCH_NAME}
+  labels:
+    app: dila2sql-api${HASH_BRANCH_NAME}
+    branch: dila2sql${HASH_BRANCH_NAME}
+spec:
+  selector:
+    app: dila2sql-api${HASH_BRANCH_NAME}
+  ports:
+  - port: ${DILA2SQL_API_DB_PORT}
+    name: api

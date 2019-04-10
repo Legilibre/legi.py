@@ -1,0 +1,39 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: dila2sql-api${HASH_BRANCH_NAME}
+  labels:
+    app: dila2sql-api${HASH_BRANCH_NAME}
+    branch: dila2sql${HASH_BRANCH_NAME}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dila2sql-api${HASH_BRANCH_NAME}
+  template:
+    metadata:
+      labels:
+        app: dila2sql-api${HASH_BRANCH_NAME}
+    spec:
+      containers:
+      - image: ${PUBLIC_IMAGE_DILA2SQL_API}
+        name: dila2sql-api${HASH_BRANCH_NAME}
+        ports:
+        - containerPort: ${DILA2SQL_API_DB_PORT}
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_PASSWORD

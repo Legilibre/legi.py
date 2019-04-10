@@ -4,12 +4,14 @@ image: docker:latest
 
 variables:
   DOCKER_VERSION: "18.06"
-  DOCKER_HOST: tcp://localhost:2375 # Nécessaire depuis le passage sur des runner sur l'executor Kubernetes
+  DOCKER_HOST: tcp://localhost:2375
   CONTAINER_IMAGE: socialgouv/dila2sql
   PREVIOUS_CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_BEFORE_SHA"
   CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
   PUBLIC_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
   PUBLIC_IMAGE_DILA2SQL_API: "$CI_REGISTRY_IMAGE/dila2sql_api:$CI_COMMIT_SHA"
+  IMAGE_INFRA_BASE_NAME: "infra/images-docker"
+  API_PORT: 8080
 
 services:
   - docker:dind
@@ -18,6 +20,7 @@ stages:
   # - "Build CI Docker images"
   # - "Run Tests"
   - "Publish Docker images"
+  - "Deploy To Dev Environment"
 
 # build-ci-docker-image-dila2sql:
 #   stage: "Build CI Docker images"
@@ -42,22 +45,7 @@ stages:
 #   script:
 #   - docker run -t $CI_IMAGE_DILA2SQL tox
 
-publish-docker-image-dila2sql:
-  stage: "Publish Docker images"
-  image: docker:$DOCKER_VERSION
-  services:
-  - docker:dind
-  before_script:
-  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
-  script:
-  - >-
-    docker build
-    --cache-from $CI_IMAGE_DILA2SQL
-    -t $PUBLIC_IMAGE_DILA2SQL
-    packages/dila2sql
-  - docker push $PUBLIC_IMAGE_DILA2SQL
-
-# publish-docker-image-dila2sql-api:
+# publish-docker-image-dila2sql:
 #   stage: "Publish Docker images"
 #   image: docker:$DOCKER_VERSION
 #   services:
@@ -67,7 +55,54 @@ publish-docker-image-dila2sql:
 #   script:
 #   - >-
 #     docker build
-#     --cache-from $PUBLIC_IMAGE_DILA2SQL_API
-#     -t $PUBLIC_IMAGE_DILA2SQL_API
-#     packages/api
-#   - docker push $PUBLIC_IMAGE_DILA2SQL_API
+#     --cache-from $CI_IMAGE_DILA2SQL
+#     -t $PUBLIC_IMAGE_DILA2SQL
+#     packages/dila2sql
+#   - docker push $PUBLIC_IMAGE_DILA2SQL
+
+publish-docker-image-dila2sql-api:
+  stage: "Publish Docker images"
+  image: docker:$DOCKER_VERSION
+  services:
+  - docker:dind
+  before_script:
+  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  script:
+  - >-
+    docker build
+    --cache-from $PUBLIC_IMAGE_DILA2SQL_API
+    -t $PUBLIC_IMAGE_DILA2SQL_API
+    packages/api
+  - docker push $PUBLIC_IMAGE_DILA2SQL_API
+
+deploy-api-dev:
+  stage: "Deploy To Dev Environment"
+  image:
+    name: $CI_REGISTRY/$IMAGE_INFRA_BASE_NAME/docker-kube:latest
+    entrypoint: [""]
+  variables:
+    K8S_SERVER: $K8S_SERVER_DEV
+    K8S_CLUSTER_NAME: $K8S_CLUSTER_NAME_DEV
+    K8S_NAMESPACE: $K8S_NAMESPACE_DEV
+    K8S_USERNAME: $K8S_USERNAME_DEV
+    K8S_CONTEXT: $K8S_CONTEXT_DEV
+    K8S_TOKEN: $K8S_TOKEN_DEV
+    IMAGE_TAG: $CI_COMMIT_SHA
+    ENVIRONMENT: $CI_ENVIRONMENT_NAME
+    DILA2SQL_API_DB_PORT: $API_PORT
+    DILA2SQL_REGISTRY: $CI_REGISTRY_IMAGE
+  before_script:
+  - HASH_BRANCH_NAME=$(printf "$CI_COMMIT_REF_NAME" | sha1sum | cut -c1-5)
+  - export HASH_BRANCH_INGRESS=$HASH_BRANCH_NAME-
+  - export HASH_BRANCH_NAME=-$HASH_BRANCH_NAME
+  - /apps/create-kubeconfig.sh
+  - envsubst < k8s/api/deployment.yml > k8s/api/deployment-api.yml
+  - envsubst < k8s/api/ingress.yml > k8s/api/ingress-api.yml
+  - envsubst < k8s/api/service.yml > k8s/api/service-api.yml
+  script:
+  - kubectl apply -f k8s/api/deployment-api.yml
+  environment:
+    name: dev
+  except:
+  - master
+  allow_failure: false
