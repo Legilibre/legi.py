@@ -9,7 +9,7 @@ variables:
   PREVIOUS_CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_BEFORE_SHA"
   CI_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql_ci:$CI_COMMIT_SHA"
   PUBLIC_IMAGE_DILA2SQL: "$CI_REGISTRY_IMAGE/dila2sql:$CI_COMMIT_SHA"
-  PUBLIC_IMAGE_DILA2SQL_API: "$CI_REGISTRY_IMAGE/dila2sql_api:$CI_COMMIT_SHA"
+  PUBLIC_IMAGE_DILA2SQL_API: "$CI_REGISTRY_IMAGE/dila2sql_api:bd7e71be2e908569762acfacb369d085c794b287"
   IMAGE_INFRA_BASE_NAME: "infra/images-docker"
   API_PORT: 8080
 
@@ -60,20 +60,20 @@ stages:
 #     packages/dila2sql
 #   - docker push $PUBLIC_IMAGE_DILA2SQL
 
-publish-docker-image-dila2sql-api:
-  stage: "Publish Docker images"
-  image: docker:$DOCKER_VERSION
-  services:
-  - docker:dind
-  before_script:
-  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
-  script:
-  - >-
-    docker build
-    --cache-from $PUBLIC_IMAGE_DILA2SQL_API
-    -t $PUBLIC_IMAGE_DILA2SQL_API
-    packages/api
-  - docker push $PUBLIC_IMAGE_DILA2SQL_API
+# publish-docker-image-dila2sql-api:
+#   stage: "Publish Docker images"
+#   image: docker:$DOCKER_VERSION
+#   services:
+#   - docker:dind
+#   before_script:
+#   - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+#   script:
+#   - >-
+#     docker build
+#     --cache-from $PUBLIC_IMAGE_DILA2SQL_API
+#     -t $PUBLIC_IMAGE_DILA2SQL_API
+#     packages/api
+#   - docker push $PUBLIC_IMAGE_DILA2SQL_API
 
 deploy-api-dev:
   stage: "Deploy To Dev Environment"
