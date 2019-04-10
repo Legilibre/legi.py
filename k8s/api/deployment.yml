@@ -23,17 +23,8 @@ spec:
         - containerPort: ${DILA2SQL_API_DB_PORT}
         env:
         - name: DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_HOST
+          value: ${DILA2SQL_API_DB_HOST}
         - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_USER
+          value: ${DILA2SQL_API_DB_USER}
         - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_PASSWORD
+          value: ${DILA2SQL_API_DB_PASSWORD}
