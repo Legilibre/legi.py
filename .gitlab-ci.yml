@@ -101,6 +101,8 @@ deploy-api-dev:
   - envsubst < k8s/api/service.yml > k8s/api/service-api.yml
   script:
   - kubectl apply -f k8s/api/deployment-api.yml
+  - kubectl apply -f k8s/api/ingress-api.yml
+  - kubectl apply -f k8s/api/service-api.yml
   environment:
     name: dev
   except:
