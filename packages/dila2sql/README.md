@@ -83,6 +83,12 @@ Vous pouvez aussi lancer les tests dans l'image Docker grâce à cette commande 
 
     docker run --rm -t -v $PWD/data:/data socialgouv/dila2sql tox
 
+### Parallélisme
+
+Par défaut, le traitement des grosses archives est réparti sur plusieurs process.
+La librairie utilise un [`ProcessPoolExecutor`](https://docs.python.org/3/library/concurrent.futures.html#processpoolexecutor) qui infère automatiquement un nombre de process adaptés au contexte d'exécution.
+Vous pouvez aussi configurer explicitement via la variable d'environnement `DILA2SQL_MAX_PROCESSES` (une valeur de 1 désactive la parallélisation).
+
 ## Problèmes libarchive avec Mac OS X
 
 sur Mac OS X, il vous faudra aussi probablement exporter la variable `LD_LIBRARY_PATH` à cause de ce [bug connu][libarchive-bug].
