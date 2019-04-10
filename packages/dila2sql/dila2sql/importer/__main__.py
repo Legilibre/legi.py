@@ -5,80 +5,13 @@ Imports DILA tar archives into SQL databases
 
 from argparse import ArgumentParser
 from fnmatch import fnmatch
-import json
 import os
 import re
-from collections import defaultdict
 
-import libarchive
-from .utils import get_table, get_dossier
-from .suppress import suppress
-from .process_xml import process_xml
+from .process_archive import process_archive
 from dila2sql.anomalies import detect_anomalies
-from dila2sql.utils import connect_db, partition, progressbar
+from dila2sql.utils import connect_db, partition
 from dila2sql.models import db_proxy, DBMeta, TexteVersionBrute, Lien
-
-
-def process_archive(db, archive_path, process_links=True):
-    counts = defaultdict(lambda: 0)
-    base = DBMeta.get(DBMeta.key == 'base').value or 'LEGI'
-    skipped = 0
-    unknown_folders = defaultdict(lambda: 0)
-    liste_suppression = []
-    args = []
-    with libarchive.file_reader(archive_path) as archive:
-        for entry in progressbar(archive):
-            path = entry.pathname
-            parts = path.split('/')
-            if path[-1] == '/':
-                continue
-            if parts[-1] == 'liste_suppression_'+base.lower()+'.dat':
-                liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
-                continue
-            if parts[1] == base.lower():
-                path = path[len(parts[0])+1:]
-                parts = parts[1:]
-            if (
-                parts[0] not in ['legi', 'jorf', 'kali'] or
-                (parts[0] == 'legi' and not parts[2].startswith('code_et_TNC_')) or
-                (parts[0] == 'jorf' and parts[2] not in ['article', 'section_ta', 'texte']) or
-                (parts[0] == 'kali' and parts[2] not in ['article', 'section_ta', 'texte', 'conteneur'])
-            ):
-                # https://github.com/Legilibre/legi.py/issues/23
-                unknown_folders[parts[2]] += 1
-                continue
-            table = get_table(parts)
-            dossier = get_dossier(parts, base)
-            text_cid = parts[11] if base == 'LEGI' else None
-            text_id = parts[-1][:-4]
-            if table is None:
-                unknown_folders[text_id] += 1
-                continue
-            xml_blob = b''.join(entry.get_blocks())
-            mtime = entry.mtime
-            args.append((xml_blob, mtime, base, table, dossier, text_cid, text_id, process_links))
-
-    for arg_list in progressbar(args):
-        xml_counts, xml_skipped = process_xml(*arg_list)
-        db.commit()
-        skipped += xml_skipped
-        for key, count in xml_counts.items():
-            counts[key] += count
-
-    print(
-        "made %s changes in the database:" % sum(counts.values()),
-        json.dumps(counts, indent=4, sort_keys=True)
-    )
-
-    if skipped:
-        print("skipped", skipped, "files that haven't changed")
-
-    if unknown_folders:
-        for d, x in unknown_folders.items():
-            print("skipped", x, "files in unknown folder `%s`" % d)
-
-    if liste_suppression:
-        suppress(base, db, liste_suppression)
 
 
 def main():
@@ -99,7 +32,8 @@ def main():
     if not os.path.isdir(args.anomalies_dir):
         os.mkdir(args.anomalies_dir)
 
-    db = connect_db(args.db)
+    db_url = args.db
+    db = connect_db(db_url)
     db_proxy.initialize(db)
 
     db_meta_base = DBMeta.get_or_none(key='base')
@@ -171,11 +105,10 @@ def main():
     # Process the new archives
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
-        with db:
-            process_archive(db, args.directory + '/' + archive_name, not args.skip_links)
-            DBMeta.insert(key='last_update', value=archive_date) \
-                .on_conflict(conflict_target=[DBMeta.key], preserve=[DBMeta.value]) \
-                .execute()
+        process_archive(db, db_url, args.directory + '/' + archive_name, not args.skip_links)
+        DBMeta.insert(key='last_update', value=archive_date) \
+            .on_conflict(conflict_target=[DBMeta.key], preserve=[DBMeta.value]) \
+            .execute()
         last_update = archive_date
         print('last_update is now set to', last_update)
 
