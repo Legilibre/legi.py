@@ -11,15 +11,21 @@ services:
     ports:
       - "5442:5432"  # just for external
   api:
-    image: dila2sql-api
+    build:
+      context: ./packages/api
+      dockerfile: ./Dockerfile
     environment:
       DB_HOST: db
       DB_USER: dila2sql
       DB_PASSWORD: dila2sql
+    volumes:
+      - $PWD/packages/api:/app
     ports:
       - "3001:8080"
   dila2sql:
-    image: dila2sql
+    build:
+      context: ./packages/dila2sql
+      dockerfile: ./Dockerfile
     volumes:
       - original-dumps:/var/lib/dila2sql/original_dumps
     environment:
