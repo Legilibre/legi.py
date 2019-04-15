@@ -1,7 +1,7 @@
 {
   "name": "dila",
   "description": "Librairie NodeJS pour requêter les bases générées par dila2sql",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "Julien Bouquillon <julien@bouquillon.com>",
   "license": "MIT",
   "files": ["src"],

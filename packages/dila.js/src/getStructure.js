@@ -29,7 +29,12 @@ const getSommaireFilters = date => `
 `;
 
 // add sections + articles basic data from the sommaires results
-const getStructureSQL = ({ date, initialCondition = "sommaires.parent is null", maxDepth = 1 }) => `
+const getStructureSQL = ({
+  date,
+  initialCondition = "sommaires.parent is null",
+  maxDepth = 1,
+  includeCalipsos = false
+}) => `
 
 ${/* DECLARE RECURSIVE FUNCTION */ ""}
 ${/* get full structure in a one-shot flat array */ ""}
@@ -56,6 +61,7 @@ SELECT
   hierarchie.position,
   hierarchie.etat,
   hierarchie.num
+  ${includeCalipsos ? ", NULL AS calipsos" : ""}
 FROM hierarchie
 LEFT JOIN tetiers ON tetiers.id = hierarchie.element
 WHERE SUBSTR(hierarchie.element, 5, 2) = 'TM'
@@ -67,6 +73,7 @@ UNION ALL(
     hierarchie.position,
     hierarchie.etat,
     NULL AS num
+    ${includeCalipsos ? ", NULL AS calipsos" : ""}
   FROM hierarchie
   LEFT JOIN textes_versions ON textes_versions.id = hierarchie.element
   WHERE SUBSTR(hierarchie.element, 5, 4) = 'TEXT'
@@ -78,7 +85,8 @@ UNION ALL(
     sections.titre_ta AS titre,
     hierarchie.position,
     hierarchie.etat,
-    null AS num
+    NULL AS num
+    ${includeCalipsos ? ", NULL AS calipsos" : ""}
   FROM hierarchie
   LEFT JOIN sections ON sections.id = hierarchie.element
   WHERE SUBSTR(hierarchie.element, 5, 4) = 'SCTA'
@@ -91,11 +99,24 @@ UNION ALL(
     hierarchie.position,
     hierarchie.etat,
     COALESCE(hierarchie.num, articles.num, 'inconnu')
+    ${includeCalipsos ? ", NULL AS calipsos" : ""}
   FROM hierarchie
   LEFT JOIN articles ON articles.id = hierarchie.element
+  ${
+    includeCalipsos
+      ? "LEFT JOIN articles_calipsos ON articles_calipsos.article_id = articles.id"
+      : ""
+  }
   WHERE SUBSTR(hierarchie.element, 5, 4) = 'ARTI'
+  ${
+    includeCalipsos
+      ? `GROUP BY articles.id, hierarchie.element, hierarchie.parent,
+        hierarchie.num, articles.num, articles.titre,
+        hierarchie.position, hierarchie.etat`
+      : ""
+  }
   ORDER BY articles.id
-)
+  )
 `;
 
 // SQL where id IN (x, y, z) query
@@ -113,13 +134,14 @@ const getInitialCondition = (parentId, section) => {
 const itemTypeToTable = itemType => (itemType == "texte" ? "textes_versions" : `${itemType}s`);
 
 // get flat rows with the articles/sections for given section/date
-const getRawStructure = async ({ knex, parentId, section, date, maxDepth = 0 }) =>
+const getRawStructure = async ({ knex, parentId, section, date, maxDepth = 0, ...extraParams }) =>
   knex.raw(
     getStructureSQL({
       date,
       parentId,
       maxDepth,
-      initialCondition: getInitialCondition(parentId, section)
+      initialCondition: getInitialCondition(parentId, section),
+      ...extraParams
     })
   );
 

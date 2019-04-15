@@ -8,7 +8,7 @@ const getDefaultConfig = () => {
       client: "pg",
       version: "9.6",
       connection: {
-        host: parsed.host,
+        host: parsed.hostname,
         port: parsed.port || 5432,
         user: user,
         password: password,
