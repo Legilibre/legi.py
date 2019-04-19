@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dila-python
+  labels:
+    app: dila-python
+spec:
+  containers:
+  - name: dila-python
+    image: registry.gitlab.factory.social.gouv.fr/socialgouv/dila2sql/dila2sql:51d38e122f4e54f243e78f22eacb3c33d25bcc1f
+    command: ["sh"]
+    args: ["scripts/download_and_import.sh"]
+    volumeMounts:
+    - name: dila-python
+      mountPath: /var/lib/dila2sql/original_dumps
+  restartPolicy: Never
+  volumes:
+  - name: dila-python
+    emptyDir: {}
