@@ -6,31 +6,33 @@ metadata:
   labels:
     app: dila2sql${HASH_BRANCH_NAME}
 spec:
-  containers:
-  - name: dila2sql${HASH_BRANCH_NAME}
-    image: ${PUBLIC_IMAGE_DILA2SQL}
-    command: ["sh"]
-    args: ["scripts/download_and_import.sh"]
-    env:
-        - name: DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_HOST
-        - name: DB_USER
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_USER
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: dila2sql-secret
-              key: DB_PASSWORD
-    volumeMounts:
-    - name: dila2sql${HASH_BRANCH_NAME}
-      mountPath: /var/lib/dila2sql/original_dumps
-  restartPolicy: Never
-  volumes:
-  - name: dila2sql${HASH_BRANCH_NAME}
-    emptyDir: {}
+  template:
+    spec:
+      containers:
+      - name: dila2sql${HASH_BRANCH_NAME}
+        image: ${PUBLIC_IMAGE_DILA2SQL}
+        command: ["sh"]
+        args: ["scripts/download_and_import.sh"]
+        env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: dila2sql-secret
+                  key: DB_HOST
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dila2sql-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dila2sql-secret
+                  key: DB_PASSWORD
+        volumeMounts:
+        - name: dila2sql${HASH_BRANCH_NAME}
+          mountPath: /var/lib/dila2sql/original_dumps
+      restartPolicy: Never
+      volumes:
+      - name: dila2sql${HASH_BRANCH_NAME}
+        emptyDir: {}
