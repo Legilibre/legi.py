@@ -2,19 +2,35 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: dila-python
+  name: dila2sql${HASH_BRANCH_NAME}
   labels:
-    app: dila-python
+    app: dila2sql${HASH_BRANCH_NAME}
 spec:
   containers:
-  - name: dila-python
-    image: registry.gitlab.factory.social.gouv.fr/socialgouv/dila2sql/dila2sql:51d38e122f4e54f243e78f22eacb3c33d25bcc1f
+  - name: dila2sql${HASH_BRANCH_NAME}
+    image: ${PUBLIC_IMAGE_DILA2SQL}
     command: ["sh"]
     args: ["scripts/download_and_import.sh"]
+    env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dila2sql-secret
+              key: DB_PASSWORD
     volumeMounts:
-    - name: dila-python
+    - name: dila2sql${HASH_BRANCH_NAME}
       mountPath: /var/lib/dila2sql/original_dumps
   restartPolicy: Never
   volumes:
-  - name: dila-python
+  - name: dila2sql${HASH_BRANCH_NAME}
     emptyDir: {}
