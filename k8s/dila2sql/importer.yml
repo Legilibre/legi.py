@@ -33,6 +33,7 @@ spec:
         - name: dila2sql${HASH_BRANCH_NAME}
           mountPath: /var/lib/dila2sql/original_dumps
       restartPolicy: Never
+      ttlSecondsAfterFinished: 10
       volumes:
       - name: dila2sql${HASH_BRANCH_NAME}
         emptyDir: {}
