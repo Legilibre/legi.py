@@ -2,15 +2,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dila2sql${HASH_BRANCH_NAME}
+  name: dila2sql
   labels:
-    app: dila2sql${HASH_BRANCH_NAME}
+    app: dila2sql
 spec:
   ttlSecondsAfterFinished: 10
   template:
     spec:
       containers:
-      - name: dila2sql${HASH_BRANCH_NAME}
+      - name: dila2sql
         image: ${PUBLIC_IMAGE_DILA2SQL}
         command: ["sh"]
         args: ["scripts/download_and_import.sh"]
@@ -31,9 +31,9 @@ spec:
                   name: dila2sql-secret
                   key: DB_PASSWORD
         volumeMounts:
-        - name: dila2sql${HASH_BRANCH_NAME}
+        - name: dila2sql
           mountPath: /var/lib/dila2sql/original_dumps
       restartPolicy: Never
       volumes:
-      - name: dila2sql${HASH_BRANCH_NAME}
+      - name: dila2sql
         emptyDir: {}

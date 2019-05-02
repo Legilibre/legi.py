@@ -2,16 +2,16 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: dila2sql-api${HASH_BRANCH_NAME}
+  name: dila2sql-api
   labels:
-    app: dila2sql-api${HASH_BRANCH_NAME}
-    branch: dila2sql${HASH_BRANCH_NAME}
+    app: dila2sql-api
+    branch: dila2sql
 spec:
   rules:
-  - host: ${HASH_BRANCH_INGRESS}dila2sql-api.${ENVIRONMENT}.factory.social.gouv.fr
+  - host: dila2sql-api.${ENVIRONMENT}.factory.social.gouv.fr
     http:
       paths:
       - path: /
         backend:
-          serviceName: dila2sql-api${HASH_BRANCH_NAME}
+          serviceName: dila2sql-api
           servicePort: ${DILA2SQL_API_DB_PORT}

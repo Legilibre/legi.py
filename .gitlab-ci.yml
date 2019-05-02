@@ -78,7 +78,7 @@ publish-docker-image-dila2sql-api:
     packages/api
   - docker push $PUBLIC_IMAGE_DILA2SQL_API
 
-deploy-api-dev:
+deploy-postgres-dev:
   stage: "Deploy To Dev Environment"
   image:
     name: $CI_REGISTRY/$IMAGE_INFRA_BASE_NAME/docker-kube:latest
@@ -91,19 +91,13 @@ deploy-api-dev:
     K8S_CONTEXT: $K8S_CONTEXT_DEV
     K8S_TOKEN: $K8S_TOKEN_DEV
     ENVIRONMENT: $CI_ENVIRONMENT_NAME
-    DILA2SQL_API_DB_PORT: $API_PORT
   before_script:
-  - HASH_BRANCH_NAME=$(printf "$CI_COMMIT_REF_NAME" | sha1sum | cut -c1-5)
-  - export HASH_BRANCH_INGRESS=$HASH_BRANCH_NAME-
-  - export HASH_BRANCH_NAME=-$HASH_BRANCH_NAME
   - /apps/create-kubeconfig.sh
-  - envsubst < k8s/api/deployment.yml > k8s/api/deployment-api.yml
-  - envsubst < k8s/api/ingress.yml > k8s/api/ingress-api.yml
-  - envsubst < k8s/api/service.yml > k8s/api/service-api.yml
+  - envsubst < k8s/postgres/deployment.yml > k8s/postgres/deployment-postgres.yml
+  - envsubst < k8s/postgres/service.yml > k8s/postgres/service-postgres.yml
   script:
-  - kubectl apply -f k8s/api/deployment-api.yml
-  - kubectl apply -f k8s/api/ingress-api.yml
-  - kubectl apply -f k8s/api/service-api.yml
+  - kubectl apply -f k8s/postgres/deployment-postgres.yml
+  - kubectl apply -f k8s/postgres/service-postgres.yml
   environment:
     name: dev
   except:
@@ -124,12 +118,39 @@ deploy-dila2sql-dev:
     K8S_TOKEN: $K8S_TOKEN_DEV
     ENVIRONMENT: $CI_ENVIRONMENT_NAME
   before_script:
-  - HASH_BRANCH_NAME=$(printf "$CI_COMMIT_REF_NAME" | sha1sum | cut -c1-5)
-  - export HASH_BRANCH_NAME=-$HASH_BRANCH_NAME
   - /apps/create-kubeconfig.sh
   - envsubst < k8s/dila2sql/importer.yml > k8s/dila2sql/importer-dila2sql.yml
   script:
   - kubectl apply -f k8s/dila2sql/importer-dila2sql.yml
+  environment:
+    name: dev
+  except:
+  - master
+  allow_failure: false
+
+deploy-api-dev:
+  stage: "Deploy To Dev Environment"
+  image:
+    name: $CI_REGISTRY/$IMAGE_INFRA_BASE_NAME/docker-kube:latest
+    entrypoint: [""]
+  variables:
+    K8S_SERVER: $K8S_SERVER_DEV
+    K8S_CLUSTER_NAME: $K8S_CLUSTER_NAME_DEV
+    K8S_NAMESPACE: $K8S_NAMESPACE_DEV
+    K8S_USERNAME: $K8S_USERNAME_DEV
+    K8S_CONTEXT: $K8S_CONTEXT_DEV
+    K8S_TOKEN: $K8S_TOKEN_DEV
+    ENVIRONMENT: $CI_ENVIRONMENT_NAME
+    DILA2SQL_API_DB_PORT: $API_PORT
+  before_script:
+  - /apps/create-kubeconfig.sh
+  - envsubst < k8s/api/deployment.yml > k8s/api/deployment-api.yml
+  - envsubst < k8s/api/ingress.yml > k8s/api/ingress-api.yml
+  - envsubst < k8s/api/service.yml > k8s/api/service-api.yml
+  script:
+  - kubectl apply -f k8s/api/deployment-api.yml
+  - kubectl apply -f k8s/api/ingress-api.yml
+  - kubectl apply -f k8s/api/service-api.yml
   environment:
     name: dev
   except:
@@ -150,8 +171,6 @@ deploy-dila2sql-dev:
 #     K8S_TOKEN: $K8S_TOKEN_DEV
 #     ENVIRONMENT: $CI_ENVIRONMENT_NAME
 #   before_script:
-#   - HASH_BRANCH_NAME=$(printf "$CI_COMMIT_REF_NAME" | sha1sum | cut -c1-5)
-#   - export HASH_BRANCH_NAME=-$HASH_BRANCH_NAME
 #   - /apps/create-kubeconfig.sh
 #   - envsubst < k8s/dila2sql/importer.yml > k8s/dila2sql/importer-dila2sql.yml
 #   script:

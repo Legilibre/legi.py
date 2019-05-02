@@ -1,39 +1,40 @@
 ---
+apiVersion: extensions/v1beta1
 kind: Deployment
-apiVersion: apps/v1
 metadata:
-  name: dila2sql-api
-  labels:
-    app: dila2sql-api
-    branch: dila2sql
+  name: postgres
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app: dila2sql-api
   template:
     metadata:
       labels:
-        app: dila2sql-api
+        app: postgres
     spec:
       containers:
-      - image: ${PUBLIC_IMAGE_DILA2SQL_API}
-        name: dila2sql-api
+      - name: postgres
+        image: postgres:11-alpine
+        imagePullPolicy: "IfNotPresent"
         ports:
-        - containerPort: ${DILA2SQL_API_DB_PORT}
+        - containerPort: 5432
         env:
-        - name: DB_HOST
+        - name: POSTGRES_DB
           valueFrom:
             secretKeyRef:
               name: dila2sql-secret
               key: DB_HOST
-        - name: DB_USER
+        - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
               name: dila2sql-secret
               key: DB_USER
-        - name: DB_PASSWORD
+        - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: dila2sql-secret
               key: DB_PASSWORD
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgredb
+      volumes:
+      - name: postgredb
+        emptyDir: {}
