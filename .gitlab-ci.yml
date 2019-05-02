@@ -12,6 +12,7 @@ variables:
   PUBLIC_IMAGE_DILA2SQL_API: "$CI_REGISTRY_IMAGE/dila2sql_api:bd7e71be2e908569762acfacb369d085c794b287"
   IMAGE_INFRA_BASE_NAME: "infra/images-docker"
   API_PORT: 8080
+  DOCKER_DRIVER: overlay2
 
 services:
   - docker:dind
@@ -28,7 +29,7 @@ build-ci-docker-image-dila2sql:
   services:
   - docker:dind
   before_script:
-  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
   script:
   - docker pull $PREVIOUS_CI_IMAGE_DILA2SQL || true
   - >-
@@ -52,7 +53,7 @@ publish-docker-image-dila2sql:
   services:
   - docker:dind
   before_script:
-  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
   script:
   - docker pull $CI_IMAGE_DILA2SQL || true
   - >-
@@ -68,7 +69,7 @@ publish-docker-image-dila2sql-api:
   services:
   - docker:dind
   before_script:
-  - docker login $CI_REGISTRY -u gitlab-ci-token -p $CI_JOB_TOKEN
+  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
   script:
   - docker pull $PUBLIC_IMAGE_DILA2SQL_API || true
   - >-
