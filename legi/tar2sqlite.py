@@ -21,6 +21,14 @@ from .anomalies import detect_anomalies
 from .utils import connect_db, partition
 
 
+SOUS_DOSSIER_MAP = {
+    'articles': 'article',
+    'sections': 'section_ta',
+    'textes_structs': 'texte/struct',
+    'textes_versions': 'texte/version',
+}
+
+
 def count(d, k, c):
     if c == 0:
         return
@@ -51,6 +59,7 @@ def suppress(get_table, db, liste_suppression):
         text_id = parts[-1]
         assert len(text_id) == 20
         table = get_table(parts)
+        sous_dossier = SOUS_DOSSIER_MAP[table]
         db.run("""
             DELETE FROM {0}
              WHERE dossier = ?
@@ -93,16 +102,18 @@ def suppress(get_table, db, liste_suppression):
                 SELECT *
                   FROM duplicate_files
                  WHERE id = ?
+                   AND sous_dossier = ?
               ORDER BY mtime DESC
                  LIMIT 1
-            """, (text_id,), to_dict=True)
+            """, (text_id, sous_dossier), to_dict=True)
             if older_file:
                 db.run("""
                     DELETE FROM duplicate_files
                      WHERE dossier = ?
                        AND cid = ?
+                       AND sous_dossier = ?
                        AND id = ?
-                """, (older_file['dossier'], older_file['cid'], older_file['id']))
+                """, (older_file['dossier'], older_file['cid'], sous_dossier, older_file['id']))
                 count(counts, 'delete from duplicate_files', db.changes())
                 for table, rows in json.loads(older_file['data']).items():
                     if isinstance(rows, dict):
@@ -120,8 +131,9 @@ def suppress(get_table, db, liste_suppression):
                 DELETE FROM duplicate_files
                  WHERE dossier = ?
                    AND cid = ?
+                   AND sous_dossier = ?
                    AND id = ?
-            """, (parts[3], text_cid, text_id))
+            """, (parts[3], text_cid, sous_dossier, text_id))
             count(counts, 'delete from duplicate_files', db.changes())
     total = sum(counts.values())
     print("made", total, "changes in the database based on liste_suppression_legi.dat:",
@@ -143,12 +155,6 @@ def process_archive(db, archive_path, process_links=True):
     META_VERSION_TAGS = set(
         'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
     )
-    SOUS_DOSSIER_MAP = {
-        'articles': 'article',
-        'sections': 'section_ta',
-        'textes_structs': 'texte/struct',
-        'textes_versions': 'texte/version',
-    }
     TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_'}
     TYPELIEN_MAP = {
         "ABROGATION": "ABROGE",
