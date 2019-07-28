@@ -183,7 +183,7 @@ def anomalies_textes_versions(db, err):
                     err(path, key, ': "', g1, '" (dans titre) ≠ "', g2, '" (dans titrefull)')
                 annexe = get_key('annexe', ignore_not_found=True)
                 nature = get_key('nature').upper()
-                nature = NATURE_MAP_R.get(nature, nature)
+                nature = NATURE_MAP_R.get(nature, nature).split(' ', 1)[0]
                 if nature_o and nature != nature_o:
                     err(path, 'nature: "', nature, '" (detectée) ≠ "', nature_o, '" (donnée)')
                     if nature.split('_')[0] == nature_o.split('_')[0]:
