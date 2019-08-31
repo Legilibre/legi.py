@@ -196,6 +196,8 @@ def process_archive(db, archive_path, process_links=True):
     with libarchive.file_reader(archive_path) as archive:
         for entry in tqdm(archive):
             path = entry.pathname
+            if type(path) is bytes:
+                path = path.decode('latin-1')
             if path[-1] == '/':
                 continue
             parts = path.split('/')
