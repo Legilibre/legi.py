@@ -18,7 +18,7 @@ CREATE TABLE textes
 CREATE TABLE textes_structs
 ( id         char(20)   unique not null
 , versions   text
-, dossier    text       not null
+, dossier    text
 , cid        char(20)   not null
 , mtime      int        not null
 );
@@ -49,7 +49,7 @@ CREATE TABLE textes_versions
 , nota                    text
 , abro                    text
 , rect                    text
-, dossier                 text       not null
+, dossier                 text
 , cid                     char(20)   not null
 , mtime                   int        not null
 , texte_id                int        references textes
@@ -63,7 +63,7 @@ CREATE TABLE sections
 , titre_ta      text
 , commentaire   text
 , parent        char(20)   -- REFERENCES sections(id)
-, dossier       text       not null
+, dossier       text
 , cid           char(20)   not null
 , mtime         int        not null
 );
@@ -78,7 +78,7 @@ CREATE TABLE articles
 , type           text
 , nota           text
 , bloc_textuel   text
-, dossier        text       not null
+, dossier        text
 , cid            char(20)   not null
 , mtime          int        not null
 );
@@ -114,11 +114,11 @@ CREATE TABLE duplicate_files
 ( id              char(20)   not null
 , sous_dossier    text       not null
 , cid             char(20)   not null
-, dossier         text       not null
+, dossier         text
 , mtime           int        not null
 , data            text       not null
 , other_cid       char(20)   not null
-, other_dossier   text       not null
+, other_dossier   text
 , other_mtime     int        not null
 , UNIQUE (id, sous_dossier, cid, dossier)
 );
@@ -132,7 +132,7 @@ CREATE TABLE textes_versions_brutes
 , autorite     text
 , num          text
 , date_texte   day
-, dossier      text       not null
+, dossier      text
 , cid          char(20)   not null
 , mtime        int        not null
 );

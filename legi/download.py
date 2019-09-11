@@ -9,18 +9,21 @@ import os
 
 DILA_FTP_HOST = 'echanges.dila.gouv.fr'
 DILA_FTP_PORT = 21
-DILA_LEGI_DIR = '/LEGI'
+DILA_LEGI_DIR = {
+    'LEGI': '/LEGI',
+    'JORF': '/JORF',
+}
 
 
-def download_legi(dst_dir):
+def download_legi(dst_dir, base='LEGI'):
     if not os.path.exists(dst_dir):
         os.mkdir(dst_dir)
     local_files = {filename: {} for filename in os.listdir(dst_dir)}
     ftph = ftplib.FTP()
     ftph.connect(DILA_FTP_HOST, DILA_FTP_PORT)
     ftph.login()
-    ftph.cwd(DILA_LEGI_DIR)
-    remote_files = [filename for filename in ftph.nlst() if '.tar.gz' in filename and ('legi_' in filename or 'LEGI_' in filename)]
+    ftph.cwd(DILA_LEGI_DIR[base])
+    remote_files = [filename for filename in ftph.nlst() if '.tar.gz' in filename and (base.lower()+'_' in filename or base+'_' in filename)]
     common_files = [f for f in remote_files if f in local_files]
     missing_files = [f for f in remote_files if f not in local_files]
     remote_files = {filename: {} for filename in remote_files}
@@ -64,5 +67,9 @@ def download_legi(dst_dir):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('directory')
+    p.add_argument('--base', default='LEGI')
     args = p.parse_args()
-    download_legi(args.directory)
+    if args.base not in DILA_LEGI_DIR.keys():
+        print('!> Non-existing database "'+args.base+'".')
+        raise SystemExit(1)
+    download_legi(args.directory, args.base)
