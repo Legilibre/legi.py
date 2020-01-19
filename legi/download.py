@@ -20,7 +20,7 @@ def download_legi(dst_dir):
     ftph.connect(DILA_FTP_HOST, DILA_FTP_PORT)
     ftph.login()
     ftph.cwd(DILA_LEGI_DIR)
-    remote_files = [filename for filename in ftph.nlst() if '.tar.gz' in filename and ('legi_' in filename or 'LEGI_' in filename)]
+    remote_files = [filename for filename in ftph.nlst() if '.tar.' in filename]
     common_files = [f for f in remote_files if f in local_files]
     missing_files = [f for f in remote_files if f not in local_files]
     remote_files = {filename: {} for filename in remote_files}
