@@ -29,11 +29,11 @@ legi.py a aussi besoin de [`libarchive`][libarchive]. L'installation de celle-ci
 - Mac OS X : la version de `libarchive` inclue dans Mac OS X est obsolète, vous pouvez utiliser [Homebrew](https://brew.sh/) pour installer une version récente en exécutant `brew install libarchive`, puis indiquer au module Python qu'il doit utiliser cette version en ajoutant une variable d'environnement : `export LIBARCHIVE="$(find "$(brew --cellar libarchive)" -name libarchive.13.dylib | sort | tail -1)"` (cette commande peut être ajoutée au fichier d'initialisation de votre shell, typiquement `~/.bashrc` ou `~/.zshrc`)
 - Ubuntu : `sudo apt-get install libarchive13`
 
-legi.py et les modules dont il dépend sont compatibles avec python 3.6 et 3.7,
+legi.py et les modules dont il dépend sont compatibles avec python 3.6, 3.7 et 3.8,
 les versions antérieurs de python peuvent générer des erreurs.
 
 legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
-sous forme de paquet [sur PyPI][legi-pypi].
+sous forme de paquet [dans PyPI][legi-pypi].
 
 ## Création et maintenance de la BDD
 
@@ -52,7 +52,7 @@ machine sont: le disque dur (un SSD est beaucoup plus rapide), et le processeur
 (notamment sa fréquence, le nombre de cœurs importe peu car le travail n'est pas
 parallèle).
 
-La taille du fichier SQLite créé est environ 3,7Go (en décembre 2018).
+La taille du fichier SQLite créé est environ 4Go (en janvier 2020).
 
 L'option `--raw` désactive le nettoyage des données, ajoutez-la si vous avez
 besoin des données LEGI brutes.
@@ -136,6 +136,6 @@ En février 2017 la version 0.1 est publiée.
 [cron]: https://en.wikipedia.org/wiki/Cron
 [libarchive]: http://libarchive.org/
 [legi-data]: https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/
-[legi-pypi]: https://pypi.python.org/pypi/legi
+[legi-pypi]: https://pypi.org/project/legi/
 [tweet-debut]: https://twitter.com/Changaco/statuses/484674913954172929
 [tweet-texte-plus-ancien]: https://twitter.com/Changaco/statuses/491566919544479745
