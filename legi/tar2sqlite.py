@@ -547,12 +547,16 @@ def main():
             print("logged", n_anomalies, "anomalies in", fpath)
 
     if not args.raw:
-        from .normalize import normalize_text_titles
+        from .normalize import (
+            normalize_article_numbers, normalize_section_titles,
+            normalize_sommaires_num, normalize_text_titles,
+        )
         normalize_text_titles(db)
+        normalize_section_titles(db)
+        normalize_article_numbers(db)
+        normalize_sommaires_num(db)
         from .factorize import main as factorize
         factorize(db)
-        from .normalize import normalize_article_numbers
-        normalize_article_numbers(db)
 
 
 if __name__ == '__main__':
