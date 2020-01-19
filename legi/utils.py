@@ -6,6 +6,7 @@ import os.path
 import re
 from sqlite3 import Connection, IntegrityError, OperationalError, ProgrammingError, Row
 import sre_parse
+import sys
 import traceback
 from unicodedata import combining, decomposition, normalize
 
@@ -199,6 +200,14 @@ def group_by_2(iterable):
         yield (a, b)
 
 
+class _Tokenizer(sre_parse.Tokenizer):
+
+    if sys.version_info < (3, 8, 0):
+        # Prior to Python 3.8 the `getuntil` method didn't have the `name` argument
+        def getuntil(self, terminator, name):
+            return super(_Tokenizer, self).getuntil(terminator)
+
+
 def add_accentless_fallbacks(pattern):
     r"""Modifies a regexp pattern to also match accentless text.
 
@@ -223,7 +232,7 @@ def add_accentless_fallbacks(pattern):
         return chr(int(decomposition(c).split(' ', 1)[0], 16))
 
     r = []
-    source = sre_parse.Tokenizer(pattern)
+    source = _Tokenizer(pattern)
     sourceget = source.get
     while True:
         this = source.next
@@ -263,16 +272,16 @@ def add_accentless_fallbacks(pattern):
             elif this == 'P':
                 if source.next == '<':
                     # named group
-                    this += source.getuntil('>') + '>'
+                    this += source.getuntil('>', 'group name') + '>'
                 elif source.next == '=':
                     # named backreference
-                    this += source.getuntil(')') + ')'
+                    this += source.getuntil(')', 'group name') + ')'
             elif this == '#':
                 # comment
-                this += source.getuntil(')') + ')'
+                this += source.getuntil(')', 'comment') + ')'
             elif this == '(':
                 # conditional backreference group
-                this += source.getuntil(')') + ')'
+                this += source.getuntil(')', 'group name') + ')'
             r.append('(?' + this)
         else:
             if decomposition(this):
