@@ -88,7 +88,7 @@ Le module `html` permet de nettoyer les contenus des textes. Il supprime :
 - les éléments inutiles, par exemple un `<span>` sans attributs
 - les éléments vides, sauf `<td>` et `<th>`
 
-En décembre 2018 il détecte 85 millions de caractères inutiles dans LEGI.
+En janvier 2020 il détecte 93 millions de caractères inutiles dans LEGI.
 
 Cette fonctionnalité n'est pas activée par défaut car elle est « destructrice »
 et récente. Vous pouvez nettoyer tout l'HTML d'une base en exécutant la commande
