@@ -7,6 +7,7 @@ from collections import defaultdict, namedtuple
 from difflib import context_diff, SequenceMatcher
 import json
 import re
+import traceback
 from xml.parsers import expat
 
 from lxml import etree
@@ -424,12 +425,7 @@ class HTMLCleaner:
         return r
 
 
-def clean_html(html, cleaner=HTMLCleaner()):
-    """Returns cleaned HTML
-
-    Warning: this function is not thread safe unless you provide your own
-    thread-local `cleaner` instance.
-    """
+def _clean_html(html, cleaner):
     p = expat.ParserCreate()
     p.buffer_text = True
     p.ordered_attributes = True
@@ -464,6 +460,56 @@ def split_first_paragraph(html):
 strip_re = re.compile(r"<[^>]+>|[ \t\n\r\f\v\u00AD]+")
 
 
+class CleaningError(Exception):
+    pass
+
+
+def clean_html(html, cleaner=HTMLCleaner(), check=True):
+    """Returns cleaned HTML
+
+    Warning: this function is not thread safe unless you provide your own
+    thread-local `cleaner` instance.
+    """
+    html_c = _clean_html(html, cleaner)
+    if html_c == html:
+        return html
+    if not check:
+        return html_c
+    # Check lengths
+    delta = html_c.__len__() - html.__len__()
+    if delta > 0:
+        diff = diff_html(html, html_c)
+        raise CleaningError(
+            f"cleaning the HTML increased the length from {len(html)} to {len(html_c)}. "
+            f"Diff:\n{diff}"
+        )
+    # Check that no meaningfull text content was lost
+    html_s, html_c_s = strip_re.sub('', html), strip_re.sub('', html_c)
+    if html_s != html_c_s:
+        diff = diff_compacted_texts(
+            escape_nonprintable(html_s), escape_nonprintable(html_c_s)
+        )
+        raise CleaningError(
+            f"cleaning the HTML resulted in modified content. Diff:\n{diff}"
+        )
+    # Check that cleaning a second time does not alter the result
+    try:
+        html_c_2 = _clean_html(html_c, cleaner)
+    except Exception:
+        raise CleaningError(
+            f"cleaning the HTML a second time failed.\n"
+            f"Traceback:\n{traceback.format_exc()}"
+            f"Diff of the first cleaning:\n{diff_html(html, html_c)}"
+        )
+    if html_c_2 != html_c:
+        raise CleaningError(
+            f"cleaning the HTML a second time produced a different result.\n"
+            f"***** Original data: *****\n{escape_nonprintable(html)}\n"
+            f"***** Diff of the second cleaning: *****\n{diff_html(html_c, html_c_2)}\n"
+        )
+    return html_c
+
+
 def clean_all_html_in_db(db, check=True, dry_run=False, log_file=None):
     stats = {'cleaned': 0, 'delta': 0, 'total': 0}
     soft_hyphens = defaultdict(list)
@@ -476,54 +522,22 @@ def clean_all_html_in_db(db, check=True, dry_run=False, log_file=None):
             stats['total'] += 1
             if not html:
                 continue
-            html_c = clean_html(html)
+            try:
+                html_c = clean_html(html, check=check)
+            except CleaningError as e:
+                print()
+                print('=' * 70)
+                print(f"Cleaning column {col!r} of row {row_id!r} failed:")
+                print(str(e))
+                print()
+                continue
             if '\u00AD' in html_c:
                 soft_hyphens[cid].append((table, row_id, col, html_c))
             if html_c == html:
                 continue
             update[col] = html_c
             stats['cleaned'] += 1
-            delta = html_c.__len__() - html.__len__()
-            stats['delta'] += delta
-            if not check:
-                continue
-            # Check lengths
-            if delta > 0:
-                print()
-                print("=" * 70)
-                print((
-                    "Warning: cleaning column '%s' of row '%s' increased the "
-                    "length from %i to %i. Diff:"
-                ) % (col, row_id, len(html), len(html_c)))
-                print(diff_html(html, html_c))
-            # Check that no meaningfull text content was lost
-            html_s, html_c_s = strip_re.sub('', html), strip_re.sub('', html_c)
-            if html_s != html_c_s:
-                print()
-                print("=" * 70)
-                print("Cleaning column '%s' of row '%s' resulted in modified content. Diff:" %
-                      (col, row_id))
-                print(diff_compacted_texts(
-                    escape_nonprintable(html_s),
-                    escape_nonprintable(html_c_s)
-                ))
-            # Check that cleaning a second time does not alter the result
-            try:
-                html_c_2 = clean_html(html_c)
-            except Exception:
-                print()
-                print("Cleaning a second time failed for column '%s' of row '%s'. Diff:" %
-                      (col, row_id))
-                print(diff_html(html, html_c))
-                raise
-            if html_c_2 != html_c:
-                print()
-                print("=" * 70)
-                print("Inconsistent output for column '%s' of row '%s'." % (col, row_id))
-                print("*" * 5, "Original data:", "*" * 5)
-                print(escape_nonprintable(html))
-                print("*" * 5, "Second run diff:", "*" * 5)
-                print(diff_html(html_c, html_c_2))
+            stats['delta'] += html_c.__len__() - html.__len__()
         if update and not dry_run:
             db.update(table, dict(id=row_id), update)
 

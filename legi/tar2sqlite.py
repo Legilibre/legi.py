@@ -19,7 +19,7 @@ except ImportError:
     tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
-from .html import clean_html, remove_detected_soft_hyphens
+from .html import CleaningError, clean_html, remove_detected_soft_hyphens
 from .utils import connect_db, partition
 
 
@@ -175,7 +175,17 @@ def process_archive(db, archive_path, raw, process_links=True):
             if e.tag not in wanted_tags:
                 continue
             col = e.tag.lower()
-            html_c = clean(innerHTML(e[0] if unwrap else e))
+            html = innerHTML(e[0] if unwrap else e)
+            try:
+                html_c = clean(html)
+            except CleaningError as e:
+                print()
+                print('=' * 70)
+                print(f"Cleaning column {col!r} of row {row_id!r} failed:")
+                print(str(e))
+                print()
+                attrs[col] = html or None
+                continue
             attrs[col] = html_c or None
             if '\u00AD' in html_c:
                 soft_hyphens[row_cid].append((table, row_id, col, html_c))
