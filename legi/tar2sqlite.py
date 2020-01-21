@@ -126,7 +126,7 @@ def suppress(get_table, db, liste_suppression):
           json.dumps(counts, indent=4, sort_keys=True))
 
 
-def process_archive(db, archive_path, raw, process_links=True):
+def process_archive(db, archive_path, raw, process_links=True, check_html=True):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -168,27 +168,25 @@ def process_archive(db, archive_path, raw, process_links=True):
             table += parts[13] + 's'
         return table
 
-    clean = (lambda a: a) if raw else clean_html
     soft_hyphens = defaultdict(list)
-    def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=lambda a: a):
+    def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=False):
         for e in root:
             if e.tag not in wanted_tags:
                 continue
             col = e.tag.lower()
             html = innerHTML(e[0] if unwrap else e)
-            try:
-                html_c = clean(html)
-            except CleaningError as e:
-                print()
-                print('=' * 70)
-                print(f"Cleaning column {col!r} of row {row_id!r} failed:")
-                print(str(e))
-                print()
-                attrs[col] = html or None
-                continue
-            attrs[col] = html_c or None
-            if '\u00AD' in html_c:
-                soft_hyphens[row_cid].append((table, row_id, col, html_c))
+            if clean and not raw:
+                try:
+                    html = clean_html(html, check=check_html)
+                except CleaningError as e:
+                    print()
+                    print('=' * 70)
+                    print(f"Cleaning column {col!r} of row {row_id!r} failed:")
+                    print(str(e))
+                    print()
+            attrs[col] = html or None
+            if '\u00AD' in html:
+                soft_hyphens[row_cid].append((table, row_id, col, html))
 
     counts = defaultdict(int)
     skipped = 0
@@ -307,7 +305,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                     attrs['section'] = attr(sections[-1], 'id')
                 meta_article = meta.find('META_SPEC/META_ARTICLE')
                 scrape_tags(attrs, meta_article, META_ARTICLE_TAGS)
-                scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True, clean=clean)
+                scrape_tags(attrs, root, ARTICLE_TAGS, unwrap=True, clean=True)
             elif tag == 'SECTION_TA':
                 assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
@@ -355,7 +353,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                 scrape_tags(attrs, meta_chronicle, META_CHRONICLE_TAGS)
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
-                scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True, clean=clean)
+                scrape_tags(attrs, root, TEXTE_VERSION_TAGS, unwrap=True, clean=True)
             else:
                 raise Exception('unexpected tag: '+tag)
 
@@ -480,8 +478,10 @@ def main():
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
     p.add_argument('--raw', default=False, action='store_true')
+    p.add_argument('--skip-checks', default=False, action='store_true',
+                   help="skip the HTML cleaning checks")
     p.add_argument('--skip-links', default=False, action='store_true',
-                   help="if set, all link metadata will be ignored (the `liens` table will be empty)")
+                   help="ignore all link metadata (the `liens` table will be empty)")
     args = p.parse_args()
 
     if not os.path.isdir(args.anomalies_dir):
@@ -533,10 +533,15 @@ def main():
         print("> Skipped %i old archives" % len(skipped))
 
     # Process the new archives
+    process_links = not args.skip_links
+    check_html = not args.skip_checks
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
         with db:
-            process_archive(db, args.directory + '/' + archive_name, args.raw, not args.skip_links)
+            process_archive(
+                db, args.directory + '/' + archive_name, args.raw,
+                process_links=process_links, check_html=check_html,
+            )
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
