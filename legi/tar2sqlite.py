@@ -48,9 +48,9 @@ def suppress(get_table, db, liste_suppression):
     for path in liste_suppression:
         parts = path.split('/')
         assert parts[0] == 'legi'
-        text_cid = parts[11]
-        text_id = parts[-1]
-        assert len(text_id) == 20
+        row_cid = parts[11]
+        row_id = parts[-1]
+        assert len(row_id) == 20
         table = get_table(parts)
         sous_dossier = SOUS_DOSSIER_MAP[table]
         db.run("""
@@ -58,7 +58,7 @@ def suppress(get_table, db, liste_suppression):
              WHERE dossier = ?
                AND cid = ?
                AND id = ?
-        """.format(table), (parts[3], text_cid, text_id))
+        """.format(table), (parts[3], row_cid, row_id))
         changes = db.changes()
         if changes:
             counts['delete from ' + table] += changes
@@ -68,7 +68,7 @@ def suppress(get_table, db, liste_suppression):
                     DELETE FROM liens
                      WHERE src_id = ? AND NOT _reversed
                         OR dst_id = ? AND _reversed
-                """, (text_id, text_id))
+                """, (row_id, row_id))
                 counts['delete from liens'] += db.changes()
             elif table == 'sections':
                 db.run("""
@@ -76,18 +76,18 @@ def suppress(get_table, db, liste_suppression):
                      WHERE cid = ?
                        AND parent = ?
                        AND _source = 'section_ta_liens'
-                """, (text_cid, text_id))
+                """, (row_cid, row_id))
                 counts['delete from sommaires'] += db.changes()
             elif table == 'textes_structs':
                 db.run("""
                     DELETE FROM sommaires
                      WHERE cid = ?
                        AND _source = 'struct/' || ?
-                """, (text_cid, text_id))
+                """, (row_cid, row_id))
                 counts['delete from sommaires'] += db.changes()
             # And delete the associated row in textes_versions_brutes if it exists
             if table == 'textes_versions':
-                db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
+                db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (row_id,))
                 counts['delete from textes_versions_brutes'] += db.changes()
             # If the file had an older duplicate that hasn't been deleted then
             # we have to fall back to that, otherwise we'd be missing data
@@ -98,7 +98,7 @@ def suppress(get_table, db, liste_suppression):
                    AND sous_dossier = ?
               ORDER BY mtime DESC
                  LIMIT 1
-            """, (text_id, sous_dossier), to_dict=True)
+            """, (row_id, sous_dossier), to_dict=True)
             if older_file:
                 db.run("""
                     DELETE FROM duplicate_files
@@ -126,7 +126,7 @@ def suppress(get_table, db, liste_suppression):
                    AND cid = ?
                    AND sous_dossier = ?
                    AND id = ?
-            """, (parts[3], text_cid, sous_dossier, text_id))
+            """, (parts[3], row_cid, sous_dossier, row_id))
             counts['delete from duplicate_files'] += db.changes()
     total = sum(counts.values())
     print("made", total, "changes in the database based on liste_suppression_legi.dat:",
@@ -203,8 +203,8 @@ def process_archive(db, archive_path, raw, process_links=True):
                     unknown_folders[parts[2]] = 1
                 continue
             dossier = parts[3]
-            text_cid = parts[11]
-            text_id = parts[-1][:-4]
+            row_cid = parts[11]
+            row_id = parts[-1][:-4]
             mtime = entry.mtime
 
             # Skip the file if it hasn't changed, store it if it's a duplicate
@@ -214,10 +214,10 @@ def process_archive(db, archive_path, raw, process_links=True):
                 SELECT mtime, dossier, cid
                   FROM {0}
                  WHERE id = ?
-            """.format(table), (text_id,))
+            """.format(table), (row_id,))
             if prev_row:
                 prev_mtime, prev_dossier, prev_cid = prev_row
-                if prev_dossier != dossier or prev_cid != text_cid:
+                if prev_dossier != dossier or prev_cid != row_cid:
                     if prev_mtime >= mtime:
                         duplicate = True
                     else:
@@ -225,14 +225,14 @@ def process_archive(db, archive_path, raw, process_links=True):
                             SELECT *
                               FROM {0}
                              WHERE id = ?
-                        """.format(table), (text_id,), to_dict=True)
+                        """.format(table), (row_id,), to_dict=True)
                         data = {table: prev_row_dict}
                         data['liens'] = list(db.all("""
                             SELECT *
                               FROM liens
                              WHERE src_id = ? AND NOT _reversed
                                 OR dst_id = ? AND _reversed
-                        """, (text_id, text_id), to_dict=True))
+                        """, (row_id, row_id), to_dict=True))
                         if table == 'sections':
                             data['sommaires'] = list(db.all("""
                                 SELECT *
@@ -240,24 +240,24 @@ def process_archive(db, archive_path, raw, process_links=True):
                                  WHERE cid = ?
                                    AND parent = ?
                                    AND _source = 'section_ta_liens'
-                            """, (text_id, text_id), to_dict=True))
+                            """, (row_id, row_id), to_dict=True))
                         elif table == 'textes_structs':
-                            source = 'struct/' + text_id
+                            source = 'struct/' + row_id
                             data['sommaires'] = list(db.all("""
                                 SELECT *
                                   FROM sommaires
                                  WHERE cid = ?
                                    AND _source = ?
-                            """, (text_cid, source), to_dict=True))
+                            """, (row_cid, source), to_dict=True))
                         data = {k: v for k, v in data.items() if v}
                         insert('duplicate_files', {
-                            'id': text_id,
+                            'id': row_id,
                             'sous_dossier': SOUS_DOSSIER_MAP[table],
                             'cid': prev_cid,
                             'dossier': prev_dossier,
                             'mtime': prev_mtime,
                             'data': json.dumps(data),
-                            'other_cid': text_cid,
+                            'other_cid': row_cid,
                             'other_dossier': dossier,
                             'other_mtime': mtime,
                         }, replace=True)
@@ -273,10 +273,10 @@ def process_archive(db, archive_path, raw, process_links=True):
 
             # Check the ID
             if tag == 'SECTION_TA':
-                assert root.find('ID').text == text_id
+                assert root.find('ID').text == row_id
             else:
                 meta_commun = meta.find('META_COMMUN')
-                assert meta_commun.find('ID').text == text_id
+                assert meta_commun.find('ID').text == row_id
                 nature = meta_commun.find('NATURE').text
 
             # Extract the data we want
@@ -287,7 +287,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                 assert nature == 'Article'
                 assert table == 'articles'
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == text_cid
+                assert attr(contexte, 'cid') == row_cid
                 sections = contexte.findall('.//TITRE_TM')
                 if sections:
                     attrs['section'] = attr(sections[-1], 'id')
@@ -297,15 +297,15 @@ def process_archive(db, archive_path, raw, process_links=True):
             elif tag == 'SECTION_TA':
                 assert table == 'sections'
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
-                section_id = text_id
+                section_id = row_id
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == text_cid
+                assert attr(contexte, 'cid') == row_cid
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
                 sommaires = [
                     {
-                        'cid': text_cid,
+                        'cid': row_cid,
                         'parent': section_id,
                         'element': attr(lien, 'id'),
                         'debut': attr(lien, 'debut'),
@@ -322,13 +322,13 @@ def process_archive(db, archive_path, raw, process_links=True):
                 scrape_tags(attrs, root, TEXTELR_TAGS)
                 sommaires = [
                     {
-                        'cid': text_cid,
+                        'cid': row_cid,
                         'element': attr(lien, 'id'),
                         'debut': attr(lien, 'debut'),
                         'fin': attr(lien, 'fin'),
                         'etat': attr(lien, 'etat'),
                         'position': i,
-                        '_source': 'struct/' + text_id,
+                        '_source': 'struct/' + row_id,
                     }
                     for i, lien in enumerate(root.find('STRUCT'))
                 ]
@@ -337,7 +337,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                 attrs['nature'] = nature
                 meta_spec = meta.find('META_SPEC')
                 meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
-                assert meta_chronicle.find('CID').text == text_cid
+                assert meta_chronicle.find('CID').text == row_cid
                 scrape_tags(attrs, meta_chronicle, META_CHRONICLE_TAGS)
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
@@ -352,7 +352,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                     liens = []
                     for lien in liens_tags:
                         typelien, sens = attr(lien, 'typelien'), attr(lien, 'sens')
-                        src_id, dst_id = text_id, attr(lien, 'id')
+                        src_id, dst_id = row_id, attr(lien, 'id')
                         if sens == 'cible':
                             assert dst_id
                             src_id, dst_id = dst_id, src_id
@@ -379,9 +379,9 @@ def process_archive(db, archive_path, raw, process_links=True):
                 if sommaires:
                     data['sommaires'] = sommaires
                 insert('duplicate_files', {
-                    'id': text_id,
+                    'id': row_id,
                     'sous_dossier': SOUS_DOSSIER_MAP[table],
-                    'cid': text_cid,
+                    'cid': row_cid,
                     'dossier': dossier,
                     'mtime': mtime,
                     'data': json.dumps(data),
@@ -393,7 +393,7 @@ def process_archive(db, archive_path, raw, process_links=True):
                 continue
 
             attrs['dossier'] = dossier
-            attrs['cid'] = text_cid
+            attrs['cid'] = row_cid
             attrs['mtime'] = mtime
 
             if prev_row:
@@ -404,31 +404,31 @@ def process_archive(db, archive_path, raw, process_links=True):
                          WHERE cid = ?
                            AND parent = ?
                            AND _source = 'section_ta_liens'
-                    """, (text_cid, section_id))
+                    """, (row_cid, section_id))
                     counts['delete from sommaires'] += db.changes()
                 elif tag == 'TEXTELR':
                     db.run("""
                         DELETE FROM sommaires
                          WHERE cid = ?
                            AND _source = ?
-                    """, (text_cid, 'struct/' + text_id))
+                    """, (row_cid, 'struct/' + row_id))
                     counts['delete from sommaires'] += db.changes()
                 if tag in ('ARTICLE', 'TEXTE_VERSION'):
                     db.run("""
                         DELETE FROM liens
                          WHERE src_id = ? AND NOT _reversed
                             OR dst_id = ? AND _reversed
-                    """, (text_id, text_id))
+                    """, (row_id, row_id))
                     counts['delete from liens'] += db.changes()
                 if table == 'textes_versions':
-                    db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (text_id,))
+                    db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (row_id,))
                     counts['delete from textes_versions_brutes'] += db.changes()
                 # Update the row
                 counts['update in '+table] += 1
-                update(table, dict(id=text_id), attrs)
+                update(table, dict(id=row_id), attrs)
             else:
                 counts['insert into '+table] += 1
-                attrs['id'] = text_id
+                attrs['id'] = row_id
                 insert(table, attrs)
 
             # Insert the associated rows
