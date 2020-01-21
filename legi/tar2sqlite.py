@@ -19,7 +19,7 @@ except ImportError:
     tqdm = lambda x: x
 
 from .anomalies import detect_anomalies
-from .html import clean_html
+from .html import clean_html, remove_detected_soft_hyphens
 from .utils import connect_db, partition
 
 
@@ -34,13 +34,6 @@ SOUS_DOSSIER_MAP = {
 def innerHTML(e):
     r = etree.tostring(e, encoding='unicode', with_tail=False)
     return r[r.find('>')+1:-len(e.tag)-3]
-
-
-def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=lambda a: a):
-    attrs.update(
-        (e.tag.lower(), clean(innerHTML(e[0] if unwrap else e)) or None)
-        for e in root if e.tag in wanted_tags
-    )
 
 
 def suppress(get_table, db, liste_suppression):
@@ -175,8 +168,19 @@ def process_archive(db, archive_path, raw, process_links=True):
             table += parts[13] + 's'
         return table
 
-    counts = defaultdict(int)
     clean = (lambda a: a) if raw else clean_html
+    soft_hyphens = defaultdict(list)
+    def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=lambda a: a):
+        for e in root:
+            if e.tag not in wanted_tags:
+                continue
+            col = e.tag.lower()
+            html_c = clean(innerHTML(e[0] if unwrap else e))
+            attrs[col] = html_c or None
+            if '\u00AD' in html_c:
+                soft_hyphens[row_cid].append((table, row_id, col, html_c))
+
+    counts = defaultdict(int)
     skipped = 0
     unknown_folders = {}
     liste_suppression = []
@@ -451,6 +455,9 @@ def process_archive(db, archive_path, raw, process_links=True):
 
     if liste_suppression:
         suppress(get_table, db, liste_suppression)
+
+    if not raw:
+        remove_detected_soft_hyphens(db, soft_hyphens)
 
 
 def main():
