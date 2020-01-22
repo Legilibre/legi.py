@@ -1,3 +1,5 @@
+appdirs
+hunspell
 libarchive-c
 lxml
 tqdm

@@ -12,6 +12,9 @@ addons:
   apt:
     packages:
       - libarchive13
+      - hunspell
+      - hunspell-fr
+      - libhunspell-dev
 
 install:
   - sqlite3 --version

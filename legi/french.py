@@ -8,8 +8,6 @@ from .roman import ROMAN_PATTERN_SIMPLE as roman_num
 from .utils import add_accentless_fallbacks, strip_down
 
 
-INTRA_WORD_CHARS = "'’.-‐‑–"  # the dot is for abbreviations
-
 ORDINALS = (
     "première|premier|deuxième|seconde|second|troisième|quatrième|cinquième|"
     "sixième|septième|huitième|neuvième|dixième|"
