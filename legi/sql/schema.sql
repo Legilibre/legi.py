@@ -4,7 +4,7 @@ CREATE TABLE db_meta
 , value   blob
 );
 
-INSERT INTO db_meta (key, value) VALUES ('schema_version', 5);
+INSERT INTO db_meta (key, value) VALUES ('schema_version', 6);
 
 CREATE TABLE textes
 ( id            integer    primary key not null
@@ -95,7 +95,7 @@ CREATE TABLE sommaires
 , _source    text       -- to support incremental updates
 );
 
-CREATE INDEX sommaires_cid_idx ON sommaires (cid, num);
+CREATE INDEX sommaires_cid_num_idx ON sommaires (cid, num);
 
 CREATE TABLE liens
 ( src_id      char(20)   not null

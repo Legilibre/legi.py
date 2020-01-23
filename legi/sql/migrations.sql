@@ -47,6 +47,6 @@ CREATE VIEW textes_versions_brutes_view AS
  LEFT JOIN textes_versions_brutes b
         ON b.id = a.id AND b.cid = a.cid AND b.dossier = a.dossier AND b.mtime = a.mtime;
 
--- migration #5
-DROP INDEX sommaires_cid_idx;
-CREATE INDEX sommaires_cid_num_idx ON sommaires (cid, num);
+-- migration #6
+DROP INDEX IF EXISTS sommaires_cid_idx;
+CREATE INDEX IF NOT EXISTS sommaires_cid_num_idx ON sommaires (cid, num);
