@@ -1,5 +1,5 @@
+from legi.db import connect_db
 from legi.factorize import main
-from legi.utils import connect_db
 
 
 def test_factorize():

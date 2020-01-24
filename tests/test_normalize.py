@@ -1,5 +1,5 @@
+from legi.db import connect_db
 from legi.normalize import normalize_text_titles
-from legi.utils import connect_db
 
 
 DATA = [
@@ -79,13 +79,13 @@ DATA = [
 
 
 def test_normalize():
-    db = connect_db(':memory:', row_factory='namedtuple')
+    db = connect_db(':memory:', row_factory='Record')
     for row in DATA:
         db.insert("textes_versions", row)
     normalize_text_titles(db)
 
-    data_brutes = list(db.all("SELECT * FROM textes_versions_brutes ORDER BY rowid"))
-    data_norm = list(db.all("SELECT * FROM textes_versions ORDER BY rowid"))
+    data_brutes = db.list("SELECT * FROM textes_versions_brutes ORDER BY rowid")
+    data_norm = db.list("SELECT * FROM textes_versions ORDER BY rowid")
 
     assert len(data_brutes) == 6
 

@@ -5,8 +5,9 @@ Parsing of article numbers and titles.
 from argparse import ArgumentParser
 import re
 
+from .db import connect_db
 from .roman import ROMAN_PATTERN as roman_num
-from .utils import connect_db, show_match
+from .utils import show_match
 
 
 article_num_extra = (

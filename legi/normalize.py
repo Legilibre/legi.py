@@ -13,6 +13,7 @@ from .articles import (
     article_num, article_num_extra_re, article_num_multi, article_num_multi_sub,
     article_titre, legifrance_url_article,
 )
+from .db import connect_db
 from .french import get_clean_ordinal
 from .html import bad_space_re, drop_bad_space, split_first_paragraph
 from .roman import ROMAN_PATTERN as roman_num
@@ -22,7 +23,7 @@ from .sections import (
 )
 from .titles import NATURE_MAP_R_SD, gen_titre, normalize_title, parse_titre
 from .utils import (
-    ascii_spaces_re, connect_db, filter_nonalnum, mimic_case, nonword_re,
+    ascii_spaces_re, filter_nonalnum, mimic_case, nonword_re,
     show_match, strip_down, strip_prefix, upper_words_percentage,
 )
 

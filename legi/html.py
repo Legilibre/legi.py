@@ -18,9 +18,10 @@ except ImportError:
     print('[warning] tqdm is not installed, the progress bar is disabled')
     tqdm = lambda x: x
 
+from .db import connect_db
 from .spelling import INTRA_WORD_CHARS, fr_checker
 from .utils import (
-    connect_db, group_by_2, ascii_spaces_re, escape_nonprintable, show_match
+    group_by_2, ascii_spaces_re, escape_nonprintable, show_match,
 )
 
 
