@@ -15,9 +15,11 @@ from .utils import patch_object, IGNORE, ROOT
 class DB(Connection):
     __slots__ = ('address', 'warning_threshold')
 
-    def __init__(self, address, row_factory=None, warning_threshold=100):
+    def __init__(self, address, row_factory=None, warning_threshold=100, autocommit=True):
         Connection.__init__(self, address)
         self.address = address
+        if autocommit:
+            self.isolation_level = None
         if row_factory:
             if not callable(row_factory):
                 row_factory = ROW_FACTORIES[row_factory]
@@ -150,8 +152,11 @@ ROW_FACTORIES = {
 }
 
 
-def connect_db(address, row_factory=None, create_schema=True, update_schema=True, pragmas=()):
-    db = DB(address, row_factory=row_factory)
+def connect_db(
+    address, row_factory=None, create_schema=True, update_schema=True,
+    pragmas=(), autocommit=True,
+):
+    db = DB(address, row_factory=row_factory, autocommit=autocommit)
 
     if create_schema:
         try:
@@ -163,7 +168,10 @@ def connect_db(address, row_factory=None, create_schema=True, update_schema=True
     if update_schema:
         r = run_migrations(db)
         if r == '!RECREATE!':
-            return connect_db(address, row_factory=row_factory, create_schema=True)
+            return connect_db(
+                address, row_factory=row_factory, create_schema=True,
+                pragmas=pragmas, autocommit=autocommit,
+            )
 
     for pragma in pragmas:
         query = "PRAGMA " + pragma

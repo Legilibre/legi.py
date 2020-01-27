@@ -143,7 +143,6 @@ if __name__ == '__main__':
 
     db = connect_db(args.db)
     try:
-        with db:
-            test_article_num_parsing(db, args.limit)
+        test_article_num_parsing(db, args.limit)
     except KeyboardInterrupt:
         pass
