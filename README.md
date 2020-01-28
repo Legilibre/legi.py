@@ -15,19 +15,18 @@ en vigueur][tweet-texte-plus-ancien], etc.
 
 ## Installation
 
-Vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python
-nécessaires :
+legi.py a besoin de [`libarchive`][libarchive] et [`hunspell`][hunspell]. L'installation de ces dépendances varie selon le système d'exploitation :
+
+- Arch Linux : `pacman -S --needed libarchive hunspell hunspell-fr`
+- Mac OS X : la version de `libarchive` inclue dans Mac OS X est obsolète, vous pouvez utiliser [Homebrew](https://brew.sh/) pour installer une version récente en exécutant `brew install libarchive`, puis indiquer au module Python qu'il doit utiliser cette version en ajoutant une variable d'environnement : `export LIBARCHIVE="$(find "$(brew --cellar libarchive)" -name libarchive.13.dylib | sort | tail -1)"` (cette commande peut être ajoutée au fichier d'initialisation de votre shell, typiquement `~/.bashrc` ou `~/.zshrc`)
+- Ubuntu : `sudo apt-get install libarchive13 hunspell hunspell-fr libhunspell-dev`
+
+Une fois ces dépendances système installées, vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python nécessaires :
 
     git clone https://github.com/Legilibre/legi.py.git
     cd legi.py
     python -m ensurepip
     pip install -r requirements.txt
-
-legi.py a aussi besoin de [`libarchive`][libarchive]. L'installation de celle-ci varie selon le système d'exploitation :
-
-- Arch Linux : rien à faire, `libarchive` fait partie des paquets de base et est une dépendance de `pacman`
-- Mac OS X : la version de `libarchive` inclue dans Mac OS X est obsolète, vous pouvez utiliser [Homebrew](https://brew.sh/) pour installer une version récente en exécutant `brew install libarchive`, puis indiquer au module Python qu'il doit utiliser cette version en ajoutant une variable d'environnement : `export LIBARCHIVE="$(find "$(brew --cellar libarchive)" -name libarchive.13.dylib | sort | tail -1)"` (cette commande peut être ajoutée au fichier d'initialisation de votre shell, typiquement `~/.bashrc` ou `~/.zshrc`)
-- Ubuntu : `sudo apt-get install libarchive13`
 
 legi.py et les modules dont il dépend sont compatibles avec python 3.6, 3.7 et 3.8,
 les versions antérieurs de python peuvent générer des erreurs.
@@ -134,6 +133,7 @@ En février 2017 la version 0.1 est publiée.
 
 [anomalies]: http://anomalies.legilibre.fr/
 [cron]: https://en.wikipedia.org/wiki/Cron
+[hunspell]: https://hunspell.github.io/
 [libarchive]: http://libarchive.org/
 [legi-data]: https://www.data.gouv.fr/fr/datasets/legi-codes-lois-et-reglements-consolides/
 [legi-pypi]: https://pypi.org/project/legi/
