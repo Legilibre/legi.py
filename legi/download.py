@@ -5,6 +5,8 @@ Downloads the LEGI tarballs from the official FTP server.
 import argparse
 import ftplib
 import os
+from time import sleep
+import traceback
 
 
 DILA_FTP_HOST = 'echanges.dila.gouv.fr'
@@ -12,7 +14,23 @@ DILA_FTP_PORT = 21
 DILA_LEGI_DIR = '/LEGI'
 
 
-def download_legi(dst_dir):
+def download_legi(dst_dir, retry_hours=0):
+    sleep_hours = 0
+    while True:
+        try:
+            download_legi_via_ftp(dst_dir)
+            break
+        except Exception:
+            # Retry in an hour, unless we've reached our time limit
+            sleep_hours += 1
+            if sleep_hours > retry_hours:
+                raise
+            traceback.print_exc()
+            print("Waiting an hour before retrying...")
+            sleep(3600)
+
+
+def download_legi_via_ftp(dst_dir):
     if not os.path.exists(dst_dir):
         os.mkdir(dst_dir)
     local_files = {filename: {} for filename in os.listdir(dst_dir)}
@@ -64,5 +82,8 @@ def download_legi(dst_dir):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('directory')
+    p.add_argument('-r', '--retry', action='store_true', default=False,
+                   help="if the download fails, retry every hour for up to 6 hours")
     args = p.parse_args()
-    download_legi(args.directory)
+    retry_hours = 6 if args.retry else 0
+    download_legi(args.directory, retry_hours=retry_hours)
