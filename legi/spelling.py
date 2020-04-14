@@ -6,7 +6,6 @@ import os
 import re
 
 from appdirs import site_data_dir
-import hunspell
 
 from .roman import ROMAN_PATTERN_SIMPLE
 
@@ -27,6 +26,10 @@ class Spellchecker:
 
     def __init__(self, lang, filters=(), intra_word_chars=INTRA_WORD_CHARS):
         self.lang = lang
+        try:
+            import hunspell
+        except ImportError:
+            raise SpellcheckingIsUnavailable("the hunspell module is missing")
         paths = self._find_hunspell_files()
         if not paths:
             raise SpellcheckingIsUnavailable("the hunspell files for lang %r are missing" % lang)
