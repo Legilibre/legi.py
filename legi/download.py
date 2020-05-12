@@ -7,10 +7,15 @@ import ftplib
 import os
 from time import sleep
 import traceback
+import urllib.parse
+
+import lxml.html
+import requests
 
 
 DILA_FTP_HOST = 'echanges.dila.gouv.fr'
 DILA_FTP_PORT = 21
+DILA_HTTP_URL = 'https://echanges.dila.gouv.fr/OPENDATA'
 DILA_LEGI_DIR = '/LEGI'
 
 
@@ -20,7 +25,10 @@ def download_legi(dst_dir, retry_hours=0):
     sleep_hours = 0
     while True:
         try:
-            download_legi_via_ftp(dst_dir)
+            try:
+                download_legi_via_ftp(dst_dir)
+            except Exception:
+                download_legi_via_http(dst_dir)
             break
         except Exception:
             # Retry in an hour, unless we've reached our time limit
@@ -56,6 +64,63 @@ def download_legi_via_ftp(dst_dir):
             ftph.retrbinary('RETR ' + filename, fh.write, rest=offset)
         os.rename(filepath + '.part', filepath)
     ftph.quit()
+
+
+def download_legi_via_http(dst_dir):
+    local_files = set(os.listdir(dst_dir))
+    print("Downloading the index page...")
+    sess = requests.Session()
+    base_url = DILA_HTTP_URL + DILA_LEGI_DIR + '/'
+    r = sess.get(base_url)
+    assert r.status_code == 200, r
+    remote_files, common_files, missing_files = set(), [], []
+    html = lxml.html.document_fromstring(r.text)
+    for url in html.xpath('//a/@href'):
+        url = urllib.parse.urljoin(base_url, url)
+        if not url.startswith(base_url):
+            continue
+        url = urllib.parse.urlsplit(url)
+        filename = url.path.rsplit('/', 1)[-1]
+        if '.tar.' not in filename:
+            continue
+        if filename in remote_files:
+            continue
+        remote_files.add(filename)
+        if filename in local_files:
+            common_files.append(filename)
+        else:
+            missing_files.append(filename)
+    print('{} remote files, {} common files, {} missing files'.format(
+        len(remote_files), len(common_files), len(missing_files),
+    ))
+    for filename in missing_files:
+        filepath = os.path.join(dst_dir, filename)
+        url = base_url + filename
+        with open(filepath + '.part', mode='a+b') as fh:
+            offset = fh.tell()
+            if offset:
+                print('Continuing the download of the file ' + filename)
+                headers = {'Range': f'bytes={offset}-'}
+            else:
+                print('Downloading the file ' + filename)
+                headers = None
+            r = sess.get(url, headers=headers, stream=True)
+            if offset:
+                if r.status_code == 200:
+                    # It looks like the server is sending the whole file instead
+                    # of only the requested range.
+                    fh.seek(0)
+                elif r.status_code == 416:
+                    # It looks like we had already finished downloading this file.
+                    os.rename(filepath + '.part', filepath)
+                    continue
+                else:
+                    assert r.status_code == 206, r
+            else:
+                assert r.status_code == 200, r
+            for chunk in r.iter_content(chunk_size=None):
+                fh.write(chunk)
+        os.rename(filepath + '.part', filepath)
 
 
 if __name__ == '__main__':
