@@ -5,6 +5,7 @@ Downloads the LEGI tarballs from the official FTP server.
 import argparse
 import ftplib
 import os
+import sys
 from time import sleep
 import traceback
 import urllib.parse
@@ -17,6 +18,11 @@ DILA_FTP_HOST = 'echanges.dila.gouv.fr'
 DILA_FTP_PORT = 21
 DILA_HTTP_URL = 'https://echanges.dila.gouv.fr/OPENDATA'
 DILA_LEGI_DIR = '/LEGI'
+
+
+def log(*args, **kw):
+    kw.setdefault('file', sys.stderr)
+    print(*args, **kw)
 
 
 def download_legi(dst_dir, retry_hours=0):
@@ -36,8 +42,11 @@ def download_legi(dst_dir, retry_hours=0):
             if sleep_hours > retry_hours:
                 raise
             traceback.print_exc()
-            print("Waiting an hour before retrying...")
+        log("Waiting an hour before retrying...")
+        try:
             sleep(3600)
+        except KeyboardInterrupt:
+            sys.exit(1)
 
 
 def download_legi_via_ftp(dst_dir):
@@ -50,7 +59,7 @@ def download_legi_via_ftp(dst_dir):
     common_files = [f for f in remote_files if f in local_files]
     missing_files = [f for f in remote_files if f not in local_files]
     ftph.voidcmd('TYPE I')
-    print('{} remote files, {} common files, {} missing files'.format(
+    log('{} remote files, {} common files, {} missing files'.format(
         len(remote_files), len(common_files), len(missing_files),
     ))
     for filename in missing_files:
@@ -58,9 +67,9 @@ def download_legi_via_ftp(dst_dir):
         with open(filepath + '.part', mode='a+b') as fh:
             offset = fh.tell()
             if offset:
-                print('Continuing the download of the file ' + filename)
+                log('Continuing the download of the file ' + filename)
             else:
-                print('Downloading the file ' + filename)
+                log('Downloading the file ' + filename)
             ftph.retrbinary('RETR ' + filename, fh.write, rest=offset)
         os.rename(filepath + '.part', filepath)
     ftph.quit()
@@ -68,7 +77,7 @@ def download_legi_via_ftp(dst_dir):
 
 def download_legi_via_http(dst_dir):
     local_files = set(os.listdir(dst_dir))
-    print("Downloading the index page...")
+    log("Downloading the index page...")
     sess = requests.Session()
     base_url = DILA_HTTP_URL + DILA_LEGI_DIR + '/'
     r = sess.get(base_url)
@@ -90,7 +99,7 @@ def download_legi_via_http(dst_dir):
             common_files.append(filename)
         else:
             missing_files.append(filename)
-    print('{} remote files, {} common files, {} missing files'.format(
+    log('{} remote files, {} common files, {} missing files'.format(
         len(remote_files), len(common_files), len(missing_files),
     ))
     for filename in missing_files:
@@ -99,10 +108,10 @@ def download_legi_via_http(dst_dir):
         with open(filepath + '.part', mode='a+b') as fh:
             offset = fh.tell()
             if offset:
-                print('Continuing the download of the file ' + filename)
+                log('Continuing the download of the file ' + filename)
                 headers = {'Range': f'bytes={offset}-'}
             else:
-                print('Downloading the file ' + filename)
+                log('Downloading the file ' + filename)
                 headers = None
             r = sess.get(url, headers=headers, stream=True)
             if offset:
