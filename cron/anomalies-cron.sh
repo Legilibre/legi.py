@@ -3,7 +3,7 @@
 set -o pipefail
 
 cd "$(dirname "$0")/.."
-python -u -m legi.download ./tarballs
+python -u -m legi.download -r ./tarballs
 echo "=> Starting tar2sqlite..."
 python -u -m legi.tar2sqlite legi.raw.sqlite tarballs --anomalies --anomalies-dir=anomalies --raw | tee -a legi.raw.log
 echo "=> Uploading anomaly logs..."
