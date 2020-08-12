@@ -195,7 +195,9 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
     with libarchive.file_reader(archive_path) as archive:
-        for entry in tqdm(archive):
+        total = len(list(archive))
+    with libarchive.file_reader(archive_path) as archive:
+        for entry in tqdm(archive, total=total):
             path = entry.pathname
             if type(path) is bytes:
                 path = path.decode('latin-1')
