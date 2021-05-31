@@ -3,6 +3,7 @@ python:
   - 3.6
   - 3.7
   - 3.8
+  - 3.9
 
 branches:
   only:
@@ -25,5 +26,5 @@ script: tox
 notifications:
   email: false
 
-dist: xenial
+dist: focal
 sudo: false
