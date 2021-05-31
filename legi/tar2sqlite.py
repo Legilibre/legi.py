@@ -194,11 +194,9 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     unknown_folders = {}
     liste_suppression = []
     xml = etree.XMLParser(remove_blank_text=True)
-    with (
-        tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar,
-        open(archive_path, 'rb') as file,
-        libarchive.stream_reader(file) as archive,
-    ):
+    with tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar, \
+         open(archive_path, 'rb') as file, \
+         libarchive.stream_reader(file) as archive:
         for entry in archive:
             path = entry.pathname
             if type(path) is bytes:
