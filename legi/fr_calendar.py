@@ -51,7 +51,7 @@ def convert_date_to_iso(jour, mois, annee):
     if not jour or not mois or not annee:
         return None, 'gregorian'
     jour = int(jour.lower().replace('1er', '1'))
-    if mois in MOIS_REPU_MAP:
+    if strip_down(mois) in MOIS_REPU_MAP:
         annee = strip_prefix(annee, 'an ')
         return republican_to_gregorian(annee, mois, jour).isoformat(), 'republican'
     else:
