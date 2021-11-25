@@ -1,0 +1,37 @@
+name: CI
+on:
+  # Trigger the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  # Allow running this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install required system packages
+        run: sudo apt-get install -y libarchive13 hunspell hunspell-fr libhunspell-dev
+      - name: Install Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Cache the .tox directory to speed things up
+        uses: actions/cache@v2.1.6
+        with:
+          path: .tox
+          key: test-${{ runner.os }}-${{ hashFiles('requirements*.txt') }}
+      - name: Install tox
+        run: pip install tox
+      - name: Run the tests
+        run: tox -e py37,py38,py39
