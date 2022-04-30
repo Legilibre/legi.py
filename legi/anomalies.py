@@ -235,8 +235,12 @@ def detect_anomalies(db, out=sys.stdout):
     return count[0]
 
 
-if __name__ == '__main__':
+def main():
     p = ArgumentParser()
     p.add_argument('db')
     args = p.parse_args()
     detect_anomalies(connect_db(args.db))
+
+
+if __name__ == '__main__':
+    main()

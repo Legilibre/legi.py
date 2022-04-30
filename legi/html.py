@@ -700,7 +700,7 @@ def analyze(db):
     print(json.dumps(stats, indent=4, sort_keys=True))
 
 
-if __name__ == '__main__':
+def main():
     p = ArgumentParser()
     p.add_argument('command', choices=['analyze', 'clean'])
     p.add_argument('db')
@@ -738,3 +738,7 @@ if __name__ == '__main__':
     finally:
         if log_file:
             log_file.close()
+
+
+if __name__ == '__main__':
+    main()

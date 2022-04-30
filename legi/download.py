@@ -132,7 +132,7 @@ def download_legi_via_http(dst_dir):
         os.rename(filepath + '.part', filepath)
 
 
-if __name__ == '__main__':
+def main():
     p = argparse.ArgumentParser()
     p.add_argument('directory')
     p.add_argument('-r', '--retry', action='store_true', default=False,
@@ -140,3 +140,7 @@ if __name__ == '__main__':
     args = p.parse_args()
     retry_hours = 6 if args.retry else 0
     download_legi(args.directory, retry_hours=retry_hours)
+
+
+if __name__ == '__main__':
+    main()

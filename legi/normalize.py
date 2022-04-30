@@ -859,7 +859,7 @@ def normalize_text_titles(db, dry_run=False, log_file=None):
                 log_file.write('%r => %r (%i×)\n' % (change[0], change[1], count))
 
 
-if __name__ == '__main__':
+def main():
     p = ArgumentParser()
     p.add_argument('db')
     p.add_argument('what', nargs='?', default='all', choices=[
@@ -885,3 +885,7 @@ if __name__ == '__main__':
                 raise KeyboardInterrupt
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == '__main__':
+    main()

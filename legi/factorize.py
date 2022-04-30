@@ -112,7 +112,7 @@ def factorize_by(db, key):
     print('factorized %i duplicates into %i uniques based on %s' % (total, factorized, key))
 
 
-def main(db):
+def run(db):
     print("> Factorisation des textes...")
 
     connect_by_nature_num(db)
@@ -233,7 +233,7 @@ def main(db):
     print("Il y a désormais %i textes dans la base." % n)
 
 
-if __name__ == '__main__':
+def main():
     p = ArgumentParser()
     p.add_argument('db')
     p.add_argument('--from-scratch')
@@ -249,6 +249,10 @@ if __name__ == '__main__':
                 """)
             if db.one("SELECT id FROM textes_versions WHERE titrefull_s IS NULL LIMIT 1"):
                 normalize_text_titles(db)
-            main(db)
+            run(db)
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == '__main__':
+    main()
