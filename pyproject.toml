@@ -35,6 +35,14 @@ poethepoet = "^0.13.1"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.scripts]
+legi-download = 'legi.download:main'
+legi-tar2sqlite = 'legi.tar2sqlite:main'
+legi-normalize = 'legi.normalize:main'
+legi-factorize = 'legi.factorize:main'
+legi-html = 'legi.html:main'
+legi-anomalies = 'legi.anomalies:main'
+
 [tool.poe.tasks]
 test-unit = "pytest tests -Wd --cov=legi --cov-report=term-missing tests"
 test-doctest = "pytest --doctest-modules legi"
