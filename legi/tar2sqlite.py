@@ -193,6 +193,7 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     skipped = 0
     unknown_folders = {}
     liste_suppression = []
+    liste_suppression_dossier = []
     xml = etree.XMLParser(remove_blank_text=True)
     with tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar, \
          open(archive_path, 'rb') as file, \
@@ -206,6 +207,24 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
             parts = path.split('/')
             if parts[-1] == 'liste_suppression_legi.dat':
                 liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
+                continue
+            if parts[-1] == 'liste_suppression_legi_dossier.dat':
+                # Newer DILA archives ship a second deletion list, holding whole
+                # folders (a text and all its articles) as « path \n D » pairs.
+                # Applying those deletions is left for a follow-up: we only
+                # collect them here so they are reported rather than silently
+                # dropped -- and so the parsing below no longer crashes on a
+                # two-segment path.
+                liste_suppression_dossier += [
+                    line
+                    for line in b''.join(entry.get_blocks()).decode('ascii').split()
+                    if line != 'D'
+                ]
+                continue
+            if len(parts) < 3:
+                # Any other short path has nothing to offer, and `parts[2]`
+                # below would raise IndexError.
+                unknown_folders[path] = unknown_folders.get(path, 0) + 1
                 continue
             if parts[1] == 'legi':
                 path = path[len(parts[0])+1:]
@@ -302,7 +321,12 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 assert nature == 'Article'
                 assert table == 'articles'
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                # DILA ships articles whose CONTEXTE/TEXTE carries no `cid`
+                # attribute. Its absence is not an inconsistency: the `cid`
+                # derived from the archive path is authoritative. Only compare
+                # when the attribute is actually there.
+                _cid_xml = attr(contexte, 'cid')
+                assert _cid_xml is None or _cid_xml == row_cid
                 sections = contexte.findall('.//TITRE_TM')
                 if sections:
                     attrs['section'] = attr(sections[-1], 'id')
@@ -314,7 +338,12 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
                 section_id = row_id
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                # DILA ships articles whose CONTEXTE/TEXTE carries no `cid`
+                # attribute. Its absence is not an inconsistency: the `cid`
+                # derived from the archive path is authoritative. Only compare
+                # when the attribute is actually there.
+                _cid_xml = attr(contexte, 'cid')
+                assert _cid_xml is None or _cid_xml == row_cid
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
@@ -469,6 +498,9 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
 
     if liste_suppression:
         suppress(get_table, db, liste_suppression)
+    if liste_suppression_dossier:
+        print("  NOTE:", len(liste_suppression_dossier),
+              "folder(s) flagged for deletion by DILA, not applied")
 
     if not raw:
         remove_detected_soft_hyphens(db, soft_hyphens)
