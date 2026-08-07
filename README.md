@@ -37,7 +37,7 @@ sous forme de paquet [dans PyPI][legi-pypi].
 ## Création et maintenance de la BDD
 
 La première étape est de télécharger les archives LEGI depuis
-`ftp://echanges.dila.gouv.fr/LEGI/` :
+`https://echanges.dila.gouv.fr/OPENDATA/LEGI/` :
 
     python -m legi.download ./tarballs
 
