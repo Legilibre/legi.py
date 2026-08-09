@@ -248,6 +248,11 @@ class HTMLCleaner:
     Doc: http://lxml.de/parsing.html#the-target-parser-interface
     """
 
+    __slots__ = (
+        'at_segment_start', 'drop_line_breaks', 'expected_growth',
+        'last_trimmable_node', 'out', 'current_tag', 'text_chunks',
+    )
+
     def __init__(self):
         self.at_segment_start = True
         self.drop_line_breaks = True
@@ -640,6 +645,8 @@ def diff_compacted_texts(a, b, n=15):
 class StatsCollector:
     """Collects stats about the HTML tags and attributes used in LEGI
     """
+
+    __slots__ = ('stats',)
 
     def __init__(self):
         self.stats = {}
