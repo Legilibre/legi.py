@@ -8,6 +8,7 @@ from fnmatch import fnmatch
 import json
 import os
 import re
+from time import process_time
 
 import libarchive
 from lxml import etree
@@ -595,6 +596,7 @@ def main():
     check_html = not args.skip_checks
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
+        start_time = process_time()
         if args.anomalies:
             anomalies_fpath = f'{args.anomalies_dir}/anomalies-{archive_date}.txt'
             anomalies_file = open(anomalies_fpath, 'w')
@@ -628,6 +630,8 @@ def main():
             n_anomalies = detect_anomalies(db, anomalies_file)
             print("logged", n_anomalies, "anomalies in", anomalies_fpath)
             anomalies_file.close()
+        end_time = process_time()
+        print(f"archive processed in {end_time - start_time:.1f} seconds")
 
     if not args.raw:
         from .normalize import (
