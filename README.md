@@ -28,8 +28,7 @@ Une fois ces dépendances système installées, vous pouvez cloner le dépôt et
     python -m ensurepip
     pip install -r requirements.txt
 
-legi.py et les modules dont il dépend sont compatibles avec python 3.7, 3.8 et 3.9,
-les versions antérieurs de python peuvent générer des erreurs.
+legi.py et les modules dont il dépend sont compatibles avec python ≥ 3.9.
 
 legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
 sous forme de paquet [dans PyPI][legi-pypi].
