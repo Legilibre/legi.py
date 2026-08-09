@@ -11,23 +11,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v7
       - name: Install required system packages
         run: sudo apt-get install -y libarchive13 hunspell hunspell-fr libhunspell-dev
       - name: Install Python 3.9
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: '3.9'
       - name: Install Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: '3.8'
       - name: Install Python 3.7
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v7
         with:
           python-version: '3.7'
       - name: Cache the .tox directory to speed things up
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v5
         with:
           path: .tox
           key: test-${{ runner.os }}-${{ hashFiles('requirements*.txt') }}
