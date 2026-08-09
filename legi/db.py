@@ -90,6 +90,17 @@ class DB(Connection):
                 r = r[0]
             return r
 
+    def pragma(self, pragma_name, pragma_value=None):
+        """This method gets or sets the value of a pragma.
+        """
+        if pragma_value is None:
+            query = f"PRAGMA {pragma_name}"
+        else:
+            query = f"PRAGMA {pragma_name}={pragma_value}"
+        result = self.one(query)
+        print(f"Sent `{query}` to SQLite, got `{result}` as result")
+        return result
+
     def changes(self):
         """This method returns the result of `SELECT changes()`.
         """
@@ -183,9 +194,7 @@ def connect_db(
             )
 
     for pragma in pragmas:
-        query = "PRAGMA " + pragma
-        result = db.one(query)
-        print("> Sent `%s` to SQLite, got `%s` as result" % (query, result))
+        db.pragma(pragma)
 
     return db
 

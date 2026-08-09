@@ -600,6 +600,12 @@ def main():
             anomalies_file = open(anomalies_fpath, 'w')
         else:
             anomalies_fpath = anomalies_file = None
+        if not last_update:
+            journal_mode = db.one("PRAGMA journal_mode")
+            synchronous = db.one("PRAGMA synchronous")
+            if journal_mode != 'off' or synchronous != 'off':
+                db.pragma('journal_mode=off')
+                db.pragma('synchronous=off')
         with db:
             process_archive(
                 db, args.directory + '/' + archive_name, args.raw,
@@ -609,6 +615,9 @@ def main():
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
+                if journal_mode != 'off' or synchronous != 'off':
+                    db.pragma('journal_mode', journal_mode)
+                    db.pragma('synchronous', synchronous)
                 db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
         last_update = archive_date
         print('last_update is now set to', last_update)
