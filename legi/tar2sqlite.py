@@ -127,7 +127,9 @@ def suppress(get_table, db, liste_suppression):
           json.dumps(counts, indent=4, sort_keys=True))
 
 
-def process_archive(db, archive_path, raw, process_links=True, check_html=True):
+def process_archive(
+    db, archive_path, raw, process_links=True, check_html=True, anomalies_file=None,
+):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -162,6 +164,10 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     attr = etree._Element.get
     insert = db.insert
     update = db.update
+
+    def anomaly(description: str) -> None:
+        if anomalies_file:
+            print(path, ': ', description, file=anomalies_file, sep='')
 
     def get_table(parts):
         table = TABLES_MAP[parts[-1][4:8]]
@@ -302,7 +308,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 assert nature == 'Article'
                 assert table == 'articles'
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                if (xml_cid := attr(contexte, 'cid')) != row_cid:
+                    if xml_cid:
+                        anomaly(f"cid mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing cid')
                 sections = contexte.findall('.//TITRE_TM')
                 if sections:
                     attrs['section'] = attr(sections[-1], 'id')
@@ -314,7 +324,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
                 section_id = row_id
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                if (xml_cid := attr(contexte, 'cid')) != row_cid:
+                    if xml_cid:
+                        anomaly(f"cid mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing cid')
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
@@ -352,7 +366,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 attrs['nature'] = nature
                 meta_spec = meta.find('META_SPEC')
                 meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
-                assert meta_chronicle.find('CID').text == row_cid
+                if (xml_cid := meta_chronicle.find('CID').text) != row_cid:
+                    if xml_cid:
+                        anomaly(f"CID mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing CID')
                 scrape_tags(attrs, meta_chronicle, META_CHRONICLE_TAGS)
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
@@ -479,7 +497,7 @@ def main():
     p.add_argument('db')
     p.add_argument('directory')
     p.add_argument('--anomalies', action='store_true', default=False,
-                   help="detect anomalies after each processed archive")
+                   help="save detected anomalies to a file for each processed archive")
     p.add_argument('--anomalies-dir', default='.')
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
@@ -543,10 +561,16 @@ def main():
     check_html = not args.skip_checks
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
+        if args.anomalies:
+            anomalies_fpath = f'{args.anomalies_dir}/anomalies-{archive_date}.txt'
+            anomalies_file = open(anomalies_fpath, 'w')
+        else:
+            anomalies_fpath = anomalies_file = None
         with db:
             process_archive(
                 db, args.directory + '/' + archive_name, args.raw,
                 process_links=process_links, check_html=check_html,
+                anomalies_file=anomalies_file,
             )
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
@@ -557,10 +581,10 @@ def main():
 
         # Detect anomalies if requested
         if args.anomalies:
-            fpath = args.anomalies_dir + '/anomalies-' + last_update + '.txt'
-            with open(fpath, 'w') as f:
-                n_anomalies = detect_anomalies(db, f)
-            print("logged", n_anomalies, "anomalies in", fpath)
+            print('Looking for anomalies...')
+            n_anomalies = detect_anomalies(db, anomalies_file)
+            print("logged", n_anomalies, "anomalies in", anomalies_fpath)
+            anomalies_file.close()
 
     if not args.raw:
         from .normalize import (
