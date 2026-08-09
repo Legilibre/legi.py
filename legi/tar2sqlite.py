@@ -602,10 +602,12 @@ def main():
             anomalies_file = open(anomalies_fpath, 'w')
         else:
             anomalies_fpath = anomalies_file = None
-        if not last_update:
+        toggle_unsafe_mode = not last_update
+        if toggle_unsafe_mode:
             journal_mode = db.one("PRAGMA journal_mode")
             synchronous = db.one("PRAGMA synchronous")
-            if journal_mode != 'off' or synchronous != 'off':
+            toggle_unsafe_mode = journal_mode != 'off' or synchronous != 'off'
+            if toggle_unsafe_mode:
                 db.pragma('journal_mode=off')
                 db.pragma('synchronous=off')
         with db:
@@ -617,19 +619,16 @@ def main():
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
-                if journal_mode != 'off' or synchronous != 'off':
-                    db.pragma('journal_mode', journal_mode)
-                    db.pragma('synchronous', synchronous)
                 db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
-        last_update = archive_date
-        print('last_update is now set to', last_update)
-
-        # Detect anomalies if requested
-        if args.anomalies:
-            print('Looking for anomalies...')
-            n_anomalies = detect_anomalies(db, anomalies_file)
-            print("logged", n_anomalies, "anomalies in", anomalies_fpath)
-            anomalies_file.close()
+            last_update = archive_date
+            if args.anomalies:
+                print('Looking for anomalies...')
+                n_anomalies = detect_anomalies(db, anomalies_file)
+                anomalies_file.close()
+                print("logged", n_anomalies, "anomalies in", anomalies_fpath)
+        if toggle_unsafe_mode:
+            db.pragma('journal_mode', journal_mode)
+            db.pragma('synchronous', synchronous)
         end_time = process_time()
         print(f"archive processed in {end_time - start_time:.1f} seconds")
 
