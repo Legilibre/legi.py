@@ -204,6 +204,7 @@ def process_archive(
         return table
 
     soft_hyphens = defaultdict(list)
+
     def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=False):
         for e in root:
             if e.tag not in wanted_tags:
