@@ -230,4 +230,5 @@ def run_migrations(db):
                 raise SystemExit(1)
         db.run("UPDATE db_meta SET value = ? WHERE key = 'schema_version'", (n,))
         db.commit()
+        db.run("PRAGMA optimize")
     return n - v

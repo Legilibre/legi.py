@@ -625,6 +625,8 @@ def main():
             else:
                 db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
             last_update = archive_date
+            print('Optimizing the DB...')
+            db.pragma('optimize')
             if args.anomalies:
                 print('Looking for anomalies...')
                 n_anomalies = detect_anomalies(db, anomalies_file)
