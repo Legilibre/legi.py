@@ -122,6 +122,67 @@ class DB(Connection):
             print(table, *attrs.items(), sep='\n    ')
             raise
 
+    def replace(self, table, where_expression, where_values, new_rows):
+        """This method replaces a set of rows with another if they differ.
+
+        Use this to avoid costly writes when there's a good probability that the
+        rows don't actually need to be replaced because the data hasn't changed.
+
+        If the old rows aren't a subset of the new ones, then all the old rows
+        are deleted and all the new ones are inserted.
+
+        Returns the numbers of inserted and deleted rows.
+        """
+        with patch_object(self, 'row_factory', tuple_factory):
+            cursor = self.execute(
+                f"SELECT * FROM {table} WHERE {where_expression}",
+                where_values,
+            )
+            current_rows = cursor.fetchmany(len(new_rows) + 1)
+        columns = [t[0] for t in cursor.description]
+        delete = bool(current_rows)
+        insert = [tuple(new_row[col] for col in columns) for new_row in new_rows]
+        if current_rows and len(current_rows) <= len(new_rows):
+            # Determine whether we can avoid deleting the old rows, by comparing
+            # them to the new ones, taking into account that there may be
+            # duplicate rows and that they shouldn't be eliminated.
+            insert_counts = {}
+            for new_row in insert:
+                try:
+                    insert_counts[new_row] += 1
+                except KeyError:
+                    insert_counts[new_row] = 1
+            delete = False
+            for current_row in current_rows:
+                if insert_counts.get(current_row, 0) > 0:
+                    insert_counts[current_row] -= 1
+                else:
+                    delete = True
+                    break
+            if not delete:
+                insert_filtered = []
+                for new_row in insert:
+                    if insert_counts[new_row] > 0:
+                        insert_filtered.append(new_row)
+                        insert_counts[new_row] -= 1
+                insert = insert_filtered
+            del insert_counts
+        if delete:
+            self.execute(
+                f"DELETE FROM {table} WHERE {where_expression}",
+                where_values,
+            )
+            delete_count = self.changes()
+        else:
+            delete_count = 0
+        if insert:
+            placeholders = ', '.join(repeat('?', len(columns)))
+            self.executemany(
+                f"INSERT INTO {table} VALUES ({placeholders})",
+                insert
+            )
+        return len(insert), delete_count
+
     def update(self, table, where, attrs):
         """This method updates one row in the DB.
         """
@@ -149,6 +210,10 @@ def dict_factory(cursor, row):
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
+def tuple_factory(cursor, values):
+    return values
+
+
 class Record(Row):
     """This row type allows accessing columns as attributes.
     """
@@ -169,6 +234,7 @@ ROW_FACTORIES = {
     'dict': dict_factory,
     'Record': Record,
     'Row': Row,
+    'tuple': tuple_factory,
 }
 
 

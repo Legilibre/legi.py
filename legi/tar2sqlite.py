@@ -385,10 +385,12 @@ def process_archive(
                 sommaires = [
                     {
                         'cid': row_cid,
+                        'parent': None,
                         'element': attr(lien, 'id'),
                         'debut': attr(lien, 'debut'),
                         'fin': attr(lien, 'fin'),
                         'etat': attr(lien, 'etat'),
+                        'num': None,
                         'position': i,
                         '_source': 'struct/' + row_id,
                     }
@@ -463,29 +465,40 @@ def process_archive(
             attrs['mtime'] = mtime
 
             if prev_row:
-                # Delete the associated rows
+                # Replace the associated rows
                 if tag == 'SECTION_TA':
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND parent = ?
-                           AND _source = 'section_ta_liens'
-                    """, (row_cid, section_id))
-                    counts['delete from sommaires'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'sommaires',
+                        "cid = ? AND parent = ? AND _source = 'section_ta_liens'",
+                        (row_cid, section_id),
+                        sommaires
+                    )
+                    if insert_count:
+                        counts['insert into sommaires'] += insert_count
+                    if delete_count:
+                        counts['delete from sommaires'] += delete_count
                 elif tag == 'TEXTELR':
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND _source = ?
-                    """, (row_cid, 'struct/' + row_id))
-                    counts['delete from sommaires'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'sommaires',
+                        "cid = ? AND _source = ?",
+                        (row_cid, 'struct/' + row_id),
+                        sommaires
+                    )
+                    if insert_count:
+                        counts['insert into sommaires'] += insert_count
+                    if delete_count:
+                        counts['delete from sommaires'] += delete_count
                 if tag in ('ARTICLE', 'TEXTE_VERSION'):
-                    db.run("""
-                        DELETE FROM liens
-                         WHERE src_id = ? AND NOT _reversed
-                            OR dst_id = ? AND _reversed
-                    """, (row_id, row_id))
-                    counts['delete from liens'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'liens',
+                        "src_id = ? AND NOT _reversed OR dst_id = ? AND _reversed",
+                        (row_id, row_id),
+                        liens
+                    )
+                    if insert_count:
+                        counts['insert into liens'] += insert_count
+                    if delete_count:
+                        counts['delete from liens'] += delete_count
                 if table == 'textes_versions':
                     db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (row_id,))
                     counts['delete from textes_versions_brutes'] += db.changes()
@@ -496,14 +509,13 @@ def process_archive(
                 counts['insert into '+table] += 1
                 attrs['id'] = row_id
                 insert(table, attrs)
-
-            # Insert the associated rows
-            for lien in liens:
-                db.insert('liens', lien)
-            counts['insert into liens'] += len(liens)
-            for sommaire in sommaires:
-                db.insert('sommaires', sommaire)
-            counts['insert into sommaires'] += len(sommaires)
+                # Insert the associated rows
+                for lien in liens:
+                    db.insert('liens', lien)
+                counts['insert into liens'] += len(liens)
+                for sommaire in sommaires:
+                    db.insert('sommaires', sommaire)
+                counts['insert into sommaires'] += len(sommaires)
 
             # Update the progress bar
             pbar.update(file.tell() - pbar.n)
