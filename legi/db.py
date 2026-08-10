@@ -188,8 +188,13 @@ def connect_db(
     if update_schema:
         r = run_migrations(db)
         if r == '!RECREATE!':
+            db.close()
+            try:
+                os.remove(address + '.wip')
+            except FileNotFoundError:
+                pass
             return connect_db(
-                address, row_factory=row_factory, create_schema=True,
+                address + '.wip', row_factory=row_factory, create_schema=True,
                 pragmas=pragmas, autocommit=autocommit,
             )
 
@@ -214,8 +219,6 @@ def run_migrations(db):
         sql = sql.strip()
         if sql == '!RECREATE!':
             print('Recreating DB from scratch (migration #%s)...' % n)
-            db.close()
-            os.rename(db.address, db.address + '.back')
             return sql
         print('Running DB migration #%s...' % n)
         try:

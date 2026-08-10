@@ -583,8 +583,12 @@ def main():
     if last_update and most_recent_global > last_update:
         print("> There is a new global archive, recreating the DB from scratch!")
         db.close()
-        os.rename(db.address, db.address + '.back')
-        db = connect_db(args.db, pragmas=args.pragma)
+        try:
+            os.remove(args.db + '.wip')
+        except FileNotFoundError:
+            pass
+        db = connect_db(args.db + '.wip', pragmas=args.pragma)
+        last_update = None
     archives, skipped = partition(
         archives, lambda t: t[0] >= most_recent_global and t[0] > (last_update or '')
     )
@@ -643,6 +647,9 @@ def main():
         normalize_sommaires_num(db)
         from .factorize import main as factorize
         factorize(db)
+
+    if db.address != args.db:
+        os.rename(db.address, args.db)
 
 
 if __name__ == '__main__':
