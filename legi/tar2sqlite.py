@@ -637,6 +637,7 @@ def main():
         if toggle_unsafe_mode:
             db.pragma('journal_mode', journal_mode)
             db.pragma('synchronous', synchronous)
+        db.pragma('wal_checkpoint')
         end_time = process_time()
         print(f"archive processed in {end_time - start_time:.1f} seconds")
 
