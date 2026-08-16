@@ -534,8 +534,10 @@ def main():
     p.add_argument('--anomalies', action='store_true', default=False,
                    help="save detected anomalies to a file for each processed archive")
     p.add_argument('--anomalies-dir', default='.')
-    p.add_argument('--pragma', action='append', default=[],
-                   help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
+    p.add_argument('--pragma', action='append',
+                   default=['journal_mode=wal', 'mmap_size=10000000000', 'temp_store=memory'],
+                   help="Doc: https://www.sqlite.org/pragma.html | "
+                        "Default: journal_mode=wal mmap_size=10000000000 temp_store=memory")
     p.add_argument('--raw', default=False, action='store_true')
     p.add_argument('--skip-checks', default=False, action='store_true',
                    help="skip the HTML cleaning checks")
