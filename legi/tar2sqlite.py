@@ -223,8 +223,9 @@ def process_archive(
             if '\u00AD' in html:
                 soft_hyphens[row_cid].append((table, row_id, col, html))
 
-    counts = defaultdict(int)
-    skipped = 0
+    changes = defaultdict(int)
+    unchanged_files = 0
+    unchanged_rows = defaultdict(int)
     unknown_folders = defaultdict(int)
     liste_suppression = []
     liste_suppression_dossier = []
@@ -315,9 +316,9 @@ def process_archive(
                             'other_dossier': dossier,
                             'other_mtime': mtime,
                         }, replace=True)
-                        counts['upsert into duplicate_files'] += 1
+                        changes['upsert into duplicate_files'] += 1
                 elif prev_mtime == mtime:
-                    skipped += 1
+                    unchanged_files += 1
                     continue
 
             xml.feed(b''.join(entry.get_blocks()))
@@ -457,7 +458,7 @@ def process_archive(
                     'other_dossier': prev_dossier,
                     'other_mtime': prev_mtime,
                 }, replace=True)
-                counts['upsert into duplicate_files'] += 1
+                changes['upsert into duplicate_files'] += 1
                 continue
 
             attrs['dossier'] = dossier
@@ -474,9 +475,10 @@ def process_archive(
                         sommaires
                     )
                     if insert_count:
-                        counts['insert into sommaires'] += insert_count
+                        changes['insert into sommaires'] += insert_count
                     if delete_count:
-                        counts['delete from sommaires'] += delete_count
+                        changes['delete from sommaires'] += delete_count
+                    unchanged_rows['sommaires'] += len(sommaires) - insert_count
                 elif tag == 'TEXTELR':
                     insert_count, delete_count = db.replace(
                         'sommaires',
@@ -485,9 +487,10 @@ def process_archive(
                         sommaires
                     )
                     if insert_count:
-                        counts['insert into sommaires'] += insert_count
+                        changes['insert into sommaires'] += insert_count
                     if delete_count:
-                        counts['delete from sommaires'] += delete_count
+                        changes['delete from sommaires'] += delete_count
+                    unchanged_rows['sommaires'] += len(sommaires) - insert_count
                 if tag in ('ARTICLE', 'TEXTE_VERSION'):
                     insert_count, delete_count = db.replace(
                         'liens',
@@ -496,35 +499,40 @@ def process_archive(
                         liens
                     )
                     if insert_count:
-                        counts['insert into liens'] += insert_count
+                        changes['insert into liens'] += insert_count
                     if delete_count:
-                        counts['delete from liens'] += delete_count
+                        changes['delete from liens'] += delete_count
+                    unchanged_rows['liens'] += len(liens) - insert_count
                 if table == 'textes_versions':
                     db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (row_id,))
-                    counts['delete from textes_versions_brutes'] += db.changes()
+                    changes['delete from textes_versions_brutes'] += db.changes()
                 # Update the row
-                counts['update in '+table] += 1
+                changes['update in '+table] += 1
                 update(table, dict(id=row_id), attrs)
             else:
-                counts['insert into '+table] += 1
+                changes['insert into '+table] += 1
                 attrs['id'] = row_id
                 insert(table, attrs)
                 # Insert the associated rows
                 for lien in liens:
                     db.insert('liens', lien)
-                counts['insert into liens'] += len(liens)
+                changes['insert into liens'] += len(liens)
                 for sommaire in sommaires:
                     db.insert('sommaires', sommaire)
-                counts['insert into sommaires'] += len(sommaires)
+                changes['insert into sommaires'] += len(sommaires)
 
             # Update the progress bar
             pbar.update(file.tell() - pbar.n)
 
-    print("made", sum(counts.values()), "changes in the database:",
-          json.dumps(counts, indent=4, sort_keys=True))
+    print("made", sum(changes.values()), "changes in the database:",
+          json.dumps(changes, indent=4, sort_keys=True))
 
-    if skipped:
-        print("skipped", skipped, "files that haven't changed")
+    if unchanged_rows:
+        print("avoided rewriting", sum(unchanged_rows.values()), "unchanged rows:",
+              json.dumps(unchanged_rows, indent=4, sort_keys=True))
+
+    if unchanged_files:
+        print("skipped", unchanged_files, "files that haven't changed")
 
     if unknown_folders:
         for d, x in unknown_folders.items():
