@@ -69,7 +69,7 @@ def anomalies_orphans(db, err):
     q = db.all("""
         SELECT dossier, cid, id
           FROM articles a
-         WHERE (SELECT count(*) FROM sommaires so WHERE so.element = a.id) = 0
+         WHERE a.id NOT IN (SELECT so.element FROM sommaires so)
     """)
     for dossier, cid, id in q:
         path = reconstruct_path(dossier, cid, 'article', id)
@@ -77,7 +77,7 @@ def anomalies_orphans(db, err):
     q = db.all("""
         SELECT dossier, cid, id
           FROM sections s
-         WHERE (SELECT count(*) FROM sommaires so WHERE so.element = s.id) = 0
+         WHERE s.id NOT IN (SELECT so.element FROM sommaires so)
     """)
     for dossier, cid, id in q:
         path = reconstruct_path(dossier, cid, 'section_ta', id)
