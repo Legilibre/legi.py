@@ -30,6 +30,18 @@ SOUS_DOSSIER_MAP = {
     'textes_structs': 'texte/struct',
     'textes_versions': 'texte/version',
 }
+TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_{}s'}
+
+suppress_re = re.compile(
+    r"legi/global/code_et_TNC_(en|non)_vigueur/"
+    r"(?P<dossier>(?:code|TNC)_\1_vigueur)/?"
+    r"(?:[A-Z]{4}/){2}(?:[0-9]{2}/){5}(?P<cid>[A-Z0-9]{20})/?"
+    r"(?:"
+        r"(?P<sous_dossier>article|section_ta|texte/(?:struct|version))/"
+        r"(?:(?:[A-Z]{4}/){2}(?:[0-9]{2}/){5})?"
+        r"(?P<id>[A-Z0-9]{20})"
+    r")?"
+)
 
 
 def innerHTML(e):
@@ -37,26 +49,20 @@ def innerHTML(e):
     return r[r.find('>')+1:-len(e.tag)-3]
 
 
-def suppress(get_table, db, liste_suppression):
+def suppress(db, liste_suppression, nom_liste):
     counts = defaultdict(int)
-    for path in liste_suppression:
-        parts = path.split('/')
-        assert parts[0] == 'legi'
-        row_cid = parts[11]
-        row_id = parts[-1]
-        assert len(row_id) == 20
-        table = get_table(parts)
-        sous_dossier = SOUS_DOSSIER_MAP[table]
+
+    def delete(table, row_cid, row_id, dossier, sous_dossier):
         db.run("""
             DELETE FROM {0}
              WHERE dossier = ?
                AND cid = ?
                AND id = ?
-        """.format(table), (parts[3], row_cid, row_id))
+        """.format(table), (dossier, row_cid, row_id))
         changes = db.changes()
         if changes:
             counts['delete from ' + table] += changes
-            # Also delete derivative data
+            # Also delete secondary data
             if table in ('articles', 'textes_versions'):
                 db.run("""
                     DELETE FROM liens
@@ -120,14 +126,38 @@ def suppress(get_table, db, liste_suppression):
                    AND cid = ?
                    AND sous_dossier = ?
                    AND id = ?
-            """, (parts[3], row_cid, sous_dossier, row_id))
+            """, (dossier, row_cid, sous_dossier, row_id))
             counts['delete from duplicate_files'] += db.changes()
+
+    for path in liste_suppression:
+        if not path:
+            continue
+        m = suppress_re.fullmatch(path)
+        assert m, path
+        if m['id']:
+            table = TABLES_MAP[m['id'][4:8]]
+            if table == 'textes_{}s':
+                table = table.format(m['sous_dossier'].split('/')[-1])
+                assert table in SOUS_DOSSIER_MAP
+            delete(table, m['cid'], m['id'], m['dossier'], m['sous_dossier'])
+        else:
+            for table, sous_dossier in SOUS_DOSSIER_MAP.items():
+                row_ids = db.all("""
+                    SELECT id
+                      FROM {0}
+                     WHERE dossier = ?
+                       AND cid = ?
+                """.format(table), (m['dossier'], m['cid']))
+                for row_id in row_ids:
+                    delete(table, m['cid'], row_id, m['dossier'], sous_dossier)
     total = sum(counts.values())
-    print("made", total, "changes in the database based on liste_suppression_legi.dat:",
+    print(f"made {total} changes in the database based on {nom_liste}:",
           json.dumps(counts, indent=4, sort_keys=True))
 
 
-def process_archive(db, archive_path, raw, process_links=True, check_html=True):
+def process_archive(
+    db, archive_path, raw, process_links=True, check_html=True, anomalies_file=None,
+):
 
     # Define some constants
     ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
@@ -142,7 +172,6 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     META_VERSION_TAGS = set(
         'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
     )
-    TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_'}
     TYPELIEN_MAP = {
         "ABROGATION": "ABROGE",
         "ANNULATION": "ANNULE",
@@ -163,13 +192,19 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
     insert = db.insert
     update = db.update
 
+    def anomaly(description: str) -> None:
+        if anomalies_file:
+            print(path, ': ', description, file=anomalies_file, sep='')
+
     def get_table(parts):
         table = TABLES_MAP[parts[-1][4:8]]
-        if table == 'textes_':
-            table += parts[13] + 's'
+        if table == 'textes_{}s':
+            table = table.format(parts[13])
+            assert table in SOUS_DOSSIER_MAP
         return table
 
     soft_hyphens = defaultdict(list)
+
     def scrape_tags(attrs, root, wanted_tags, unwrap=False, clean=False):
         for e in root:
             if e.tag not in wanted_tags:
@@ -191,8 +226,9 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
 
     counts = defaultdict(int)
     skipped = 0
-    unknown_folders = {}
+    unknown_folders = defaultdict(int)
     liste_suppression = []
+    liste_suppression_dossier = []
     xml = etree.XMLParser(remove_blank_text=True)
     with tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar, \
          open(archive_path, 'rb') as file, \
@@ -205,17 +241,21 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 continue
             parts = path.split('/')
             if parts[-1] == 'liste_suppression_legi.dat':
-                liste_suppression += b''.join(entry.get_blocks()).decode('ascii').split()
+                liste_suppression.extend(
+                    b''.join(entry.get_blocks()).decode('ascii').split()
+                )
+                continue
+            if parts[-1] == 'liste_suppression_legi_dossier.dat':
+                liste_suppression_dossier.extend(
+                    b''.join(entry.get_blocks()).decode('ascii').split(' D\n')
+                )
                 continue
             if parts[1] == 'legi':
                 path = path[len(parts[0])+1:]
                 parts = parts[1:]
             if not parts[2].startswith('code_et_TNC_'):
                 # https://github.com/Legilibre/legi.py/issues/23
-                try:
-                    unknown_folders[parts[2]] += 1
-                except KeyError:
-                    unknown_folders[parts[2]] = 1
+                unknown_folders['/'.join(parts[:3])] += 1
                 continue
             dossier = parts[3]
             row_cid = parts[11]
@@ -302,7 +342,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 assert nature == 'Article'
                 assert table == 'articles'
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                if (xml_cid := attr(contexte, 'cid')) != row_cid:
+                    if xml_cid:
+                        anomaly(f"cid mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing cid')
                 sections = contexte.findall('.//TITRE_TM')
                 if sections:
                     attrs['section'] = attr(sections[-1], 'id')
@@ -314,7 +358,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 scrape_tags(attrs, root, SECTION_TA_TAGS)
                 section_id = row_id
                 contexte = root.find('CONTEXTE/TEXTE')
-                assert attr(contexte, 'cid') == row_cid
+                if (xml_cid := attr(contexte, 'cid')) != row_cid:
+                    if xml_cid:
+                        anomaly(f"cid mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing cid')
                 parents = contexte.findall('.//TITRE_TM')
                 if parents:
                     attrs['parent'] = attr(parents[-1], 'id')
@@ -352,7 +400,11 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
                 attrs['nature'] = nature
                 meta_spec = meta.find('META_SPEC')
                 meta_chronicle = meta_spec.find('META_TEXTE_CHRONICLE')
-                assert meta_chronicle.find('CID').text == row_cid
+                if (xml_cid := meta_chronicle.find('CID').text) != row_cid:
+                    if xml_cid:
+                        anomaly(f"CID mismatch: {xml_cid} ≠ {row_cid}")
+                    else:
+                        anomaly('missing CID')
                 scrape_tags(attrs, meta_chronicle, META_CHRONICLE_TAGS)
                 meta_version = meta_spec.find('META_TEXTE_VERSION')
                 scrape_tags(attrs, meta_version, META_VERSION_TAGS)
@@ -468,7 +520,9 @@ def process_archive(db, archive_path, raw, process_links=True, check_html=True):
             print("skipped", x, "files in unknown folder `%s`" % d)
 
     if liste_suppression:
-        suppress(get_table, db, liste_suppression)
+        suppress(db, liste_suppression, 'liste_suppression_legi.dat')
+    if liste_suppression_dossier:
+        suppress(db, liste_suppression_dossier, 'liste_suppression_legi_dossier.dat')
 
     if not raw:
         remove_detected_soft_hyphens(db, soft_hyphens)
@@ -479,7 +533,7 @@ def main():
     p.add_argument('db')
     p.add_argument('directory')
     p.add_argument('--anomalies', action='store_true', default=False,
-                   help="detect anomalies after each processed archive")
+                   help="save detected anomalies to a file for each processed archive")
     p.add_argument('--anomalies-dir', default='.')
     p.add_argument('--pragma', action='append', default=[],
                    help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
@@ -543,10 +597,16 @@ def main():
     check_html = not args.skip_checks
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
+        if args.anomalies:
+            anomalies_fpath = f'{args.anomalies_dir}/anomalies-{archive_date}.txt'
+            anomalies_file = open(anomalies_fpath, 'w')
+        else:
+            anomalies_fpath = anomalies_file = None
         with db:
             process_archive(
                 db, args.directory + '/' + archive_name, args.raw,
                 process_links=process_links, check_html=check_html,
+                anomalies_file=anomalies_file,
             )
             if last_update:
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
@@ -557,10 +617,10 @@ def main():
 
         # Detect anomalies if requested
         if args.anomalies:
-            fpath = args.anomalies_dir + '/anomalies-' + last_update + '.txt'
-            with open(fpath, 'w') as f:
-                n_anomalies = detect_anomalies(db, f)
-            print("logged", n_anomalies, "anomalies in", fpath)
+            print('Looking for anomalies...')
+            n_anomalies = detect_anomalies(db, anomalies_file)
+            print("logged", n_anomalies, "anomalies in", anomalies_fpath)
+            anomalies_file.close()
 
     if not args.raw:
         from .normalize import (

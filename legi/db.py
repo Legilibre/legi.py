@@ -26,6 +26,15 @@ class DB(Connection):
             self.row_factory = row_factory
         self.warning_threshold = warning_threshold
 
+    def __enter__(self):
+        self.execute("BEGIN")
+
+    def __exit__(self, exc_type, exc, traceback):
+        if exc is None:
+            self.execute("COMMIT")
+        else:
+            self.execute("ROLLBACK")
+
     def all(self, *a, to_dict=False):
         """This method queries the DB and yields the rows one by one.
         """

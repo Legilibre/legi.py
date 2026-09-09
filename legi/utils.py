@@ -3,7 +3,6 @@ import os
 import os.path
 import re
 import sre_parse
-import sys
 from unicodedata import combining, decomposition, normalize
 
 
@@ -43,14 +42,6 @@ def group_by_2(iterable):
         yield (a, b)
 
 
-class _Tokenizer(sre_parse.Tokenizer):
-
-    if sys.version_info < (3, 8, 0):
-        # Prior to Python 3.8 the `getuntil` method didn't have the `name` argument
-        def getuntil(self, terminator, name):
-            return super(_Tokenizer, self).getuntil(terminator)
-
-
 def add_accentless_fallbacks(pattern):
     r"""Modifies a regexp pattern to also match accentless text.
 
@@ -75,7 +66,7 @@ def add_accentless_fallbacks(pattern):
         return chr(int(decomposition(c).split(' ', 1)[0], 16))
 
     r = []
-    source = _Tokenizer(pattern)
+    source = sre_parse.Tokenizer(pattern)
     sourceget = source.get
     while True:
         this = source.next

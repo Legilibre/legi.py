@@ -251,6 +251,7 @@ class HTMLCleaner:
     def __init__(self):
         self.at_segment_start = True
         self.drop_line_breaks = True
+        self.expected_growth = 0
         self.last_trimmable_node = None
         self.out = []
         self.current_tag = INVISIBLE_ROOT_TAG
@@ -277,11 +278,15 @@ class HTMLCleaner:
                 if k[-5:] == 'color':
                     v = v.lower()
                     if v[:4] == 'rgb(':
-                        v = '#%02x%02x%02x' % tuple(int(s.strip()) for s in v[4:-1].split(','))
+                        normalized = '#%02x%02x%02x' % tuple(
+                            int(s.strip()) for s in v[4:-1].split(',')
+                        )
                     elif v.__len__() == 6 and v.isdigit():
-                        v = '#' + v
+                        normalized = '#' + v
                     else:
-                        v = COLORS_MAP.get(v, v)
+                        normalized = COLORS_MAP.get(v, v)
+                    self.expected_growth += max(len(normalized) - len(v), 0)
+                    v = normalized
                 # Skip redundant styles
                 parent_style = parent_styles.get(k)
                 if parent_style == v:
@@ -436,7 +441,8 @@ def _clean_html(html, cleaner):
     p.Parse('<body>')
     p.Parse(html)
     p.Parse('</body>', 1)
-    return cleaner.close()[6:-7]
+    expected_growth = cleaner.expected_growth
+    return cleaner.close()[6:-7], expected_growth
 
 
 first_paragraph_re = re.compile(r"^(?:<p(?: [^>]+)?>(.+?)</p>|(.+?)<br/><br/>)(.*)")
@@ -471,14 +477,14 @@ def clean_html(html, cleaner=HTMLCleaner(), check=True):
     Warning: this function is not thread safe unless you provide your own
     thread-local `cleaner` instance.
     """
-    html_c = _clean_html(html, cleaner)
+    html_c, expected_growth = _clean_html(html, cleaner)
     if html_c == html:
         return html
     if not check:
         return html_c
     # Check lengths
     delta = html_c.__len__() - html.__len__()
-    if delta > 0:
+    if delta > expected_growth:
         diff = diff_html(html, html_c)
         raise CleaningError(
             f"cleaning the HTML increased the length from {len(html)} to {len(html_c)}. "
@@ -495,7 +501,7 @@ def clean_html(html, cleaner=HTMLCleaner(), check=True):
         )
     # Check that cleaning a second time does not alter the result
     try:
-        html_c_2 = _clean_html(html_c, cleaner)
+        html_c_2, expected_growth = _clean_html(html_c, cleaner)
     except Exception:
         raise CleaningError(
             f"cleaning the HTML a second time failed.\n"

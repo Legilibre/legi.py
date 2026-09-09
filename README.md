@@ -25,33 +25,35 @@ Une fois ces dépendances système installées, vous pouvez cloner le dépôt et
 
     git clone https://github.com/Legilibre/legi.py.git
     cd legi.py
-    python -m ensurepip
-    pip install -r requirements.txt
+    python -m venv env
+    env/bin/pip install -r requirements.txt
 
-legi.py et les modules dont il dépend sont compatibles avec python 3.7, 3.8 et 3.9,
-les versions antérieurs de python peuvent générer des erreurs.
+legi.py et les modules dont il dépend sont compatibles avec python ≥ 3.9.
 
 legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
 sous forme de paquet [dans PyPI][legi-pypi].
 
 ## Création et maintenance de la BDD
 
-La première étape est de télécharger les archives LEGI depuis
-`ftp://echanges.dila.gouv.fr/LEGI/` :
+La première étape est de télécharger les archives LEGI depuis le
+[serveur officiel](https://echanges.dila.gouv.fr/OPENDATA/LEGI/) :
 
-    python -m legi.download ./tarballs
+    env/bin/python -m legi.download ./tarballs
 
-La deuxième étape est la conversion des archives en base SQLite :
+La deuxième étape est la conversion des archives en un fichier SQLite :
 
-    python -m legi.tar2sqlite legi.sqlite ./tarballs [--raw]
+    ionice -c 3 env/bin/python -u -m legi.tar2sqlite legi.sqlite ./tarballs [--raw]
 
-Cette opération peut prendre de quelques minutes à plusieurs heures selon votre
-machine et le nombre d'archives. Les deux caractéristiques importantes de votre
-machine sont: le disque dur (un SSD est beaucoup plus rapide), et le processeur
-(notamment sa fréquence, le nombre de cœurs importe peu car le travail n'est pas
-parallèle).
+Cette opération peut prendre de quelques minutes à de nombreuses heures. Cela
+dépend de la puissance de la machine sur laquelle tourne le programme, du nombre
+d'archives à traiter, et des options choisies. La vitesse de l'opération est
+principalement contrainte par les vitesses d'écriture du fichier SQLite et de
+traitement du processeur. La vitesse de lecture du fichier SQLite peut aussi
+être une contrainte si la quantité de mémoire vive disponible n'est pas
+suffisante pour éliminer le besoin de relire les données écrites précédemment.
+Le nombre de cœurs du processeur importe peu car le travail n'est pas parallèle.
 
-La taille du fichier SQLite créé est environ 4Go (en janvier 2020).
+La taille du fichier SQLite créé est environ 5 Go (en 2026).
 
 L'option `--raw` désactive le nettoyage des données, ajoutez-la si vous avez
 besoin des données LEGI brutes.
@@ -62,7 +64,7 @@ nouvelle archive à la fin de chaque jour ouvré, vous pouvez donc programmer
 votre machine pour mettre à jour la BDD du mardi au samedi pendant la nuit, par
 exemple avec [cron][cron] :
 
-    0 1 * * 2-6 ID=legi chronic ~/chemin/vers/legi.py/cron/cron.sh
+    ~ 1~3 * * 2-6 ID=legi chronic ionice -c 3 ~/chemin/vers/legi.py/cron/cron.sh
 
 (`chronic` fait partie des [`moreutils`](http://joeyh.name/code/moreutils/).)
 
@@ -89,10 +91,13 @@ Le module `html` permet de nettoyer les contenus des textes. Il supprime :
 
 En janvier 2020 il détecte 93 millions de caractères inutiles dans LEGI.
 
-Cette fonctionnalité n'est pas activée par défaut car elle est « destructrice »
-et récente. Vous pouvez nettoyer tout l'HTML d'une base en exécutant la commande
-`python -m legi.html clean legi.sqlite` (les modifications ne sont enregistrées
-que si vous entrez `y` à la fin).
+Le nettoyage HTML est activé par défaut sauf quand l'option `--raw` est passée
+à `tar2sqlite`.
+
+La commande `python -m legi.html clean legi.sqlite` nettoie tout l'HTML dans la
+base de données. Les modifications ne sont enregistrées que si vous entrez `y`
+à la fin. Pour faciliter le développement et les tests, l'option `--dry-run`
+permet de ne pas modifier le fichier SQLite du tout.
 
 ### Détection d'anomalies
 
@@ -100,7 +105,7 @@ Le module `anomalies` est conçu pour détecter les incohérences dans les donn�
 
 Pour détecter les anomalies actuellement présentes dans la base :
 
-    python -m legi.anomalies legi.sqlite
+    env/bin/python -m legi.anomalies legi.sqlite
 
 ## Contribuer
 
