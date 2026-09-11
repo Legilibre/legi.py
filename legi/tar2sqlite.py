@@ -8,6 +8,7 @@ from fnmatch import fnmatch
 import json
 import os
 import re
+from time import process_time
 
 import libarchive
 from lxml import etree
@@ -24,6 +25,18 @@ from .html import CleaningError, clean_html, remove_detected_soft_hyphens
 from .utils import partition
 
 
+ARTICLE_TAGS = {'NOTA', 'BLOC_TEXTUEL'}
+SECTION_TA_TAGS = {'TITRE_TA', 'COMMENTAIRE'}
+TEXTELR_TAGS = {'VERSIONS'}
+TEXTE_VERSION_TAGS = {'VISAS', 'SIGNATAIRES', 'TP', 'NOTA', 'ABRO', 'RECT'}
+META_ARTICLE_TAGS = {'NUM', 'ETAT', 'DATE_DEBUT', 'DATE_FIN', 'TYPE'}
+META_CHRONICLE_TAGS = {
+    'DATE_PUBLI', 'DATE_TEXTE', 'DERNIERE_MODIFICATION', 'NOR', 'NUM',
+    'NUM_SEQUENCE', 'ORIGINE_PUBLI', 'PAGE_DEB_PUBLI', 'PAGE_FIN_PUBLI'
+}
+META_VERSION_TAGS = {
+    'TITRE', 'TITREFULL', 'ETAT', 'DATE_DEBUT', 'DATE_FIN', 'AUTORITE', 'MINISTERE'
+}
 SOUS_DOSSIER_MAP = {
     'articles': 'article',
     'sections': 'section_ta',
@@ -31,6 +44,20 @@ SOUS_DOSSIER_MAP = {
     'textes_versions': 'texte/version',
 }
 TABLES_MAP = {'ARTI': 'articles', 'SCTA': 'sections', 'TEXT': 'textes_{}s'}
+TYPELIEN_MAP = {
+    "ABROGATION": "ABROGE",
+    "ANNULATION": "ANNULE",
+    "CODIFICATION": "CODIFIE",
+    "CONCORDANCE": "CONCORDE",
+    "CREATION": "CREE",
+    "DEPLACE": "DEPLACEMENT",
+    "DISJOINT": "DISJONCTION",
+    "MODIFICATION": "MODIFIE",
+    "PEREMPTION": "PERIME",
+    "RATIFICATION": "RATIFIE",
+    "TRANSFERE": "TRANSFERT",
+}
+TYPELIEN_MAP.update([(v, k) for k, v in TYPELIEN_MAP.items()])
 
 suppress_re = re.compile(
     r"legi/global/code_et_TNC_(en|non)_vigueur/"
@@ -159,34 +186,6 @@ def process_archive(
     db, archive_path, raw, process_links=True, check_html=True, anomalies_file=None,
 ):
 
-    # Define some constants
-    ARTICLE_TAGS = set('NOTA BLOC_TEXTUEL'.split())
-    SECTION_TA_TAGS = set('TITRE_TA COMMENTAIRE'.split())
-    TEXTELR_TAGS = set('VERSIONS'.split())
-    TEXTE_VERSION_TAGS = set('VISAS SIGNATAIRES TP NOTA ABRO RECT'.split())
-    META_ARTICLE_TAGS = set('NUM ETAT DATE_DEBUT DATE_FIN TYPE'.split())
-    META_CHRONICLE_TAGS = set("""
-        NUM NUM_SEQUENCE NOR DATE_PUBLI DATE_TEXTE DERNIERE_MODIFICATION
-        ORIGINE_PUBLI PAGE_DEB_PUBLI PAGE_FIN_PUBLI
-    """.split())
-    META_VERSION_TAGS = set(
-        'TITRE TITREFULL ETAT DATE_DEBUT DATE_FIN AUTORITE MINISTERE'.split()
-    )
-    TYPELIEN_MAP = {
-        "ABROGATION": "ABROGE",
-        "ANNULATION": "ANNULE",
-        "CODIFICATION": "CODIFIE",
-        "CONCORDANCE": "CONCORDE",
-        "CREATION": "CREE",
-        "DEPLACE": "DEPLACEMENT",
-        "DISJOINT": "DISJONCTION",
-        "MODIFICATION": "MODIFIE",
-        "PEREMPTION": "PERIME",
-        "RATIFICATION": "RATIFIE",
-        "TRANSFERE": "TRANSFERT",
-    }
-    TYPELIEN_MAP.update([(v, k) for k, v in TYPELIEN_MAP.items()])
-
     # Define some shortcuts
     attr = etree._Element.get
     insert = db.insert
@@ -224,12 +223,13 @@ def process_archive(
             if '\u00AD' in html:
                 soft_hyphens[row_cid].append((table, row_id, col, html))
 
-    counts = defaultdict(int)
-    skipped = 0
+    changes = defaultdict(int)
+    unchanged_files = 0
+    unchanged_rows = defaultdict(int)
     unknown_folders = defaultdict(int)
     liste_suppression = []
     liste_suppression_dossier = []
-    xml = etree.XMLParser(remove_blank_text=True)
+    xml = etree.XMLParser(collect_ids=False, remove_blank_text=True)
     with tqdm(total=os.stat(archive_path).st_size, unit='bytes') as pbar, \
          open(archive_path, 'rb') as file, \
          libarchive.stream_reader(file) as archive:
@@ -316,9 +316,9 @@ def process_archive(
                             'other_dossier': dossier,
                             'other_mtime': mtime,
                         }, replace=True)
-                        counts['upsert into duplicate_files'] += 1
+                        changes['upsert into duplicate_files'] += 1
                 elif prev_mtime == mtime:
-                    skipped += 1
+                    unchanged_files += 1
                     continue
 
             xml.feed(b''.join(entry.get_blocks()))
@@ -386,10 +386,12 @@ def process_archive(
                 sommaires = [
                     {
                         'cid': row_cid,
+                        'parent': None,
                         'element': attr(lien, 'id'),
                         'debut': attr(lien, 'debut'),
                         'fin': attr(lien, 'fin'),
                         'etat': attr(lien, 'etat'),
+                        'num': None,
                         'position': i,
                         '_source': 'struct/' + row_id,
                     }
@@ -456,7 +458,7 @@ def process_archive(
                     'other_dossier': prev_dossier,
                     'other_mtime': prev_mtime,
                 }, replace=True)
-                counts['upsert into duplicate_files'] += 1
+                changes['upsert into duplicate_files'] += 1
                 continue
 
             attrs['dossier'] = dossier
@@ -464,56 +466,73 @@ def process_archive(
             attrs['mtime'] = mtime
 
             if prev_row:
-                # Delete the associated rows
+                # Replace the associated rows
                 if tag == 'SECTION_TA':
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND parent = ?
-                           AND _source = 'section_ta_liens'
-                    """, (row_cid, section_id))
-                    counts['delete from sommaires'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'sommaires',
+                        "cid = ? AND parent = ? AND _source = 'section_ta_liens'",
+                        (row_cid, section_id),
+                        sommaires
+                    )
+                    if insert_count:
+                        changes['insert into sommaires'] += insert_count
+                    if delete_count:
+                        changes['delete from sommaires'] += delete_count
+                    unchanged_rows['sommaires'] += len(sommaires) - insert_count
                 elif tag == 'TEXTELR':
-                    db.run("""
-                        DELETE FROM sommaires
-                         WHERE cid = ?
-                           AND _source = ?
-                    """, (row_cid, 'struct/' + row_id))
-                    counts['delete from sommaires'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'sommaires',
+                        "cid = ? AND _source = ?",
+                        (row_cid, 'struct/' + row_id),
+                        sommaires
+                    )
+                    if insert_count:
+                        changes['insert into sommaires'] += insert_count
+                    if delete_count:
+                        changes['delete from sommaires'] += delete_count
+                    unchanged_rows['sommaires'] += len(sommaires) - insert_count
                 if tag in ('ARTICLE', 'TEXTE_VERSION'):
-                    db.run("""
-                        DELETE FROM liens
-                         WHERE src_id = ? AND NOT _reversed
-                            OR dst_id = ? AND _reversed
-                    """, (row_id, row_id))
-                    counts['delete from liens'] += db.changes()
+                    insert_count, delete_count = db.replace(
+                        'liens',
+                        "src_id = ? AND NOT _reversed OR dst_id = ? AND _reversed",
+                        (row_id, row_id),
+                        liens
+                    )
+                    if insert_count:
+                        changes['insert into liens'] += insert_count
+                    if delete_count:
+                        changes['delete from liens'] += delete_count
+                    unchanged_rows['liens'] += len(liens) - insert_count
                 if table == 'textes_versions':
                     db.run("DELETE FROM textes_versions_brutes WHERE id = ?", (row_id,))
-                    counts['delete from textes_versions_brutes'] += db.changes()
+                    changes['delete from textes_versions_brutes'] += db.changes()
                 # Update the row
-                counts['update in '+table] += 1
+                changes['update in '+table] += 1
                 update(table, dict(id=row_id), attrs)
             else:
-                counts['insert into '+table] += 1
+                changes['insert into '+table] += 1
                 attrs['id'] = row_id
                 insert(table, attrs)
-
-            # Insert the associated rows
-            for lien in liens:
-                db.insert('liens', lien)
-            counts['insert into liens'] += len(liens)
-            for sommaire in sommaires:
-                db.insert('sommaires', sommaire)
-            counts['insert into sommaires'] += len(sommaires)
+                # Insert the associated rows
+                for lien in liens:
+                    db.insert('liens', lien)
+                changes['insert into liens'] += len(liens)
+                for sommaire in sommaires:
+                    db.insert('sommaires', sommaire)
+                changes['insert into sommaires'] += len(sommaires)
 
             # Update the progress bar
             pbar.update(file.tell() - pbar.n)
 
-    print("made", sum(counts.values()), "changes in the database:",
-          json.dumps(counts, indent=4, sort_keys=True))
+    print("made", sum(changes.values()), "changes in the database:",
+          json.dumps(changes, indent=4, sort_keys=True))
 
-    if skipped:
-        print("skipped", skipped, "files that haven't changed")
+    if unchanged_rows:
+        print("avoided rewriting", sum(unchanged_rows.values()), "unchanged rows:",
+              json.dumps(unchanged_rows, indent=4, sort_keys=True))
+
+    if unchanged_files:
+        print("skipped", unchanged_files, "files that haven't changed")
 
     if unknown_folders:
         for d, x in unknown_folders.items():
@@ -535,8 +554,10 @@ def main():
     p.add_argument('--anomalies', action='store_true', default=False,
                    help="save detected anomalies to a file for each processed archive")
     p.add_argument('--anomalies-dir', default='.')
-    p.add_argument('--pragma', action='append', default=[],
-                   help="Doc: https://www.sqlite.org/pragma.html | Example: journal_mode=WAL")
+    p.add_argument('--pragma', action='append',
+                   default=['journal_mode=wal', 'mmap_size=10000000000', 'temp_store=memory'],
+                   help="Doc: https://www.sqlite.org/pragma.html | "
+                        "Default: journal_mode=wal mmap_size=10000000000 temp_store=memory")
     p.add_argument('--raw', default=False, action='store_true')
     p.add_argument('--skip-checks', default=False, action='store_true',
                    help="skip the HTML cleaning checks")
@@ -584,8 +605,12 @@ def main():
     if last_update and most_recent_global > last_update:
         print("> There is a new global archive, recreating the DB from scratch!")
         db.close()
-        os.rename(db.address, db.address + '.back')
-        db = connect_db(args.db, pragmas=args.pragma)
+        try:
+            os.remove(args.db + '.wip')
+        except FileNotFoundError:
+            pass
+        db = connect_db(args.db + '.wip', pragmas=args.pragma)
+        last_update = None
     archives, skipped = partition(
         archives, lambda t: t[0] >= most_recent_global and t[0] > (last_update or '')
     )
@@ -597,11 +622,20 @@ def main():
     check_html = not args.skip_checks
     for archive_date, is_global, archive_name in archives:
         print("> Processing %s..." % archive_name)
+        start_time = process_time()
         if args.anomalies:
             anomalies_fpath = f'{args.anomalies_dir}/anomalies-{archive_date}.txt'
             anomalies_file = open(anomalies_fpath, 'w')
         else:
             anomalies_fpath = anomalies_file = None
+        toggle_unsafe_mode = not last_update
+        if toggle_unsafe_mode:
+            journal_mode = db.one("PRAGMA journal_mode")
+            synchronous = db.one("PRAGMA synchronous")
+            toggle_unsafe_mode = journal_mode != 'off' or synchronous != 'off'
+            if toggle_unsafe_mode:
+                db.pragma('journal_mode=off')
+                db.pragma('synchronous=off')
         with db:
             process_archive(
                 db, args.directory + '/' + archive_name, args.raw,
@@ -612,15 +646,20 @@ def main():
                 db.run("UPDATE db_meta SET value = ? WHERE key = 'last_update'", (archive_date,))
             else:
                 db.run("INSERT INTO db_meta VALUES ('last_update', ?)", (archive_date,))
-        last_update = archive_date
-        print('last_update is now set to', last_update)
-
-        # Detect anomalies if requested
-        if args.anomalies:
-            print('Looking for anomalies...')
-            n_anomalies = detect_anomalies(db, anomalies_file)
-            print("logged", n_anomalies, "anomalies in", anomalies_fpath)
-            anomalies_file.close()
+            last_update = archive_date
+            print('Optimizing the DB...')
+            db.pragma('optimize')
+            if args.anomalies:
+                print('Looking for anomalies...')
+                n_anomalies = detect_anomalies(db, anomalies_file)
+                anomalies_file.close()
+                print("logged", n_anomalies, "anomalies in", anomalies_fpath)
+        if toggle_unsafe_mode:
+            db.pragma('journal_mode', journal_mode)
+            db.pragma('synchronous', synchronous)
+        db.pragma('wal_checkpoint')
+        end_time = process_time()
+        print(f"archive processed in {end_time - start_time:.1f} seconds")
 
     if not args.raw:
         from .normalize import (
@@ -633,6 +672,9 @@ def main():
         normalize_sommaires_num(db)
         from .factorize import main as factorize
         factorize(db)
+
+    if db.address != args.db:
+        os.rename(db.address, args.db)
 
 
 if __name__ == '__main__':
