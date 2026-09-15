@@ -237,9 +237,11 @@ if __name__ == '__main__':
     p = ArgumentParser()
     p.add_argument('db')
     p.add_argument('--from-scratch')
+    p.add_argument('--pragma', action='append', default=['temp_store=memory'],
+                   help="Doc: https://www.sqlite.org/pragma.html | Default: temp_store=memory")
     args = p.parse_args()
 
-    db = connect_db(args.db)
+    db = connect_db(args.db, pragmas=args.pragma)
     try:
         with db:
             if args.from_scratch:
