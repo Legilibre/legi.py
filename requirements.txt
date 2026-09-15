@@ -1,5 +1,5 @@
 appdirs
-hunspell
+cyhunspell
 libarchive-c
 lxml
 requests

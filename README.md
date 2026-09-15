@@ -15,11 +15,11 @@ en vigueur][tweet-texte-plus-ancien], etc.
 
 ## Installation
 
-legi.py a besoin de [`libarchive`][libarchive] et [`hunspell`][hunspell]. L'installation de ces dépendances varie selon le système d'exploitation :
+legi.py a besoin de [`libarchive`][libarchive] et d'un dictionnaire français au format d'[`hunspell`][hunspell]. L'installation de ces dépendances varie selon le système d'exploitation :
 
-- Arch Linux : `pacman -S --needed libarchive hunspell hunspell-fr`
+- Arch Linux : `pacman -S --needed libarchive hunspell-fr`
 - Mac OS X : la version de `libarchive` inclue dans Mac OS X est obsolète, vous pouvez utiliser [Homebrew](https://brew.sh/) pour installer une version récente en exécutant `brew install libarchive`, puis indiquer au module Python qu'il doit utiliser cette version en ajoutant une variable d'environnement : `export LIBARCHIVE="$(find "$(brew --cellar libarchive)" -name libarchive.13.dylib | sort | tail -1)"` (cette commande peut être ajoutée au fichier d'initialisation de votre shell, typiquement `~/.bashrc` ou `~/.zshrc`)
-- Ubuntu : `sudo apt-get install libarchive13 hunspell hunspell-fr libhunspell-dev`
+- Ubuntu : `sudo apt-get install libarchive13 hunspell-fr`
 
 Une fois ces dépendances système installées, vous pouvez cloner le dépôt et utiliser `pip` pour installer les modules python nécessaires :
 

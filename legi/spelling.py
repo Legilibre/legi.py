@@ -30,10 +30,10 @@ class Spellchecker:
             import hunspell
         except ImportError:
             raise SpellcheckingIsUnavailable("the hunspell module is missing")
-        paths = self._find_hunspell_files()
-        if not paths:
+        path = self._find_hunspell_files()
+        if not path:
             raise SpellcheckingIsUnavailable("the hunspell files for lang %r are missing" % lang)
-        self.dict = hunspell.HunSpell(*paths)
+        self.dict = hunspell.Hunspell(path)
         self.filters = filters
         self.intra_word_chars = set(intra_word_chars)
 
@@ -44,7 +44,7 @@ class Spellchecker:
             aff_path = os.path.join(base_dir, lang + '.aff')
             dic_path = os.path.join(base_dir, lang + '.dic')
             if os.path.exists(aff_path) and os.path.exists(dic_path):
-                return dic_path, aff_path
+                return os.path.join(base_dir, lang)
 
     def check(self, text):
         """Looks for misspelled words in `text`.
