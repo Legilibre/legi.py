@@ -2,7 +2,10 @@ from contextlib import contextmanager
 import os
 import os.path
 import re
-import sre_parse
+try:
+    import re._parser as sre_parse
+except ImportError:  # Python < 3.11
+    import sre_parse
 from unicodedata import combining, decomposition, normalize
 
 
