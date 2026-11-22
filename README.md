@@ -28,7 +28,7 @@ Une fois ces dépendances système installées, vous pouvez cloner le dépôt et
     python -m venv env
     env/bin/pip install -r requirements.txt
 
-legi.py et les modules dont il dépend sont compatibles avec python ≥ 3.9.
+legi.py et les modules dont il dépend sont compatibles avec python ≥ 3.11.
 
 legi.py peut être utilisé comme dépendance d'un autre projet, il est disponible
 sous forme de paquet [dans PyPI][legi-pypi].
