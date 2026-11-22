@@ -2,10 +2,6 @@ from contextlib import contextmanager
 import os
 import os.path
 import re
-try:
-    import re._parser as sre_parse
-except ImportError:  # Python < 3.11
-    import sre_parse
 from unicodedata import combining, decomposition, normalize
 
 
@@ -69,7 +65,7 @@ def add_accentless_fallbacks(pattern):
         return chr(int(decomposition(c).split(' ', 1)[0], 16))
 
     r = []
-    source = sre_parse.Tokenizer(pattern)
+    source = re._parser.Tokenizer(pattern)
     sourceget = source.get
     while True:
         this = source.next
