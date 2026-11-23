@@ -1,6 +1,6 @@
 
 CREATE TABLE db_meta
-( key     text   primary key
+( key     varchar(512)   primary key
 , value   blob
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE textes_versions
 , nature                  text
 , titre                   text
 , titrefull               text
-, titrefull_s             text
+, titrefull_s             varchar(512)
 , etat                    text
 , date_debut              day
 , date_fin                day
